@@ -4,7 +4,7 @@ import { abrirBanco, agora, salvarAjustes } from '../src/db.mjs';
 import { AJUSTES_PADRAO } from '../src/config.mjs';
 import { CONTRATOS, validar } from '../src/tocomas/contratos.mjs';
 import { exigirHandoff, HandoffInvalido, podeHandoff, visao } from '../src/tocomas/grafo.mjs';
-import { fecharCiclo, lerCrenca, liberar, LIMITE_PRESO, registrarFatos, versaoDe } from '../src/tocomas/crenca.mjs';
+import { fecharCiclo, lerCrenca, liberar, LIMITE_PRESO, registrarFatos, semearDoLead, versaoDe } from '../src/tocomas/crenca.mjs';
 import { abrirPlano } from '../src/tocomas/fidelidade.mjs';
 import { criarControlador, decidir } from '../src/tocomas/controlador.mjs';
 
@@ -113,4 +113,12 @@ test('controlador: para a varredura com estoque de 4 dias e respeita o cache', (
   assert.equal(c.permite('varrer'), false); // ainda no cache
   t = 11_000;
   assert.equal(c.permite('varrer'), true);
+});
+
+test('crença: lead antigo (de antes da crença) é semeado com o que a linha já sabe', () => {
+  const db = abrirBanco(':memory:');
+  const lead = { id: 'V1', fonte: 'maps', telefone: '55169', site: null, rating: 4.2, avaliacoes: 10, situacao_site: 'sem_site', auditoria: null, atualizado_em: T0 };
+  assert.equal(semearDoLead(db, lead), true);
+  assert.deepEqual(lerCrenca(db, 'V1', 'auditado', T0).pendencias, []);
+  assert.equal(semearDoLead(db, lead), false); // só uma vez
 });

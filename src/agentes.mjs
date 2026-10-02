@@ -21,12 +21,13 @@ import { classificarUrl, formatarTelefone, normalizarTelefone, sinaisDeAtraso, S
 import { auditarSite } from './auditoria.mjs';
 import { coletarMaps, coletarOsm } from './fontes/index.mjs';
 import { decide } from './decide/index.mjs';
-import { gerarTexto } from './llm.mjs';
+import { gerarTexto, saudeOllama } from './llm.mjs';
+import { CONFIG } from './config.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR } from './envio/openwa.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
 import { exigirHandoff, visao } from './tocomas/grafo.mjs';
-import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, versaoDe } from './tocomas/crenca.mjs';
+import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
 
@@ -215,8 +216,16 @@ async function qualificar(db, job, ctx) {
   if (angulos.length > 1) {
     perguntas.abordagem = { ...PERGUNTAS_QUALIFICACAO.abordagem, criteria: Object.fromEntries(angulos.map((k) => [k, ROTULO_ABORDAGEM[k]])) };
   }
-  ctx.usar?.('decide');
-  const r = await decide({ state: estadoDoLead(lead), questions: perguntas });
+  let r;
+  const saude = CONFIG.decideBackend === 'local' ? await saudeOllama() : { ok: true, decide: true };
+  if (saude.ok && saude.decide) {
+    ctx.usar?.('decide');
+    r = await decide({ state: estadoDoLead(lead), questions: perguntas });
+  } else {
+    // sem modelo, a fila não trava: a regra decide o que é fato, e "ativo" fica neutro (50%), sem chute
+    r = decisaoSemModelo();
+    registrar(db, 'nova', 'aviso', `${lead.nome}: decidi só por regra (modelo de decisão indisponível); ângulo = o primeiro válido`, { lead_id: lead.id });
+  }
   const abordagem = r.answers.abordagem || regra('choice', angulos[0], { choice: angulos[0] });
   const ativo = r.answers.ativo;
   // prioridade 0–100: oportunidade (regra) pesa mais que atividade (modelo); a fórmula aparece na tela
@@ -232,13 +241,20 @@ async function qualificar(db, job, ctx) {
   const score = m.score;
   db.prepare('UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = ?, atualizado_em = ? WHERE id = ?')
     .run(json(decisao), score, motivo, etapa, agora(), lead.id);
-  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms`, { lead_id: lead.id });
+  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms`, { lead_id: lead.id });
   registrarFatos(db, lead.id, [
     { chave: 'nivel_oportunidade', valor: nivel, fonte: 'regra' },
-    { chave: 'ativo', valor: ativo.noul, fonte: 'modelo', confianca: ativo.confidence },
+    ...(ativo.origem === 'sem_modelo' ? [] : [{ chave: 'ativo', valor: ativo.noul, fonte: 'modelo', confianca: ativo.confidence }]),
     { chave: 'angulo', valor: abordagem.choice, fonte: abordagem.origem === 'regra' ? 'regra' : 'modelo', confianca: abordagem.confidence },
   ]);
   if (etapa === 'qualificado') passar(db, 'qualificar', 'redigir', lead.id);
+}
+
+export function decisaoSemModelo() {
+  return {
+    answers: { ativo: { type: 'noul', origem: 'sem_modelo', probabilities: { true: 0.5, false: 0.5 }, confidence: 0.5, coverage: 0, noul: 0.5 } },
+    backend: 'regra_sem_modelo', model: null, latency_ms: 0,
+  };
 }
 
 // ------------------------------------------------------------------ Maia
@@ -495,23 +511,27 @@ export function criarOrquestrador(db) {
       if (!job) { await esperar(1500); continue; }
       const leadId = tipo === 'varrer' ? null : job.ref;
       if (leadId && estaPreso(db, leadId)) { concluirJob(db, job.id); continue; }
+      if (leadId) semearDoLead(db, db.prepare('SELECT * FROM leads WHERE id = ?').get(leadId));
       const versaoAntes = leadId ? versaoDe(db, leadId) : 0;
+      let falhou = false;
       const plano = abrirPlano(tipo, job.id);
       ctx.usar = plano.usar;
       try {
         await fn(db, job, ctx);
         concluirJob(db, job.id);
       } catch (e) {
+        falhou = true;
         const volta = falharJob(db, job, e);
         registrar(db, agente, 'erro', `${tipo} ${job.ref}: ${e.message}${volta ? ' (vai tentar de novo)' : ' (desistiu após 3 tentativas)'}`, { lead_id: leadId });
       } finally {
         livre(tipo);
-        fecharJob(tipo, agente, leadId, versaoAntes, plano.fechar());
+        fecharJob(tipo, agente, falhou ? null : leadId, versaoAntes, plano.fechar());
       }
     }
   }
 
-  // fim de cada job: placar de fidelidade e progresso da crença do lead
+  // fim de cada job: placar de fidelidade e progresso da crença do lead.
+  // Job que falhou não conta ciclo: falha de infraestrutura (Ollama, rede) já tem o limite de 3 tentativas.
   function fecharJob(tipo, agente, leadId, versaoAntes, fid) {
     registrarFidelidade(db, fid);
     if (!fid.preservou) registrar(db, agente, 'fidelidade', `${tipo}: ${fid.desvios.join('; ')}`, { lead_id: leadId, dados: fid });

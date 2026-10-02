@@ -113,6 +113,17 @@ export function presos(db) {
   return db.prepare('SELECT c.lead_id, c.motivo, l.nome FROM crencas c LEFT JOIN leads l ON l.id = c.lead_id WHERE c.preso = 1 ORDER BY c.atualizado_em DESC').all();
 }
 
+// lead que já existia antes da crença: semeia com o que a linha do lead já sabe (mesmas fontes)
+export function semearDoLead(db, lead) {
+  if (!lead || versaoDe(db, lead.id) > 0) return false;
+  const aud = parse(lead.auditoria);
+  registrarFatos(db, lead.id, [
+    ...fatosDaFonte(lead),
+    ...(lead.situacao_site ? [{ chave: 'situacao_site', valor: lead.situacao_site, fonte: 'auditoria' }, { chave: 'sinais_atraso', valor: aud?.sinais || [], fonte: 'auditoria' }] : []),
+  ], lead.atualizado_em || agora());
+  return true;
+}
+
 // fatos que a Coleta traz da fonte (Maps/OSM)
 export function fatosDaFonte(lead) {
   const fonte = lead.fonte === 'osm' ? 'osm' : 'maps';

@@ -71,3 +71,12 @@ test('texto fixo varia entre leads e passa na própria checagem', () => {
   }
   assert.ok(textos.size >= 2);
 });
+
+test('sem modelo: Nova decide por regra com "ativo" neutro, sem inventar', async () => {
+  const { decisaoSemModelo } = await import('../src/agentes.mjs');
+  const r = decisaoSemModelo();
+  assert.equal(r.backend, 'regra_sem_modelo');
+  assert.equal(r.answers.ativo.noul, 0.5);
+  assert.equal(r.answers.ativo.coverage, 0);
+  assert.equal(r.answers.abordagem, undefined); // o ângulo sai da lista de válidos, não do modelo
+});
