@@ -65,24 +65,24 @@ export function desenharPainelLed(painel, estado) {
   const oportunidade = Object.entries(s).filter(([k]) => k !== 'site_proprio').reduce((a, [, n]) => a + n, 0);
   const etapas = [[total, 'encontrados'], [oportunidade, 'site fraco'], [soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'sem_resposta'), 'mensagens'],
     [soma('enviado', 'respondeu', 'sem_resposta'), 'enviados'], [f.respondeu || 0, 'responderam']];
-  g.fillStyle = '#8b8fa3'; g.font = '500 26px Geist, system-ui, sans-serif';
+  g.fillStyle = '#948a7b'; g.font = '500 26px "Bricolage Grotesque", system-ui, sans-serif';
   g.fillText('Funil de prospecção', 40, 58);
   const trabalhando = Object.values(estado.agentes || {}).filter((a) => a.status === 'trabalhando');
   g.textAlign = 'right';
-  g.fillStyle = trabalhando.length ? '#4ad69a' : '#8b8fa3';
+  g.fillStyle = trabalhando.length ? '#4ad69a' : '#948a7b';
   g.fillText(estado.pausado ? 'agentes pausados' : trabalhando.length ? `${trabalhando.map((a) => a.nome).join(', ')} trabalhando` : 'equipe ociosa', W - 40, 58);
   g.textAlign = 'left';
   const col = (W - 80) / etapas.length;
   etapas.forEach(([n, rot], i) => {
     const x = 40 + i * col;
-    g.fillStyle = i === etapas.length - 1 && n ? '#c4b5fd' : '#ececf3';
-    g.font = '600 120px Geist, system-ui, sans-serif';
+    g.fillStyle = i === etapas.length - 1 && n ? '#ffc98c' : '#f3eee5';
+    g.font = '600 120px "Bricolage Grotesque", system-ui, sans-serif';
     g.fillText(String(n), x, 250);
-    g.fillStyle = '#8b8fa3'; g.font = '400 26px Geist, system-ui, sans-serif';
+    g.fillStyle = '#948a7b'; g.font = '400 26px "Bricolage Grotesque", system-ui, sans-serif';
     g.fillText(rot, x + 4, 300);
   });
   g.fillStyle = '#1b1e26'; g.fillRect(40, 350, W - 80, 2);
-  g.fillStyle = '#8b8fa3'; g.font = '400 22px "Geist Mono", ui-monospace, monospace';
+  g.fillStyle = '#948a7b'; g.font = '400 22px "JetBrains Mono", ui-monospace, monospace';
   const e = estado.envio || {};
   g.fillText(`envios hoje ${e.enviados_hoje ?? 0}/${e.limite ?? 10}  ·  na fila ${e.na_fila ?? 0}  ·  para aprovar ${f.mensagem || 0}`, 40, 396);
   // matriz de LEDs

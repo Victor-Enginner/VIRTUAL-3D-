@@ -77,7 +77,8 @@ function bolha(m) {
       : `<a class="arquivo" href="${url}"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/></svg>${esc(m.anexo.nome)} · ${Math.round(m.anexo.bytes / 1024)} KB</a>`;
   }
   const texto = m.texto ? (m.texto.startsWith('Erro:') ? `<span class="erro">${esc(m.texto)}</span>` : esc(m.texto)) : '';
-  return `<div class="msg ${operador ? 'operador' : ''}"><span class="quem" aria-hidden="true">${operador ? ICONE_OPERADOR : ICONE_SISTEMA}</span>
+  const cor = !operador && dados?.agente?.cor ? ` style="--cor-ag:${esc(dados.agente.cor)}"` : '';
+  return `<div class="msg ${operador ? 'operador' : 'agente'}"${cor}><span class="quem" aria-hidden="true">${operador ? ICONE_OPERADOR : ICONE_SISTEMA}</span>
     <div class="bolha">${corpo}${texto}<time data-ts="${esc(m.ts)}">${relativo(m.ts)}</time></div></div>`;
 }
 
@@ -100,10 +101,24 @@ function fichaHtml() {
   </article>`;
 }
 
+const ETAPAS_CONVITE = [
+  ['Nome', 'como ele vai aparecer na equipe'], ['Papel', 'o que ele faz, em uma frase'], ['Modos', 'consultivo, operacional, pesquisa…'],
+  ['Identidade', 'o tom de voz'], ['Regras', 'o que ele nunca faz'], ['Ferramentas', 'o que ele pode usar'],
+  ['Aprendizado', 'com que frequência revisa o que aprendeu'], ['Revisão', 'você confere a ficha e ativa'],
+];
+
 function desenharChat() {
   const chat = $('#chat');
   if (!dados) {
-    chat.innerHTML = `<div class="msg"><span class="quem" aria-hidden="true">${ICONE_SISTEMA}</span><div class="bolha">Escolha um agente na lateral ou crie um com “Novo agente”.</div></div>`;
+    // estado vazio = convite: o que a conversa vai perguntar, na ordem (é uma sequência de verdade)
+    chat.innerHTML = `<section class="boas-vindas" aria-labelledby="bv-titulo">
+      <h2 id="bv-titulo">Monte um agente conversando</h2>
+      <p>São 8 perguntas curtas. No fim você revisa a ficha e o agente ganha uma mesa na Sala 3D.</p>
+      <ol class="etapas-config">${ETAPAS_CONVITE.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join('')}</ol>
+      <div class="bv-acoes"><button class="btn primario" data-comecar>Começar um agente novo</button>
+      ${document.querySelector('#lista .item') ? '<span class="sub">ou continue um da lista ao lado</span>' : ''}</div>
+    </section>`;
+    chat.querySelector('[data-comecar]')?.addEventListener('click', novo);
     $('#faixa').hidden = true;
     return;
   }

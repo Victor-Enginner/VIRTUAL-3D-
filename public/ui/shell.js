@@ -11,7 +11,7 @@ export const ICONES = {
   menu: ic('<path d="M4 7h16M4 12h16M4 17h10"/>'),
 };
 
-const MARCA = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#8f75e6"/><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10" fill="none" stroke="#0c0c11" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="22.5" r="2" fill="#0c0c11"/></svg>`;
+const MARCA = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#f0953a"/><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10" fill="none" stroke="#0c0c11" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="22.5" r="2" fill="#0c0c11"/></svg>`;
 
 const PAGINAS = [
   ['painel', '/', 'Painel'],

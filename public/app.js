@@ -46,7 +46,7 @@ function desenharSaude() {
   $('#saude').innerHTML = [
     item(ollama.ok ? 'ok' : 'erro', ollama.ok ? 'Ollama ligado' : 'Ollama desligado'),
     item(motorOk ? 'ok' : 'alerta', `decisão: ${motor.backend === 'jev' ? 'Jev (pago)' : motor.modelo_decisao}${motorOk ? '' : ' (indisponível)'}`),
-    item(openwa.ok ? 'ok' : openwa.configurado ? 'erro' : 'alerta', openwa.configurado ? `OpenWA: ${openwa.status || openwa.erro || '?'}` : 'OpenWA não configurado'),
+    item(openwa.ok ? 'ok' : openwa.configurado ? 'erro' : 'alerta', openwa.ok ? 'WhatsApp conectado' : !openwa.configurado ? 'WhatsApp não configurado' : openwa.erro ? 'WhatsApp desligado' : `WhatsApp ${openwa.status || 'desconectado'}`),
     item(estado.envio.enviados_hoje >= estado.envio.limite ? 'alerta' : 'ok', `${estado.envio.enviados_hoje} de ${estado.envio.limite} envios hoje`),
   ].join('');
 }
@@ -79,15 +79,19 @@ function desenharAbas() {
 
 // ---------------------------------------------------------------- leads
 
+// quem está com o lead agora (a faixa colorida da linha, mesma cor do agente na Sala 3D)
+const DONO_DA_ETAPA = { descoberto: 'atlas', auditado: 'nova', qualificado: 'maia', mensagem: 'operador', sem_contato: 'operador', aprovado: 'leo', enviado: 'leo', respondeu: 'leo', sem_resposta: 'leo' };
+const NOME_AGENTE = { atlas: 'o Atlas', nova: 'a Nova', maia: 'a Maia', leo: 'o Leo', operador: 'você' };
+
 async function carregarLeads() {
   const q = $('#busca').value.trim();
   const { leads } = await api(`/api/leads?etapa=${encodeURIComponent(etapaAtual)}&q=${encodeURIComponent(q)}`);
-  $('#linhas').innerHTML = leads.map((l) => `<tr data-id="${esc(l.id)}" tabindex="0">
-    <td><div class="nome">${esc(l.nome)}</div><div class="sub">${esc(l.categoria || '')} · ${esc(l.cidade)}-${esc(l.uf)}</div></td>
+  $('#linhas').innerHTML = leads.map((l) => `<tr data-id="${esc(l.id)}" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}" tabindex="0" title="Com ${esc(NOME_AGENTE[DONO_DA_ETAPA[l.etapa]] || '—')} agora">
+    <td><div class="nome">${esc(l.nome)}</div><div class="sub">${esc(l.categoria || '')} · <span class="sem-quebra">${esc(l.cidade)}-${esc(l.uf)}</span></div></td>
     <td>${l.situacao_site ? `<span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span>` : '<span class="sub">auditando…</span>'}</td>
-    <td>${l.score == null ? '<span class="sub">—</span>' : `<span class="barra"><i style="width:${Number(l.score)}%"></i></span><span class="num">${Number(l.score)}</span>`}</td>
-    <td>${l.telefone ? `${esc(l.telefone_fmt)}<div class="sub">${esc(l.telefone_tipo || '')}</div>` : '<span class="sub">sem telefone</span>'}</td>
-    <td>${l.rating ? `${esc(String(l.rating).replace('.', ','))} ★<div class="sub">${esc(l.avaliacoes ?? '?')} avaliações</div>` : '<span class="sub">—</span>'}</td>
+    <td>${l.score == null ? '<span class="sub">—</span>' : `<span class="prio"><b>${Number(l.score)}</b><span class="barra"><i style="width:${Number(l.score)}%"></i></span></span>`}</td>
+    <td>${l.telefone ? `<span class="tel">${esc(l.telefone_fmt)}</span><div class="sub">${esc(l.telefone_tipo || '')}</div>` : '<span class="sub">sem telefone</span>'}</td>
+    <td>${l.rating ? `<span class="nota">${esc(String(l.rating).replace('.', ','))} ★</span>${l.avaliacoes != null ? `<div class="sub">${esc(l.avaliacoes)} avaliações</div>` : ''}` : '<span class="sub">—</span>'}</td>
   </tr>`).join('');
   const vazio = $('#vazio-leads');
   vazio.hidden = leads.length > 0;
@@ -381,7 +385,7 @@ async function desenharWhatsapp() {
   let w;
   try { w = await api('/api/whatsapp'); } catch (e) { caixa.innerHTML = `<p class="aviso">${esc(e.message)}</p>`; return; }
   if (!w.chave) { caixa.innerHTML = '<p class="aviso">OpenWA sem chave: defina OPENWA_API_KEY no .env.</p>'; return; }
-  if (w.erro && !w.status) { caixa.innerHTML = `<p class="aviso">OpenWA não respondeu (${esc(w.erro)}). Ele está ligado?</p>`; return; }
+  if (w.erro && !w.status) { caixa.innerHTML = `<p class="aviso">O serviço do WhatsApp (OpenWA) está desligado. Ligue-o no PC para conectar; enquanto isso, use "Abrir no WhatsApp" em cada lead.</p>`; return; }
   const st = w.status || 'sem sessão';
   let html = `<p><span class="selo ${w.ok ? 's-site_proprio' : 's-so_rede_social'}">${esc(ROTULO_WA[st] || st)}</span>${w.telefone ? ` · ${esc(w.telefone)}` : ''}</p>`;
   if (w.restricao) html += `<p class="aviso">O WhatsApp aplicou uma restrição à conta. Pare os envios.</p>`;

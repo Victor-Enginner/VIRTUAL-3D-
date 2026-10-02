@@ -1,41 +1,43 @@
-/* Design system do Prospector — 3 níveis (primitivo → semântico → componente),
-   como em AGENTES WEB SITE SKILL COMPLEX/example/styles/tokens.css.
-   Regras aplicadas (impeccable craft-floor + taste-skill redesign): um acento só, sem gradiente
-   nem brilho decorativo, cinza de uma família só (frio, puxado ao violeta), texto ≥ 4.5:1. */
+/* Design system do Prospector — 3 níveis (primitivo → semântico → componente).
+   Direção (out/2026): o site é a "sala de controle" do mesmo escritório da Sala 3D. Grafite quente
+   em vez de preto azulado (o piso é madeira), e o acento é o âmbar das luminárias das mesas.
+   Assinatura: a cor de cada agente marca o trabalho dele no site inteiro (faixa à esquerda).
+   Regras mantidas: um acento só, sem gradiente nem brilho decorativo, texto ≥ 4.5:1. */
 
-@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
 
-/* Nível 1 — primitivos */
+/* Nível 1 — primitivos: uma família de cinza quente (puxada ao marrom do piso) */
 :root {
-  --n-950: #0c0c11;
-  --n-900: #111117;
-  --n-850: #16161d;
-  --n-800: #1c1c25;
-  --n-750: #23232e;
-  --n-700: #2c2c39;
-  --n-600: #3b3b4a;
-  --n-450: #7d7d90;   /* 4.6:1 sobre --n-900 */
-  --n-300: #b3b3c4;
-  --n-100: #ececf3;
+  --n-950: #12100d;
+  --n-900: #181612;
+  --n-850: #1e1b17;
+  --n-800: #25221c;
+  --n-750: #2d2922;
+  --n-700: #38332b;
+  --n-600: #4a443a;
+  --n-450: #948a7b;   /* 5.0:1 sobre --n-900 */
+  --n-300: #c4baab;
+  --n-100: #f3eee5;
 
-  --violeta-300: #c4b5fd;
-  --violeta-400: #a993f2;
-  --violeta-500: #8f75e6;
-  --violeta-900: #241e3d;
+  --ambar-300: #ffc98c;
+  --ambar-400: #f8ac58;
+  --ambar-500: #f0953a;  /* a luz das luminárias */
+  --ambar-900: #3a2510;
 
-  --verde-400: #4ad69a;
-  --ambar-400: #e8b450;
-  --vermelho-400: #f27482;
+  --verde-400: #5fd394;
+  --amarelo-400: #e9cf5b;
+  --vermelho-400: #f2766a;
 
   --esp-1: 4px; --esp-2: 8px; --esp-3: 12px; --esp-4: 16px; --esp-5: 20px; --esp-6: 24px; --esp-8: 32px; --esp-10: 40px;
-  --raio-interno: 6px; --raio-controle: 10px; --raio-bloco: 14px;
+  --raio-interno: 6px; --raio-controle: 10px; --raio-bloco: 16px; --raio-pilula: 999px;
 
   --curva-saida: cubic-bezier(0.16, 1, 0.3, 1);   /* exponencial de saída */
   --dur-rapida: 140ms; --dur-base: 220ms; --dur-lenta: 420ms;
 
-  --fonte: "Geist", "Segoe UI", system-ui, sans-serif;
-  --fonte-mono: "Geist Mono", ui-monospace, Consolas, monospace;
-  --t-12: 0.75rem; --t-13: 0.8125rem; --t-14: 0.875rem; --t-16: 1rem; --t-20: 1.25rem; --t-28: 1.75rem; --t-40: 2.5rem;
+  --fonte-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --fonte: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --fonte-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  --t-12: 0.75rem; --t-13: 0.8125rem; --t-14: 0.875rem; --t-16: 1rem; --t-20: 1.25rem; --t-24: 1.5rem; --t-28: 1.75rem; --t-40: 2.5rem;
 }
 
 /* Nível 2 — semânticos */
@@ -46,19 +48,23 @@
   --superficie-2: var(--n-850);
   --superficie-3: var(--n-800);
   --elevado: var(--n-750);
+  --vidro: rgb(24 22 18 / .9);        /* cartões sobre a cena 3D */
   --linha: var(--n-700);
   --linha-suave: var(--n-800);
   --texto: var(--n-100);
   --texto-2: var(--n-300);
   --texto-3: var(--n-450);
-  --acento: var(--violeta-500);
-  --acento-forte: var(--violeta-400);
-  --acento-texto: var(--violeta-300);
-  --acento-fundo: var(--violeta-900);
-  --sobre-acento: var(--n-950);       /* texto escuro sobre o violeta: 5.4:1 */
+  --acento: var(--ambar-500);
+  --acento-forte: var(--ambar-400);
+  --acento-texto: var(--ambar-300);
+  --acento-fundo: var(--ambar-900);
+  --sobre-acento: #1c1107;            /* texto escuro sobre o âmbar: 8.9:1 */
   --ok: var(--verde-400);
-  --alerta: var(--ambar-400);
+  --alerta: var(--amarelo-400);
   --perigo: var(--vermelho-400);
   --anel-foco: 0 0 0 2px var(--fundo), 0 0 0 4px var(--acento-forte);
-  --sombra-elevada: 0 12px 32px -12px rgb(6 6 12 / .7), 0 2px 6px rgb(6 6 12 / .4);
+  --sombra-elevada: 0 14px 36px -14px rgb(0 0 0 / .75), 0 2px 6px rgb(0 0 0 / .35);
+
+  /* cores dos agentes (as mesmas da Sala 3D) */
+  --ag-alva: #d9468f; --ag-atlas: #0e9fb8; --ag-nova: #3b5bdb; --ag-maia: #7c3aed; --ag-leo: #16a34a;
 }
