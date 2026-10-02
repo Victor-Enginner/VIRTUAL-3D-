@@ -10,7 +10,7 @@
 .cena.pronta { opacity: 1; } /* só aparece montada e com os shaders prontos */
 @media (prefers-reduced-motion: reduce) { .cena { transition: none; } }
 .cena canvas { display: block; outline: none; }
-.dica { position: absolute; left: var(--esp-4); bottom: var(--esp-3); margin: 0; font-size: var(--t-12); color: var(--texto-3); pointer-events: none; }
+.dica { position: absolute; right: var(--esp-4); bottom: var(--esp-3); margin: 0; font-size: var(--t-12); color: var(--texto-3); pointer-events: none; }
 .sem-webgl { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: var(--esp-6); text-align: center; color: var(--texto-2); }
 .carregando { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); margin: 0; z-index: 4; background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio-controle); padding: var(--esp-2) var(--esp-4); font-size: var(--t-13); color: var(--texto-2); }
 
@@ -53,3 +53,10 @@
   .rotulo small, .rotulo .tarefa { display: none; }
   .ficha-agente { top: auto; height: 58%; }
 }
+
+/* pontos de vista da câmera: um toque leva a câmera até a área (no celular é mais fácil que arrastar) */
+.vistas { z-index: 3; position: absolute; left: var(--esp-3); bottom: var(--esp-3); display: flex; gap: 6px; max-width: calc(100% - 24px); overflow-x: auto; scrollbar-width: none; }
+.vistas .btn { flex: none; min-height: 34px; background: rgb(17 17 23 / .88); backdrop-filter: blur(6px); }
+/* agente segurado pelo controlador (TOCOMAS): borda de alerta, não de erro */
+.rotulo.espera .cartao { border-color: color-mix(in oklab, var(--alerta) 70%, var(--linha)); }
+.rotulo.espera strong i { background: var(--alerta); }

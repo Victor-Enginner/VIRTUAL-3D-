@@ -237,7 +237,7 @@ function atualizarConversas() {
     if (a.conversando) a.estado = 'conversando';
     // um concorda, o outro balança a cabeça, alternando: parece conversa, não coreografia
     const t = Math.floor(performance.now() / 2600 + AGENTES.indexOf(a.id)) % 2;
-    a.p.gesto('agree', a.conversando && t === 0);
+    a.p.gesto('agree', (a.conversando && t === 0) || a.comemorarAte > Date.now());
     a.p.gesto('headShake', a.conversando && t === 1 && a.id !== 'alva');
   }
 }
@@ -274,8 +274,15 @@ function atualizarRotulos() {
       pausa: { copa: 'Tomando um café', janela: 'Olhando pela janela', biblioteca: 'Na biblioteca', lounge: 'No lounge' }[a.destino] || 'Em pausa',
       conversando: 'Conversando', apresentando: 'Apresentando o resumo', desligado: 'Pausado (no sofá)',
     }[a.estado] || '';
-    const cls = a.estado === 'trabalhando' ? 'trabalhando' : a.estado === 'desligado' ? 'pausado' : '';
-    const html = `<div class="cartao"><strong><i></i>${esc(info.nome)}</strong><small>${esc(info.papel)}</small><div class="tarefa">${esc(txt)}</div></div>`;
+    // TOCOMAS: quem o controlador segurou mostra o motivo; a Alva mostra os leads que saíram da fila
+    const ctrl = estado?.tocomas?.controlador || {};
+    const espera = a.estado === 'trabalhando' ? null
+      : a.id === 'maia' && ctrl.redigir?.escolhida === 'esperar' ? `Escrita em espera · ${ctrl.redigir.motivo}`
+      : a.id === 'atlas' && ctrl.varrer?.escolhida === 'parar_varredura' ? `Varredura em espera · ${ctrl.varrer.motivo}` : null;
+    const presos = estado?.tocomas?.presos?.length || 0;
+    const final = espera || (a.id === 'alva' && presos && a.estado === 'na_mesa' ? `${presos} lead(s) fora da fila` : txt);
+    const cls = a.estado === 'trabalhando' ? 'trabalhando' : a.estado === 'desligado' ? 'pausado' : espera ? 'espera' : '';
+    const html = `<div class="cartao"><strong><i></i>${esc(info.nome)}</strong><small>${esc(info.papel)}</small><div class="tarefa">${esc(final)}</div></div>`;
     if (a.el.__html !== html) { a.el.innerHTML = html; a.el.__html = html; }
     a.el.className = `rotulo ${cls}`;
   }
@@ -300,7 +307,7 @@ async function carregar() {
   const item = (cls, txt) => `<span class="estado-linha"><span class="ponto ${cls}"></span>${esc(txt)}</span>`;
   $('#chips').innerHTML = [
     item(s.ollama.ok ? 'ok' : 'erro', s.ollama.ok ? 'Ollama ligado' : 'Ollama desligado'),
-    item(s.openwa.ok ? 'ok' : 'alerta', s.openwa.configurado ? 'OpenWA conectado' : 'OpenWA não configurado'),
+    item(s.openwa.ok ? 'ok' : 'alerta', s.openwa.ok ? 'WhatsApp conectado' : s.openwa.configurado ? `WhatsApp ${s.openwa.status || 'desconectado'}` : 'WhatsApp não configurado'),
     item(estado.envio.enviados_hoje < estado.envio.limite ? 'ok' : 'alerta', `${estado.envio.enviados_hoje} de ${estado.envio.limite} envios hoje`),
   ].join('');
   $('#btn-pausa').textContent = estado.pausado ? 'Retomar agentes' : 'Pausar agentes';
@@ -327,18 +334,30 @@ function voar(de, para, cor) {
   const env = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.03, 0.24), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: new THREE.Color(cor), emissiveIntensity: 0.6 }));
   env.castShadow = true;
   cena.add(env);
-  voando.push({ env, a, b, t: semMovimento ? 0.999 : 0, dur: 1.4 });
+  // rastro do handoff: a linha acompanha o envelope e some devagar depois que ele chega
+  const pts = Array.from({ length: ARCO_N + 1 }, (_, i) => arco(a, b, i / ARCO_N));
+  const linha = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color: new THREE.Color(cor), transparent: true, opacity: 0.85, depthWrite: false }));
+  linha.geometry.setDrawRange(0, 0);
+  cena.add(linha);
+  voando.push({ env, linha, a, b, t: semMovimento ? 0.999 : 0, dur: 1.4, apagar: 0 });
   som.envelope();
 }
+const ARCO_N = 32;
+function arco(a, b, t) { const p = a.clone().lerp(b, t); p.y += Math.sin(Math.PI * t) * 2.0; return p; }
 function animarEnvelopes(dt) {
   for (let i = voando.length - 1; i >= 0; i--) {
     const v = voando[i];
-    v.t = Math.min(1, v.t + dt / v.dur);
-    const p = v.a.clone().lerp(v.b, v.t);
-    p.y += Math.sin(Math.PI * v.t) * 2.0;
-    v.env.position.copy(p);
-    v.env.rotation.y += dt * 5;
-    if (v.t >= 1) { cena.remove(v.env); v.env.geometry.dispose(); v.env.material.dispose(); voando.splice(i, 1); }
+    if (v.env) {
+      v.t = Math.min(1, v.t + dt / v.dur);
+      v.env.position.copy(arco(v.a, v.b, v.t));
+      v.env.rotation.y += dt * 5;
+      v.linha.geometry.setDrawRange(0, Math.ceil(v.t * ARCO_N) + 1);
+      if (v.t >= 1) { cena.remove(v.env); v.env.geometry.dispose(); v.env.material.dispose(); v.env = null; }
+      continue;
+    }
+    v.apagar += dt / 1.6;
+    v.linha.material.opacity = 0.85 * (1 - v.apagar);
+    if (v.apagar >= 1) { cena.remove(v.linha); v.linha.geometry.dispose(); v.linha.material.dispose(); voando.splice(i, 1); }
   }
 }
 
@@ -350,6 +369,7 @@ function aoEvento(e, historico = false) {
     const rota = ROTAS[`${e.agente}:${e.tipo}`];
     if (rota && !document.hidden) voar(rota[0], rota[1], estado?.agentes?.[e.agente]?.cor || '#888');
     if (e.agente === 'alva' && e.tipo === 'briefing' && agentes.alva) agentes.alva.apresentarAte = Date.now() + APRESENTACAO_MS;
+    if (e.tipo === 'resposta') comemorar('leo'); // um lead respondeu: o Leo comemora
     // você deu um comando: todos voltam para as mesas, prontos (especificação do escritório vivo)
     if (e.tipo === 'comando') for (const a of Object.values(agentes)) a.chamadoAteMs = Date.now() + 60_000;
   }
@@ -445,22 +465,128 @@ $('#btn-pausa').addEventListener('click', async () => { await api(estado.pausado
 
 // ------------------------------------------------------------ câmera e laço
 let cameraMexida = false;
-controles.addEventListener('start', () => { cameraMexida = true; });
+let voo = null; // transição de câmera em andamento (vistas)
+controles.addEventListener('start', () => { cameraMexida = true; voo = null; marcarVista(null); });
+
+// visão geral: a sala inteira cabe na tela (de lado quando o celular está em pé)
+function vistaGeral() {
+  const retrato = camera.aspect < 0.8;
+  const distancia = retrato ? 24 * Math.min(1.5, 0.8 / camera.aspect) : 24 * Math.min(2.8, Math.max(1, 1.55 / camera.aspect));
+  const alvoV = new THREE.Vector3(0, 0.6, -0.5);
+  return { alvo: alvoV, pos: alvoV.clone().addScaledVector(retrato ? DIRECAO_RETRATO : DIRECAO_CAMERA, distancia), distancia };
+}
 function ajustarTamanho() {
   const { clientWidth: w, clientHeight: h } = alvo;
   if (!w || !h) return;
   renderer.setSize(w, h); rotulos.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
-  if (!cameraMexida) {
-    const retrato = camera.aspect < 0.8;
-    if (retrato) controles.target.set(0, 0.6, -0.5);
-    const distancia = retrato ? 24 * Math.min(1.5, 0.8 / camera.aspect) : 24 * Math.min(2.8, Math.max(1, 1.55 / camera.aspect));
-    controles.maxDistance = Math.max(42, distancia + 6);
-    camera.position.copy(controles.target).addScaledVector(retrato ? DIRECAO_RETRATO : DIRECAO_CAMERA, distancia);
-  }
+  const g = vistaGeral();
+  controles.maxDistance = Math.max(42, g.distancia + 6);
+  if (!cameraMexida && !voo) { controles.target.copy(g.alvo); camera.position.copy(g.pos); }
 }
 new ResizeObserver(ajustarTamanho).observe(alvo);
-$('#btn-centralizar').addEventListener('click', () => { cameraMexida = false; controles.target.set(0, 0.6, -0.5); ajustarTamanho(); });
+
+// pontos de vista: alvo da câmera, direção de onde ela olha e distância (mais longe com o celular em pé)
+const VISTAS = {
+  geral: { rotulo: 'Visão geral' },
+  // largura: quantos metros da área precisam caber na tela (com o celular em pé, a câmera se afasta o necessário)
+  mesas: { rotulo: 'Mesas', alvo: [0, 0.8, -4.4], dir: [0, 1.05, 1.1], dist: 10, largura: 11 },
+  reuniao: { rotulo: 'Reunião', alvo: [-10, 0.6, -6], dir: [0.7, 1.0, 0.9], dist: 7, largura: 5 },
+  lounge: { rotulo: 'Lounge', alvo: [-1, 0.5, 5.4], dir: [0.3, 1.0, 0.95], dist: 8, largura: 6 },
+  copa: { rotulo: 'Copa', alvo: [10, 0.8, 1], dir: [-1, 0.9, 0.35], dist: 7, largura: 6 },
+  espera: { rotulo: 'Espera', alvo: [10, 0.5, -6], dir: [-0.6, 1.0, 0.9], dist: 7, largura: 5 },
+  alva: { rotulo: 'Mesa da Alva', alvo: [9.4, 0.8, 6.6], dir: [-1, 0.95, -0.25], dist: 6, largura: 3.5 },
+};
+function destinoDa(nome) {
+  if (nome === 'geral') return vistaGeral();
+  const v = VISTAS[nome];
+  const alvoV = new THREE.Vector3(...v.alvo);
+  const meioHfov = Math.atan(Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)) * camera.aspect);
+  const dist = Math.max(v.dist, (v.largura / 2) / Math.tan(meioHfov) * 1.08);
+  return { alvo: alvoV, pos: alvoV.clone().addScaledVector(new THREE.Vector3(...v.dir).normalize(), dist) };
+}
+function irParaVista(nome) {
+  const d = destinoDa(nome);
+  voo = { deAlvo: controles.target.clone(), dePos: camera.position.clone(), paraAlvo: d.alvo, paraPos: d.pos, t: semMovimento ? 1 : 0 };
+  cameraMexida = nome !== 'geral';
+  marcarVista(nome);
+}
+function marcarVista(nome) {
+  for (const b of document.querySelectorAll('#vistas [data-vista]')) b.setAttribute('aria-pressed', String(b.dataset.vista === nome));
+}
+function animarVoo(dt) {
+  if (!voo) return;
+  voo.t = Math.min(1, voo.t + dt / 0.9);
+  const e = 1 - (1 - voo.t) ** 3; // sai rápido, chega devagar
+  camera.position.lerpVectors(voo.dePos, voo.paraPos, e);
+  controles.target.lerpVectors(voo.deAlvo, voo.paraAlvo, e);
+  if (voo.t >= 1) voo = null;
+}
+$('#vistas').innerHTML = Object.entries(VISTAS).map(([k, v]) => `<button class="btn" data-vista="${k}" aria-pressed="${k === 'geral'}">${esc(v.rotulo)}</button>`).join('');
+$('#vistas').addEventListener('click', (ev) => { const b = ev.target.closest('[data-vista]'); if (b) irParaVista(b.dataset.vista); });
+
+// ------------------------------------------------------------ confete (um lead respondeu)
+const CONFETE_N = 90;
+const confete = new THREE.InstancedMesh(new THREE.PlaneGeometry(0.07, 0.11), new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, toneMapped: false }), CONFETE_N);
+confete.frustumCulled = false;
+const CORES_CONFETE = ['#16a34a', '#7c3aed', '#f59f00', '#0e9fb8', '#d9468f', '#ffffff'].map((c) => new THREE.Color(c));
+for (let i = 0; i < CONFETE_N; i++) confete.setColorAt(i, CORES_CONFETE[i % CORES_CONFETE.length]); // define a variante do shader já na carga
+confete.count = 0;
+cena.add(confete);
+const particulas = [];
+const auxConfete = new THREE.Object3D();
+function comemorar(id) {
+  const a = agentes[id];
+  if (!a || semMovimento) return;
+  a.comemorarAte = Date.now() + 2600;
+  const o = a.p.grupo.position;
+  particulas.length = 0;
+  for (let i = 0; i < CONFETE_N; i++) {
+    const ang = Math.random() * Math.PI * 2, forca = 1.2 + Math.random() * 1.6;
+    particulas.push({ p: new THREE.Vector3(o.x, 2.0, o.z), v: new THREE.Vector3(Math.cos(ang) * forca, 3 + Math.random() * 2.5, Math.sin(ang) * forca),
+      r: new THREE.Euler(Math.random() * 6, Math.random() * 6, 0), giro: (Math.random() - 0.5) * 14, vida: 2.2 + Math.random() * 0.8 });
+  }
+  confete.count = CONFETE_N;
+}
+function animarConfete(dt) {
+  if (!particulas.length) return;
+  let vivas = 0;
+  particulas.forEach((q, i) => {
+    q.vida -= dt;
+    if (q.vida > 0 && q.p.y > 0.02) {
+      vivas++;
+      q.v.y -= 6.5 * dt; q.v.multiplyScalar(1 - 1.2 * dt); // gravidade + arrasto do ar
+      q.p.addScaledVector(q.v, dt);
+      q.r.x += q.giro * dt; q.r.z += q.giro * 0.6 * dt;
+    }
+    auxConfete.position.copy(q.p); auxConfete.rotation.copy(q.r);
+    auxConfete.scale.setScalar(q.vida > 0 ? 1 : 0);
+    auxConfete.updateMatrix();
+    confete.setMatrixAt(i, auxConfete.matrix);
+  });
+  confete.instanceMatrix.needsUpdate = true;
+  if (!vivas) { particulas.length = 0; confete.count = 0; }
+}
+
+// ------------------------------------------------------------ qualidade automática
+// celular ou PC sem GPU folgada: se ficar abaixo de ~38 fps, reduz a resolução (sem mexer em sombra,
+// que obrigaria recompilar todos os shaders e travaria a sala de novo)
+const NIVEIS_DPR = [Math.min(devicePixelRatio, 1.5), 1, 0.75];
+let nivelQualidade = 0, quadros = 0, inicioMedida = 0, medirDesde = Infinity;
+function medirQualidade(agoraMs) {
+  if (agoraMs < medirDesde) return;
+  quadros++;
+  if (!inicioMedida) { inicioMedida = agoraMs; quadros = 0; return; }
+  if (agoraMs - inicioMedida < 2500) return;
+  const fps = (quadros * 1000) / (agoraMs - inicioMedida);
+  inicioMedida = agoraMs; quadros = 0;
+  if (fps < 38 && nivelQualidade < NIVEIS_DPR.length - 1) {
+    nivelQualidade++;
+    renderer.setPixelRatio(NIVEIS_DPR[nivelQualidade]);
+    ajustarTamanho();
+    console.info(`qualidade automática: ${Math.round(fps)} fps → resolução ${NIVEIS_DPR[nivelQualidade]}x`);
+  }
+}
 
 const relogio = new THREE.Clock();
 let ultimoConversa = 0;
@@ -471,6 +597,9 @@ renderer.setAnimationLoop(() => {
   atualizarPostos(t);
   som.digitacao(Object.values(agentes).filter((a) => a.estado === 'trabalhando' && a.sentado).length, performance.now());
   animarEnvelopes(dt);
+  animarConfete(dt);
+  animarVoo(dt);
+  medirQualidade(performance.now());
   escritorio.atualizar?.(semMovimento ? 0 : dt, t);
   controles.update();
   renderer.render(cena, camera);
@@ -479,7 +608,7 @@ renderer.setAnimationLoop(() => {
 
 // ------------------------------------------------------------ início
 montarShell('sala');
-window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer }; // inspeção pelo console do navegador
+window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar }; // inspeção pelo console do navegador
 const carregando = $('#carregando');
 try {
   base = await carregarBase((f) => { carregando.textContent = `Carregando personagens… ${Math.min(100, Math.round(f * 100))}%`; /* o total pode vir do tamanho comprimido */ });
@@ -500,6 +629,7 @@ await escritorio.pronto;
 carregando.textContent = 'Preparando os gráficos…';
 try { await renderer.compileAsync(cena, camera); } catch (e) { console.warn('pré-compilação falhou, segue assim mesmo:', e.message); }
 alvo.classList.add('pronta');
+medirDesde = performance.now() + 3000; // a primeira medição espera a sala assentar
 carregando.hidden = true;
 await carregar();
 const { eventos } = await api('/api/eventos');

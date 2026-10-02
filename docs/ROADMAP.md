@@ -172,25 +172,25 @@ Conjunto fixo de leads de teste, métricas de calibração das decisões (`[R:62
 108. LOD: modelos simplificados à distância `[C]`
 109. Instancing para objetos repetidos (cadeiras, teclados) `[C]`
 110. Medidor de fps escondido (tecla F) `[C]`
-111. Qualidade automática: baixa DPR se fps < 40 `[C]`
+111. ✅ Qualidade automática: baixa DPR se fps < 38 `[C]`
 112. KTX2/Basis nas texturas (menos memória de GPU) `[C]`
 113. Agente caminha até a porta para "entregar" mensagem à Base `[C]`
 114. Agente da varredura olha o mapa na parede quando o Maps está rodando `[C]`
 115. Monitor mostra a URL que o Atlas está auditando `[C]`
 116. Monitor da Maia mostra o rascunho sendo escrito `[C]`
 117. Painel LED com receita do mês `[C]`
-118. Agente preso (trapping) com indicador visual `[P:2610.01415]`
-119. Linha de handoff desenhada entre mesas quando há envelope `[P:2609.37953]`
+118. ✅ Agente preso (trapping) com indicador visual — Alva mostra quantos saíram da fila; Maia/Atlas mostram quando o controlador segura `[P:2610.01415]`
+119. ✅ Linha de handoff desenhada entre mesas quando há envelope `[P:2609.37953]`
 120. Controlador (Alva) na mesa central apontando a próxima tarefa `[P:2609.38147]`
 121. OfficeBot patrulha com rota por waypoints e para perto de quem está ocioso `[C]`
 122. Clique no agente → ficha com belief state do lead atual `[C]`
 123. Clique no monitor → zoom da tela `[C]`
-124. Câmera com pontos de vista salvos (mesa, lounge, reunião) `[C]`
+124. ✅ Câmera com pontos de vista salvos (mesa, lounge, reunião) `[C]`
 125. Modo apresentação: câmera passeia sozinha `[C]`
 126. Ciclo dia/noite com luz da janela `[C]`
 127. Som ambiente opcional (digitação, café) `[C]`
 128. Agentes do Configurador com cor e nome na cadeira `[C]`
-129. Animação de comemoração quando um lead responde `[C]`
+129. ✅ Animação de comemoração quando um lead responde `[C]`
 130. Reunião real: quando o briefing roda, todos vão à mesa de reunião `[C]`
 131. Colisão melhor (agentes não atravessam a mesa de centro) `[C]`
 132. Pose sentada ajustada à altura real da cadeira gamer `[C]`
