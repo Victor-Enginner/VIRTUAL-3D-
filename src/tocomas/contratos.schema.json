@@ -1,0 +1,416 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "prospector/tocomas",
+  "title": "Contratos TOCOMAS do Prospector",
+  "$defs": {
+    "agente": {
+      "enum": [
+        "alva",
+        "atlas",
+        "nova",
+        "maia",
+        "leo",
+        "operador"
+      ]
+    },
+    "dominio": {
+      "enum": [
+        "coleta",
+        "juizo",
+        "escrita",
+        "decisao_humana",
+        "envio",
+        "controle"
+      ]
+    },
+    "no": {
+      "enum": [
+        "T1_varrer",
+        "T2_auditar",
+        "T3_qualificar",
+        "T4_redigir",
+        "T5_aprovar",
+        "T6_despachar",
+        "T7_acompanhar",
+        "T8_aprender"
+      ]
+    },
+    "instante": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "envelope": {
+      "type": "object",
+      "required": [
+        "id",
+        "de",
+        "para",
+        "no",
+        "tipo",
+        "criado_em",
+        "corpo"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "de": {
+          "$ref": "#/$defs/agente"
+        },
+        "para": {
+          "$ref": "#/$defs/agente"
+        },
+        "no": {
+          "$ref": "#/$defs/no"
+        },
+        "tipo": {
+          "enum": [
+            "handoff",
+            "resultado",
+            "falha",
+            "escalada"
+          ]
+        },
+        "lead_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "criado_em": {
+          "$ref": "#/$defs/instante"
+        },
+        "corpo": {
+          "type": "object"
+        }
+      }
+    },
+    "fato": {
+      "type": "object",
+      "required": [
+        "chave",
+        "valor",
+        "fonte",
+        "observado_em"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "chave": {
+          "type": "string"
+        },
+        "valor": {},
+        "fonte": {
+          "enum": [
+            "maps",
+            "osm",
+            "auditoria",
+            "operador",
+            "whatsapp",
+            "regra",
+            "modelo"
+          ]
+        },
+        "observado_em": {
+          "$ref": "#/$defs/instante"
+        },
+        "valido_ate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "confianca": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "crenca": {
+      "description": "Belief state explícito (PoS, arXiv 2610.01415): estimativa do mundo + pendências.",
+      "type": "object",
+      "required": [
+        "lead_id",
+        "versao",
+        "fatos",
+        "pendencias",
+        "progresso"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "lead_id": {
+          "type": "string"
+        },
+        "versao": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "fatos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/fato"
+          }
+        },
+        "pendencias": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "chave",
+              "tipo"
+            ],
+            "properties": {
+              "chave": {
+                "type": "string"
+              },
+              "tipo": {
+                "enum": [
+                  "falta_dado",
+                  "conflito",
+                  "aguardando_humano",
+                  "aguardando_resposta"
+                ]
+              }
+            }
+          }
+        },
+        "progresso": {
+          "type": "object",
+          "required": [
+            "ciclos_sem_novidade"
+          ],
+          "properties": {
+            "ciclos_sem_novidade": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "preso": {
+              "type": "boolean"
+            },
+            "motivo": {
+              "type": "string"
+            }
+          }
+        },
+        "atualizado_em": {
+          "$ref": "#/$defs/instante"
+        }
+      }
+    },
+    "plano": {
+      "description": "Plano declarado (Planning-as-Routing, arXiv 2609.38108). O modo é escolhido por regra.",
+      "type": "object",
+      "required": [
+        "id",
+        "modo",
+        "passos"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "modo": {
+          "enum": [
+            "predefinido",
+            "sequencial",
+            "hierarquico",
+            "busca"
+          ]
+        },
+        "passos": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": [
+              "no",
+              "ferramentas"
+            ],
+            "properties": {
+              "no": {
+                "$ref": "#/$defs/no"
+              },
+              "ferramentas": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "decisao-controlador": {
+      "description": "Escolha do controlador (Meta-Reasoning, arXiv 2609.38147): opções com valor sob orçamento.",
+      "type": "object",
+      "required": [
+        "ciclo",
+        "laco",
+        "opcoes",
+        "escolhida",
+        "orcamento",
+        "modo",
+        "motivo"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "ciclo": {
+          "type": "integer"
+        },
+        "opcoes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "acao",
+              "p_sucesso",
+              "ganho",
+              "custo"
+            ],
+            "properties": {
+              "acao": {
+                "enum": [
+                  "varrer",
+                  "auditar",
+                  "qualificar",
+                  "redigir",
+                  "despachar",
+                  "esperar",
+                  "parar_varredura"
+                ]
+              },
+              "p_sucesso": {
+                "type": "number"
+              },
+              "ganho": {
+                "type": "number"
+              },
+              "custo": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "escolhida": {
+          "enum": [
+            "varrer",
+            "auditar",
+            "qualificar",
+            "redigir",
+            "despachar",
+            "esperar",
+            "parar_varredura"
+          ]
+        },
+        "orcamento": {
+          "type": "object",
+          "properties": {
+            "envios_por_dia": {
+              "type": "integer"
+            },
+            "aguardando_aprovacao": {
+              "type": "integer"
+            },
+            "prontos_para_escrever": {
+              "type": "integer"
+            }
+          }
+        },
+        "modo": {
+          "enum": [
+            "regra",
+            "meta"
+          ]
+        },
+        "laco": {
+          "enum": [
+            "varrer",
+            "auditar",
+            "qualificar",
+            "redigir"
+          ]
+        },
+        "motivo": {
+          "type": "string"
+        }
+      }
+    },
+    "fidelidade": {
+      "type": "object",
+      "required": [
+        "plano_id",
+        "declaradas",
+        "usadas",
+        "preservou"
+      ],
+      "properties": {
+        "plano_id": {
+          "type": "string"
+        },
+        "declaradas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "usadas": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preservou": {
+          "type": "boolean"
+        },
+        "desvios": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "habilidade": {
+      "description": "Meta-skill (arXiv 2609.38143): quando dar apoio + que recurso dar, aprendida do feedback do operador.",
+      "type": "object",
+      "required": [
+        "id",
+        "quando",
+        "fornecer",
+        "evidencias",
+        "estado"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "quando": {
+          "type": "string"
+        },
+        "fornecer": {
+          "type": "string"
+        },
+        "evidencias": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "ids de eventos que motivaram a regra"
+          }
+        },
+        "estado": {
+          "enum": [
+            "proposta",
+            "ativa",
+            "revisada",
+            "descartada"
+          ]
+        }
+      }
+    }
+  }
+}

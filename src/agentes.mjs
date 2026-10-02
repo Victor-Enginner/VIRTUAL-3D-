@@ -8,6 +8,10 @@
 //
 // Coordenação por fila (tabela jobs): cada agente só pega jobs do seu tipo, e cada etapa
 // enfileira a próxima. Nada roda em paralelo no mesmo lead.
+//
+// TOCOMAS (docs/TOCOMAS.md): o handoff só acontece por aresta do grafo de tarefas (src/tocomas/grafo.mjs),
+// cada lead tem uma crença com fatos datados, cada job declara as ferramentas que vai usar, e um
+// controlador segura a escrita/varredura quando o estoque passa do que o teto de envios dá conta.
 
 import crypto from 'node:crypto';
 import { agora, concluirJob, enfileirar, falharJob, json, lerAjustes, lerFlag, parse, pegarJob, salvarFlag } from './db.mjs';
@@ -21,6 +25,10 @@ import { gerarTexto } from './llm.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR } from './envio/openwa.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
+import { exigirHandoff, visao } from './tocomas/grafo.mjs';
+import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, versaoDe } from './tocomas/crenca.mjs';
+import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
+import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
 
 export const AGENTES = {
   alva: { nome: 'Alva', papel: 'Assistente executiva', funcao: 'Abre o expediente, reabre varreduras e resume o dia', cor: '#d9468f' },
@@ -29,6 +37,12 @@ export const AGENTES = {
   maia: { nome: 'Maia', papel: 'Copy', funcao: 'Escreve a primeira mensagem a partir dos fatos medidos', cor: '#7c3aed' },
   leo: { nome: 'Leo', papel: 'Operações', funcao: 'Envia no ritmo seguro e trata respostas e opt-out', cor: '#16a34a' },
 };
+
+// passar trabalho adiante: só pelas arestas do grafo de tarefas
+function passar(db, de, para, ref) {
+  exigirHandoff(de, para);
+  return enfileirar(db, para, ref);
+}
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 export const idDoLead = (nome, cidade, uf) => crypto.createHash('sha1').update(`${norm(nome)}|${norm(cidade)}|${norm(uf)}`).digest('hex').slice(0, 16);
@@ -47,6 +61,7 @@ async function varrer(db, job, ctx) {
     if (r === 'novo') novos++; else repetidos++;
   };
   const args = { cidade: v.cidade, uf: v.uf, nicho: v.nicho, limite: v.limite };
+  ctx.usar?.(v.fonte === 'maps' ? 'coletor_maps' : 'overpass');
   const res = v.fonte === 'maps' ? await coletarMaps({ ...args, aoItem: salvar }) : await coletarOsm(args);
   if (v.fonte !== 'maps') res.itens.forEach(salvar);
   const resultado = { coletados: res.itens.length, novos, repetidos, aviso: res.aviso };
@@ -69,7 +84,7 @@ function salvarLead(db, item, v) {
       .run(telefone, tipo, item.site || null, item.rating ?? null, item.avaliacoes ?? null, item.endereco || null, t, existe.id);
     if (reabrir) {
       db.prepare("UPDATE leads SET etapa = 'descoberto' WHERE id = ?").run(existe.id);
-      enfileirar(db, 'auditar', existe.id);
+      passar(db, 'varrer', 'auditar', existe.id);
     }
     return 'repetido';
   }
@@ -77,7 +92,7 @@ function salvarLead(db, item, v) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(id, item.nome, item.categoria || null, v.nicho, v.cidade, v.uf, item.endereco || null, telefone, tipo, item.site || null,
       item.rating ?? null, item.avaliacoes ?? null, item.maps_url || null, v.fonte, v.id, t, t);
-  enfileirar(db, 'auditar', id);
+  passar(db, 'varrer', 'auditar', id);
   return 'novo';
 }
 
@@ -88,6 +103,7 @@ async function auditar(db, job, ctx) {
   let situacao = classificarUrl(lead.site);
   let aud = null;
   if (situacao === 'site_proprio' || situacao === 'site_gratuito') {
+    ctx.usar?.('buscar_seguro');
     aud = await auditarSite(lead.site);
     if (aud.erro) situacao = 'site_fora_do_ar';
     else if (aud.redireciona_para) {
@@ -99,7 +115,12 @@ async function auditar(db, job, ctx) {
   db.prepare("UPDATE leads SET situacao_site = ?, auditoria = ?, etapa = 'auditado', atualizado_em = ? WHERE id = ?")
     .run(situacao, json(aud ? { ...aud, sinais } : null), agora(), lead.id);
   registrar(db, 'atlas', 'auditoria', `${lead.nome}: ${SITUACOES[situacao]}${sinais.length ? ` · ${sinais.length} sinal(is) de atraso` : ''}`, { lead_id: lead.id });
-  enfileirar(db, 'qualificar', lead.id);
+  registrarFatos(db, lead.id, [
+    ...fatosDaFonte(lead),
+    { chave: 'situacao_site', valor: situacao, fonte: 'auditoria' },
+    { chave: 'sinais_atraso', valor: sinais, fonte: 'auditoria' },
+  ]);
+  passar(db, 'auditar', 'qualificar', lead.id);
 }
 
 // ------------------------------------------------------------------ Nova
@@ -173,6 +194,7 @@ async function qualificar(db, job, ctx) {
   const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(job.ref);
   if (!lead) return;
   ctx.tarefa('nova', `Decidindo sobre ${lead.nome}`);
+  ctx.usar?.('regras');
   const aud = parse(lead.auditoria);
   const sinais = aud?.sinais || [];
   const motivo = [SITUACOES[lead.situacao_site], ...sinais].filter(Boolean).join(' · ');
@@ -184,6 +206,7 @@ async function qualificar(db, job, ctx) {
   if (nivel === 0 || !angulos.length) {
     db.prepare("UPDATE leads SET decisao = ?, score = 0, motivo = ?, etapa = 'descartado', atualizado_em = ? WHERE id = ?")
       .run(json({ answers: { oportunidade }, backend: 'regra', model: null, latency_ms: 0 }), `${motivo} · nenhum problema medido`, agora(), lead.id);
+    registrarFatos(db, lead.id, [{ chave: 'nivel_oportunidade', valor: nivel, fonte: 'regra' }]);
     registrar(db, 'nova', 'decisao', `${lead.nome}: descartado (site próprio sem problemas medidos)`, { lead_id: lead.id });
     return;
   }
@@ -192,6 +215,7 @@ async function qualificar(db, job, ctx) {
   if (angulos.length > 1) {
     perguntas.abordagem = { ...PERGUNTAS_QUALIFICACAO.abordagem, criteria: Object.fromEntries(angulos.map((k) => [k, ROTULO_ABORDAGEM[k]])) };
   }
+  ctx.usar?.('decide');
   const r = await decide({ state: estadoDoLead(lead), questions: perguntas });
   const abordagem = r.answers.abordagem || regra('choice', angulos[0], { choice: angulos[0] });
   const ativo = r.answers.ativo;
@@ -209,7 +233,12 @@ async function qualificar(db, job, ctx) {
   db.prepare('UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = ?, atualizado_em = ? WHERE id = ?')
     .run(json(decisao), score, motivo, etapa, agora(), lead.id);
   registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms`, { lead_id: lead.id });
-  if (etapa === 'qualificado') enfileirar(db, 'redigir', lead.id);
+  registrarFatos(db, lead.id, [
+    { chave: 'nivel_oportunidade', valor: nivel, fonte: 'regra' },
+    { chave: 'ativo', valor: ativo.noul, fonte: 'modelo', confianca: ativo.confidence },
+    { chave: 'angulo', valor: abordagem.choice, fonte: abordagem.origem === 'regra' ? 'regra' : 'modelo', confianca: abordagem.confidence },
+  ]);
+  if (etapa === 'qualificado') passar(db, 'qualificar', 'redigir', lead.id);
 }
 
 // ------------------------------------------------------------------ Maia
@@ -285,7 +314,8 @@ export function validarMensagem(texto, ajustes) {
 }
 
 async function redigir(db, job, ctx) {
-  const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(job.ref);
+  // fronteira de memória: a Maia vê só o que o domínio Escrita pode ver (sem HTML/tecnologias)
+  const lead = visao(db.prepare('SELECT * FROM leads WHERE id = ?').get(job.ref), 'escrita');
   if (!lead || lead.etapa !== 'qualificado') return;
   ctx.tarefa('maia', `Escrevendo para ${lead.nome}`);
   const ajustes = lerAjustes(db);
@@ -293,6 +323,7 @@ async function redigir(db, job, ctx) {
   const angulo = decisao?.answers?.abordagem?.choice || 'ser_encontrado';
   let texto, origem;
   try {
+    ctx.usar?.('gerar_texto');
     const bruto = await gerarTexto({
       sistema: `Você escreve a primeira mensagem de WhatsApp de ${ajustes.remetente_nome}, que ${ajustes.remetente_oferta}, para um negócio local.
 Regras: português do Brasil, tom humano e direto, de 2 a 4 frases curtas, no máximo 1 emoji, sem links.
@@ -301,6 +332,7 @@ Use a OBSERVAÇÃO dada e nenhum outro fato. Não invente números, notas, prazo
 Termine com uma pergunta simples, sem pressão. Não escreva assinatura nem aspas.`,
       usuario: `NEGÓCIO: ${lead.nome} (${lead.categoria || NICHOS[lead.nicho]?.rotulo}, ${lead.cidade})\nOBSERVAÇÃO: ${observacao(lead, angulo)}\n\nEscreva só a mensagem.`,
     });
+    ctx.usar?.('checar_contradicao');
     const v = validarMensagem(bruto, ajustes);
     const problemas = [...v.problemas, ...contradicoes(v.texto, lead, ajustes)];
     if (!carregaObservacao(v.texto, angulo)) problemas.push('não traz a observação concreta');
@@ -309,6 +341,7 @@ Termine com uma pergunta simples, sem pressão. Não escreva assinatura nem aspa
       ? v.texto.replace(/\n\nSe não quiser/, `\nMeus trabalhos: ${ajustes.remetente_portfolio}\n\nSe não quiser`) : v.texto;
     texto = port; origem = 'modelo';
   } catch (e) {
+    ctx.usar?.('texto_fixo');
     texto = mensagemFallback(lead, ajustes, angulo);
     origem = 'modelo_recusado';
     registrar(db, 'maia', 'aviso', `${lead.nome}: usei o texto fixo (${e.message.slice(0, 140)})`, { lead_id: lead.id });
@@ -417,9 +450,10 @@ export function abrirExpediente(db) {
   const vencidas = db.prepare('SELECT * FROM varreduras WHERE ativa = 1 AND (ultima_execucao IS NULL OR ultima_execucao < ?)').all(limite);
   for (const v of vencidas) enfileirar(db, 'varrer', String(v.id));
   // leads que ficaram pela metade em uma execução anterior voltam para a etapa certa
-  for (const l of db.prepare("SELECT id FROM leads WHERE etapa = 'descoberto'").all()) enfileirar(db, 'auditar', l.id);
-  for (const l of db.prepare("SELECT id FROM leads WHERE etapa = 'auditado'").all()) enfileirar(db, 'qualificar', l.id);
-  for (const l of db.prepare("SELECT id FROM leads WHERE etapa = 'qualificado'").all()) enfileirar(db, 'redigir', l.id);
+  // (o Controle pode reabrir qualquer nó; leads presos ficam de fora até alguém reprocessar)
+  for (const [etapa, job] of [['descoberto', 'auditar'], ['auditado', 'qualificar'], ['qualificado', 'redigir']]) {
+    for (const l of db.prepare('SELECT id FROM leads WHERE etapa = ?').all(etapa)) if (!estaPreso(db, l.id)) passar(db, 'controle', job, l.id);
+  }
   const b = briefing(db);
   registrar(db, 'alva', 'briefing', `Expediente aberto: ${vencidas.length} varredura(s) reaberta(s) · ${b.para_aprovar} mensagem(ns) esperando sua aprovação · ${b.enviados_hoje}/${b.limite} envios hoje`, { dados: b });
 }
@@ -444,7 +478,8 @@ export function criarOrquestrador(db) {
   const tarefas = {};
   let pausado = lerFlag(db, 'pausado', false);
   let parar = false;
-  const ctxDo = (laco) => ({ tarefa(_agente, texto) { tarefas[laco] = { texto, desde: agora() }; } });
+  const controlador = criarControlador(db);
+  const ctxDo = (laco) => ({ tarefa(_agente, texto) { tarefas[laco] = { texto, desde: agora() }; }, usar: null });
   const livre = (laco) => { delete tarefas[laco]; };
 
   const handlers = { varrer: ['atlas', varrer], auditar: ['atlas', auditar], qualificar: ['nova', qualificar], redigir: ['maia', redigir] };
@@ -455,18 +490,35 @@ export function criarOrquestrador(db) {
     const ctx = ctxDo(tipo);
     while (!parar) {
       if (pausado) { await esperar(2000); continue; }
+      if (CONTROLADOS.has(tipo) && !controlador.permite(tipo)) { await esperar(5000); continue; }
       const job = pegarJob(db, tipo);
       if (!job) { await esperar(1500); continue; }
+      const leadId = tipo === 'varrer' ? null : job.ref;
+      if (leadId && estaPreso(db, leadId)) { concluirJob(db, job.id); continue; }
+      const versaoAntes = leadId ? versaoDe(db, leadId) : 0;
+      const plano = abrirPlano(tipo, job.id);
+      ctx.usar = plano.usar;
       try {
         await fn(db, job, ctx);
         concluirJob(db, job.id);
       } catch (e) {
         const volta = falharJob(db, job, e);
-        registrar(db, agente, 'erro', `${tipo} ${job.ref}: ${e.message}${volta ? ' (vai tentar de novo)' : ' (desistiu após 3 tentativas)'}`, { lead_id: tipo === 'varrer' ? null : job.ref });
+        registrar(db, agente, 'erro', `${tipo} ${job.ref}: ${e.message}${volta ? ' (vai tentar de novo)' : ' (desistiu após 3 tentativas)'}`, { lead_id: leadId });
       } finally {
         livre(tipo);
+        fecharJob(tipo, agente, leadId, versaoAntes, plano.fechar());
       }
     }
+  }
+
+  // fim de cada job: placar de fidelidade e progresso da crença do lead
+  function fecharJob(tipo, agente, leadId, versaoAntes, fid) {
+    registrarFidelidade(db, fid);
+    if (!fid.preservou) registrar(db, agente, 'fidelidade', `${tipo}: ${fid.desvios.join('; ')}`, { lead_id: leadId, dados: fid });
+    if (!leadId) return;
+    const etapa = db.prepare('SELECT etapa FROM leads WHERE id = ?').get(leadId)?.etapa;
+    const c = fecharCiclo(db, leadId, versaoAntes, etapa);
+    if (c.preso) registrar(db, 'alva', 'preso', `Tirei da fila: ${c.motivo}. Use "Reprocessar" para tentar de novo.`, { lead_id: leadId });
   }
 
   async function lacoLeo() {
@@ -500,6 +552,7 @@ export function criarOrquestrador(db) {
     pausar(v) { pausado = v; salvarFlag(db, 'pausado', v); },
     get pausado() { return pausado; },
     estado,
+    controlador,
   };
 }
 

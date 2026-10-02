@@ -3,7 +3,7 @@ import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CONFIG, ROOT } from './config.mjs';
-import { abrirBanco, agora, enfileirar, lerAjustes, parse, salvarAjustes } from './db.mjs';
+import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes } from './db.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
@@ -13,6 +13,7 @@ import { saudeOllama } from './llm.mjs';
 import { lerMensagemRecebida, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
+import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
 const db = abrirBanco(CONFIG.dataDir);
@@ -56,6 +57,7 @@ rota('GET', '/api/estado', async () => {
     funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
     ajustes: lerAjustes(db),
+    tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20) },
   };
 });
 
@@ -74,7 +76,7 @@ rota('GET', '/api/leads/:id', ({ params }) => {
   if (!l) throw new HttpError(404, 'lead não encontrado');
   const eventos = db.prepare('SELECT * FROM eventos WHERE lead_id = ? ORDER BY id DESC LIMIT 50').all(l.id);
   const envios = db.prepare('SELECT * FROM envios WHERE lead_id = ? ORDER BY id DESC').all(l.id);
-  return { lead: leadPublico(l), eventos, envios };
+  return { lead: leadPublico(l), eventos, envios, crenca: lerCrenca(db, l.id, l.etapa) };
 });
 
 rota('POST', '/api/leads/:id/mensagem', async ({ params, body }) => {
@@ -119,6 +121,7 @@ rota('POST', '/api/leads/:id/reprocessar', ({ params }) => {
   const l = db.prepare('SELECT id FROM leads WHERE id = ?').get(params.id);
   if (!l) throw new HttpError(404, 'lead não encontrado');
   db.prepare("UPDATE leads SET etapa = 'descoberto', atualizado_em = ? WHERE id = ?").run(agora(), l.id);
+  liberar(db, l.id); // o operador pediu: sai do estado "preso" e tenta de novo
   enfileirar(db, 'auditar', l.id);
   return { ok: true };
 });

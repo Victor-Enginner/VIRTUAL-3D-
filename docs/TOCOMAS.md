@@ -1,5 +1,9 @@
 # TOCOMAS no Prospector — arquitetura de alto nível
 
+> **Implementado (F1):** `src/tocomas/` — `contratos.mjs` (validador), `grafo.mjs` (nós, arestas, visão por domínio),
+> `crenca.mjs` (fatos com fonte/validade, pendências, lead preso), `fidelidade.mjs` (plano declarado × ferramentas usadas),
+> `controlador.mjs` (estoque de mensagens/leads × teto de envios). Ligado em `criarOrquestrador` (`src/agentes.mjs`).
+
 > Base: `extracted_papers.json` (16 PDFs, texto das páginas 1–2 de cada) e o código atual do Prospector.
 > Tudo que está aqui ou vem desse texto (citado pelo ID arXiv) ou é decisão de projeto, marcada como **[decisão]**.
 > Não li as páginas 3+ dos papers: números e mecanismos que só aparecem lá ficam como "não verificado".
@@ -109,8 +113,8 @@ comportamento — o paper mostra que estados induzidos desse tipo mudam escolhas
 
 ## 7. Contratos de dados
 
-JSON Schema em `docs/contratos/tocomas.schema.json`, um `$defs` por contrato (o projeto é Node sem dependências; Pydantic não se aplica — o validador
-entra no roadmap como `src/tocomas/contratos.mjs`).
+JSON Schema em `src/tocomas/contratos.schema.json`, um `$defs` por contrato (o projeto é Node sem dependências; Pydantic não se aplica — o validador é
+`src/tocomas/contratos.mjs`).
 
 | Contrato | Quem emite | Quem consome |
 |---|---|---|

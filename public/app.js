@@ -148,9 +148,21 @@ function blocoAuditoria(l) {
   </dl>${sinais}<p class="meta">medido em ${esc(dataHora(a.medido_em))}</p>`;
 }
 
+// crença do lead (TOCOMAS): cada fato com fonte e validade, o que falta, e se saiu da fila
+const ROTULO_FATO = { telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
+const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta' };
+function blocoCrenca(c) {
+  if (!c || !c.fatos.length) return '';
+  const valor = (v) => (Array.isArray(v) ? (v.length ? v.join(', ') : 'nenhum') : typeof v === 'number' && v < 1 && v > 0 ? `${Math.round(v * 100)}%` : String(v));
+  const preso = c.progresso.preso ? `<p class="aviso">Fora da fila: ${esc(c.progresso.motivo || '')}. "Reprocessar" tenta de novo.</p>` : '';
+  return `<section class="bloco"><h3>O que os agentes sabem <span class="meta">· versão ${c.versao}</span></h3>${preso}
+    <ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valor(f.valor))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
+    ${c.pendencias.length ? `<p>Pendências: ${c.pendencias.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}</section>`;
+}
+
 async function abrirLead(id) {
   leadAberto = id;
-  const { lead: l, eventos, envios } = await api(`/api/leads/${encodeURIComponent(id)}`);
+  const { lead: l, eventos, envios, crenca } = await api(`/api/leads/${encodeURIComponent(id)}`);
   const podeAprovar = l.telefone && l.mensagem && ['mensagem', 'qualificado'].includes(l.etapa);
   const naFila = envios.find((e) => e.status === 'aprovado');
   const origem = { modelo: 'escrita pelo modelo local e conferida', modelo_recusado: 'texto fixo (o texto do modelo não passou na checagem)', operador: 'editada por você' }[l.mensagem_origem] || '';
@@ -165,6 +177,7 @@ async function abrirLead(id) {
       <div><dt>Fonte</dt><dd>${/^https:\/\//.test(l.maps_url || '') ? `<a href="${esc(l.maps_url)}" target="_blank" rel="noopener noreferrer">${esc(l.fonte)}</a>` : esc(l.fonte)}</dd></div>
       <div><dt>Prioridade</dt><dd>${l.score ?? '—'}</dd></div>
     </dl>
+    ${blocoCrenca(crenca)}
     <section class="bloco"><h3>O que o Atlas mediu</h3>${blocoAuditoria(l)}</section>
     <section class="bloco"><h3>O que a Nova decidiu (probabilidades)</h3>${blocoDecisao(l.decisao)}</section>
     <section class="bloco"><h3>Mensagem da Maia ${origem ? `<span class="meta">· ${esc(origem)}</span>` : ''}</h3>

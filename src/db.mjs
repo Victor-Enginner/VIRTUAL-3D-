@@ -103,6 +103,18 @@ CREATE TABLE IF NOT EXISTS agentes_custom (
   criado_em TEXT NOT NULL,
   atualizado_em TEXT NOT NULL
 );
+-- belief state explícito por lead (PoS, arXiv 2610.01415): fatos com fonte e validade + progresso
+CREATE TABLE IF NOT EXISTS crencas (
+  lead_id TEXT PRIMARY KEY,
+  versao INTEGER NOT NULL DEFAULT 0,
+  fatos TEXT NOT NULL DEFAULT '[]',
+  conflitos TEXT NOT NULL DEFAULT '[]', -- chaves em que duas fontes discordam
+  ciclos_sem_novidade INTEGER NOT NULL DEFAULT 0,
+  preso INTEGER NOT NULL DEFAULT 0,
+  motivo TEXT,
+  atualizado_em TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS conversas_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   agente_id TEXT NOT NULL REFERENCES agentes_custom(id) ON DELETE CASCADE,

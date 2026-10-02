@@ -14,10 +14,10 @@ conferidos pela API em 02/10/2026 — todos existem) e o código atual. Cada ite
 
 ## Fases (tarefas → funções → pronto quando)
 
-### F1 — Fundação TOCOMAS (sem modelo novo, sem treino)
+### F1 — Fundação TOCOMAS (sem modelo novo, sem treino) — **feita em 02/10/2026** (`src/tocomas/`, `test/tocomas.test.mjs`)
 | Tarefa | Funções / arquivos | Pronto quando |
 |---|---|---|
-| Validador de contratos | `src/tocomas/contratos.mjs`: `validar(nome, obj)` lendo `docs/contratos/tocomas.schema.json` | testes cobrem válido/inválido de cada contrato |
+| Validador de contratos | `src/tocomas/contratos.mjs`: `validar(nome, obj)` lendo `src/tocomas/contratos.schema.json` | testes cobrem válido/inválido de cada contrato |
 | Belief state por lead | tabela `crencas`; `src/tocomas/crenca.mjs`: `registrarFato`, `pendencias`, `vencidos`, `detectarPreso` | um lead sem novidade em N ciclos sai da fila com motivo |
 | Grafo de tarefas e domínios | `src/tocomas/grafo.mjs`: `NOS`, `DOMINIOS`, `podeHandoff(de, para)` | handoff fora da aresta lança erro em teste |
 | Checagem de fidelidade | `src/tocomas/fidelidade.mjs`: `declarar(plano)`, `usar(ferramenta)`, `fechar()` | evento `fidelidade` aparece no Painel |

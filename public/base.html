@@ -64,6 +64,15 @@
     .catch((e) => { document.querySelector('#carregando').textContent = `A base não carregou: ${e.message}`; });
 
   // o que é seu: aprovações pendentes e o que os agentes aprenderam com você
+  // TOCOMAS: o que o controlador segurou, fidelidade aos planos e leads que saíram da fila
+  function tocomas(t) {
+    if (!t) return '';
+    const ctrl = Object.values(t.controlador || {}).filter((d) => d.escolhida === 'esperar' || d.escolhida === 'parar_varredura');
+    const f = t.fidelidade || { total: 0, preservados: 0 };
+    return `${ctrl.map((d) => `<p>Controlador: ${esc(d.laco === 'varrer' ? 'varredura parada' : 'escrita em espera')} · ${esc(d.motivo)}</p>`).join('')}
+      <p>Fidelidade aos planos: <b>${f.total ? Math.round((100 * f.preservados) / f.total) : 100}%</b> de ${f.total} job(s)${t.presos?.length ? ` · <b>${t.presos.length}</b> lead(s) fora da fila` : ''}</p>`;
+  }
+
   async function resumo() {
     const [estado, { cabecas }] = await Promise.all([fetch('/api/estado').then((x) => x.json()), fetch('/api/aprendizado').then((x) => x.json())]);
     atualizarShell(estado);
@@ -71,6 +80,7 @@
     document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
       <p><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
       <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
+      ${tocomas(estado.tocomas)}
       ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}`;
   }
   resumo().catch(() => {});
