@@ -304,10 +304,16 @@ function sse(req, res) {
 
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.json': 'application/json', '.glb': 'model/gltf-binary', '.txt': 'text/plain; charset=utf-8' };
 
-function arquivo(res, p) {
+function arquivo(req, res, p) {
   const alvo = path.normalize(path.join(PUBLIC, p === '/' ? 'index.html' : p));
   if (!alvo.startsWith(PUBLIC) || !fs.existsSync(alvo) || fs.statSync(alvo).isDirectory()) { res.writeHead(404).end('não encontrado'); return; }
-  res.writeHead(200, { 'Content-Type': TIPOS[path.extname(alvo)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+  // ETag por tamanho+data: o navegador revalida e recebe 304 em vez de baixar de novo.
+  // Modelos 3D quase nunca mudam: guardados 1 dia sem nem perguntar.
+  const st = fs.statSync(alvo);
+  const etag = `"${st.size.toString(36)}-${Math.floor(st.mtimeMs).toString(36)}"`;
+  const cache = p.startsWith('/assets/') ? 'public, max-age=86400' : 'no-cache';
+  if (req.headers['if-none-match'] === etag) { res.writeHead(304, { ETag: etag, 'Cache-Control': cache }).end(); return; }
+  res.writeHead(200, { 'Content-Type': TIPOS[path.extname(alvo)] || 'application/octet-stream', 'Cache-Control': cache, ETag: etag });
   fs.createReadStream(alvo).pipe(res);
 }
 
@@ -318,7 +324,7 @@ const servidor = http.createServer(async (req, res) => {
     if (url.pathname === '/api/stream') return sse(req, res);
     const r = rotas.find((x) => x.metodo === req.method && x.re.test(url.pathname));
     if (!r) {
-      if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return arquivo(res, url.pathname);
+      if (req.method === 'GET' && !url.pathname.startsWith('/api/')) return arquivo(req, res, url.pathname);
       throw new HttpError(404, 'rota não encontrada');
     }
     // escrita só por JSON vindo do próprio painel: bloqueia formulário de outro site (CSRF) contra o localhost

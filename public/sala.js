@@ -36,6 +36,8 @@ try { renderer = new THREE.WebGLRenderer({ antialias: true }); } catch {
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5)); // sem GPU dedicada: limita o custo por pixel
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+// checar erro de shader obriga o navegador a esperar cada compilação terminar (trava a página); em produção não precisa
+renderer.debug.checkShaderErrors = false;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 renderer.localClippingEnabled = true; // meias caixas de som (recorte por plano)
@@ -67,12 +69,10 @@ sol.shadow.mapSize.set(2048, 2048);
 sol.shadow.bias = -0.0004;
 Object.assign(sol.shadow.camera, { left: -15, right: 15, top: 11, bottom: -11, near: 1, far: 60 });
 cena.add(sol, sol.target);
-const luzesTeto = [[-6, -5], [0, -5], [6, -5], [-6, 4], [0, 4], [8, 1]].map(([x, z]) => {
-  const l = new THREE.PointLight(0xffe7c4, 0, 9, 1.6);
-  l.position.set(x, 2.5, z);
-  cena.add(l);
-  return l;
-});
+// Sem PointLight: cada luz pontual entra em TODOS os shaders, e no Direct3D 11 (Windows) isso multiplicava o
+// tempo de compilação (11 luzes → ~19 s travando a sala). A noite é feita pelo céu esquentando; as
+// luminárias das mesas são um brilho desenhado no tampo (cena.js).
+const LUZ_NOITE = new THREE.Color(0xffd9a8), LUZ_DIA = new THREE.Color(0xffffff);
 
 const CORES = escuro ? { piso: 0x8a6446, parede: 0xd8d2c6 } : { piso: 0xb5865c, parede: 0xe9e3d8 }; // mesma cor dos segmentos de janela do kit
 const escritorio = criarEscritorio(cena, CORES);
@@ -87,8 +87,9 @@ function aplicarHora(agora = new Date()) {
   sol.position.set(Math.cos(ang) * 16, 4 + Math.max(0, Math.sin(ang)) * 16, 10);
   sol.intensity = 0.35 + 2.0 * dia;
   sol.color.setHSL(0.09, 0.6, 0.62 + 0.3 * dia);
-  ceu.intensity = 0.45 + 0.9 * dia;
-  for (const l of luzesTeto) l.intensity = (1 - dia) * 9; // à noite o teto acende
+  // à noite o "teto" acende: luz ambiente mais forte e mais quente
+  ceu.intensity = 0.45 + 0.9 * dia + 0.55 * (1 - dia);
+  ceu.color.copy(LUZ_NOITE).lerp(LUZ_DIA, dia);
   return dia;
 }
 let fatorDia = aplicarHora();
@@ -478,7 +479,7 @@ renderer.setAnimationLoop(() => {
 
 // ------------------------------------------------------------ início
 montarShell('sala');
-window.__sala = { THREE, cena, camera, controles, agentes, escritorio }; // inspeção pelo console do navegador
+window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer }; // inspeção pelo console do navegador
 const carregando = $('#carregando');
 try {
   base = await carregarBase((f) => { carregando.textContent = `Carregando personagens… ${Math.min(100, Math.round(f * 100))}%`; /* o total pode vir do tamanho comprimido */ });
@@ -494,6 +495,11 @@ try {
 }
 carregando.textContent = 'Montando o escritório…';
 await escritorio.pronto;
+// compila todos os shaders antes de mostrar (em paralelo no driver, sem travar a página);
+// sem isso a cena aparece aos pedaços e congela compilando no primeiro desenho
+carregando.textContent = 'Preparando os gráficos…';
+try { await renderer.compileAsync(cena, camera); } catch (e) { console.warn('pré-compilação falhou, segue assim mesmo:', e.message); }
+alvo.classList.add('pronta');
 carregando.hidden = true;
 await carregar();
 const { eventos } = await api('/api/eventos');

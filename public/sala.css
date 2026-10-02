@@ -6,7 +6,9 @@
 .btn[aria-pressed="true"] { border-color: var(--acento); color: var(--acento-texto); }
 
 .palco { position: relative; flex: 1; min-height: 0; }
-.cena { position: absolute; inset: 0; }
+.cena { position: absolute; inset: 0; opacity: 0; transition: opacity 400ms var(--curva-saida); }
+.cena.pronta { opacity: 1; } /* só aparece montada e com os shaders prontos */
+@media (prefers-reduced-motion: reduce) { .cena { transition: none; } }
 .cena canvas { display: block; outline: none; }
 .dica { position: absolute; left: var(--esp-4); bottom: var(--esp-3); margin: 0; font-size: var(--t-12); color: var(--texto-3); pointer-events: none; }
 .sem-webgl { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; padding: var(--esp-6); text-align: center; color: var(--texto-2); }

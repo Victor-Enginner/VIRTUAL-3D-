@@ -58,6 +58,8 @@ export async function carregarModelo(slug) {
       Object.assign(o.material, { transmission: 0, transparent: true, opacity: 0.32, roughness: Math.min(o.material.roughness, 0.08), depthWrite: false });
       o.castShadow = false;
     }
+    o.material = simplificar(o.material);
+    padronizar(o);
   });
   return cena;
 }
@@ -118,4 +120,23 @@ export function metade(n, lado) {
   const eixoX = new THREE.Vector3(1, 0, 0).applyQuaternion(n.getWorldQuaternion(new THREE.Quaternion())).normalize();
   const plano = new THREE.Plane().setFromNormalAndCoplanarPoint(eixoX.clone().multiplyScalar(-lado), c);
   n.traverse((o) => { if (o.isMesh) { o.material.clippingPlanes = [plano]; o.material.clipShadows = true; } });
+}
+
+// Material "físico" sem nenhum recurso físico em uso vira "standard": mesma aparência, shader bem menor.
+// (Na medição de 02/10/2026, compilar shaders levava 25,8 s dos 29 s de carga da sala.)
+function simplificar(m) {
+  if (!m.isMeshPhysicalMaterial) return m;
+  const usa = m.clearcoat > 0 || m.sheen > 0 || m.iridescence > 0 || m.transmission > 0 || m.dispersion > 0 || m.anisotropy > 0;
+  if (usa) return m;
+  const s = new THREE.MeshStandardMaterial().copy(m); // copy() da Standard leva só os campos que ela conhece
+  s.name = m.name;
+  m.dispose();
+  return s;
+}
+
+// Menos variações de shader = menos programas para a placa compilar na abertura da sala:
+// todo material desenha os dois lados (já eram 214 de 328) e o shader calcula as tangentes sozinho.
+export function padronizar(o) {
+  o.material.side = THREE.DoubleSide;
+  if (o.geometry.attributes.tangent) o.geometry.deleteAttribute('tangent');
 }

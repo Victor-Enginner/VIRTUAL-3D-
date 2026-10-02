@@ -4,7 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloquear, buscarCaminho, criarGrade } from './caminhos.js';
-import { criarColocador, metade } from './modelos.js';
+import { criarColocador, metade, padronizar } from './modelos.js';
 
 const ESCALA_KIT = 2;
 const LARGURA = 26, PROFUNDIDADE = 18, ALTURA_PAREDE = 2.6;
@@ -19,7 +19,7 @@ async function modelo(nome) {
   if (!cache.has(nome)) cache.set(nome, loader.loadAsync(`/assets/kenney/${nome}.glb`).then((g) => g.scene));
   const base = await cache.get(nome);
   const m = base.clone(true);
-  m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  m.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.material = o.material.clone(); padronizar(o); } });
   return m;
 }
 
@@ -162,9 +162,9 @@ export function criarEscritorio(cena, cores) {
     });
     porModelo('gabinete-pc', 0.6, -0.05, 0, { pai: g, obstaculo: false }); // no chão, sob o canto direito
     if (id !== 'alva') porModelo('lixeira', -0.98, 0.15, 0, { pai: g, obstaculo: false });
-    const luz = new THREE.PointLight(0xffe2b8, 0, 3.2, 2);
-    luz.position.set(0, 1.5, 0.15);
-    g.add(luz);
+    const luz = criarBrilho();
+    luz.malha.position.set(0, TAMPO + 0.006, 0.05);
+    g.add(luz.malha);
     p.luz = luz;
     p.cadeira = porModelo('cadeira-gamer', x, z, rot + Math.PI, { obstaculo: false });
     postos[id] = p;
@@ -348,4 +348,29 @@ function texturaTacos(cores) {
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
   return t;
+}
+
+// Luminária "falsa": um disco de luz quente somado (additive) sobre o tampo. Mesma interface de uma luz
+// (`intensity`), sem entrar no cálculo de iluminação de nenhum outro material.
+let texturaBrilho = null;
+function criarBrilho() {
+  if (!texturaBrilho) {
+    const c = document.createElement('canvas'); c.width = c.height = 128;
+    const g = c.getContext('2d');
+    const r = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+    r.addColorStop(0, 'rgba(255,226,184,1)'); r.addColorStop(0.45, 'rgba(255,214,160,.45)'); r.addColorStop(1, 'rgba(255,214,160,0)');
+    g.fillStyle = r; g.fillRect(0, 0, 128, 128);
+    texturaBrilho = new THREE.CanvasTexture(c);
+    texturaBrilho.colorSpace = THREE.SRGBColorSpace;
+  }
+  const mat = new THREE.MeshBasicMaterial({ map: texturaBrilho, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  const malha = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 1.1), mat);
+  malha.rotation.x = -Math.PI / 2;
+  malha.renderOrder = 2;
+  let valor = 0;
+  return {
+    malha,
+    get intensity() { return valor; },
+    set intensity(v) { valor = v; mat.opacity = Math.max(0, Math.min(1, v / 2.4)) * 0.85; malha.visible = mat.opacity > 0.01; },
+  };
 }
