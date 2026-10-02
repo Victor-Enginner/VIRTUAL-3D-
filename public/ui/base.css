@@ -97,3 +97,12 @@ input[type=checkbox] { accent-color: var(--acento); width: 16px; height: 16px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
+
+/* celular: título em cima, ações numa linha só embaixo (rola de lado se faltar espaço) */
+@media (max-width: 640px) {
+  .cabecalho { align-items: flex-start; gap: var(--esp-2) var(--esp-3); padding: var(--esp-3) var(--esp-4); }
+  .cabecalho .titulo { flex: 1 1 calc(100% - 56px); }
+  .cabecalho h1 { font-size: var(--t-20); }
+  .cabecalho .acoes { flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; }
+  .cabecalho .acoes .btn { min-height: 36px; padding: 0 var(--esp-3); font-size: var(--t-13); white-space: nowrap; flex: none; }
+}

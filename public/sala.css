@@ -47,7 +47,7 @@
 @keyframes chegar { from { opacity: 0; transform: translateY(-4px); } }
 
 @media (max-width: 640px) {
-  .trilha { display: none; }
+  .trilha, .dica { display: none; }
   .rotulo small, .rotulo .tarefa { display: none; }
   .ficha-agente { top: auto; height: 58%; }
 }

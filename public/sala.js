@@ -56,6 +56,8 @@ controles.enableDamping = true;
 controles.maxPolarAngle = Math.PI * 0.45;
 controles.minDistance = 4;
 const DIRECAO_CAMERA = new THREE.Vector3(0.55, 0.78, 0.92).normalize();
+// celular em pé: câmera mais alta e mais perto, a sala inteira não cabe na largura sem virar miniatura
+const DIRECAO_RETRATO = new THREE.Vector3(1.0, 1.15, 0.3).normalize(); // olhando pelo lado: o comprimento da sala vira a altura da tela
 
 const ceu = new THREE.HemisphereLight(0xffffff, 0x8c7a66, 1.2);
 cena.add(ceu);
@@ -449,9 +451,11 @@ function ajustarTamanho() {
   renderer.setSize(w, h); rotulos.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   if (!cameraMexida) {
-    const distancia = 24 * Math.min(2.8, Math.max(1, 1.55 / camera.aspect));
+    const retrato = camera.aspect < 0.8;
+    if (retrato) controles.target.set(0, 0.6, -0.5);
+    const distancia = retrato ? 24 * Math.min(1.5, 0.8 / camera.aspect) : 24 * Math.min(2.8, Math.max(1, 1.55 / camera.aspect));
     controles.maxDistance = Math.max(42, distancia + 6);
-    camera.position.copy(controles.target).addScaledVector(DIRECAO_CAMERA, distancia);
+    camera.position.copy(controles.target).addScaledVector(retrato ? DIRECAO_RETRATO : DIRECAO_CAMERA, distancia);
   }
 }
 new ResizeObserver(ajustarTamanho).observe(alvo);

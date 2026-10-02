@@ -132,3 +132,14 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
   .fatos, .linha3 { grid-template-columns: 1fr; }
   .gaveta-corpo { padding: var(--esp-5) var(--esp-4); }
 }
+
+/* celular: funil vira faixa que rola de lado; abas numa linha só */
+@media (max-width: 640px) {
+  .funil { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(124px, 38%); overflow-x: auto; scrollbar-width: none; }
+  .etapa { padding-right: var(--esp-4); }
+  .etapa + .etapa { padding-left: var(--esp-4) !important; border-left: 1px solid var(--linha-suave) !important; }
+  .etapa b { font-size: var(--t-20); }
+  .leads-cab h2 { flex: 1 1 100%; }
+  .abas { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--esp-4) * -1); padding: 0 var(--esp-4); }
+  .aba { flex: none; white-space: nowrap; }
+}
