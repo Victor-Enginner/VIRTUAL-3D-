@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configurador · Prospector</title>
+<meta name="description" content="Crie agentes por conversa: identidade, regras, ferramentas e aprendizado.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%238f75e6'/%3E%3Cpath d='M10 23V9h6.5a4.5 4.5 0 010 9H10' fill='none' stroke='%230c0c11' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/configurador.css">
+</head>
+<body>
+<a class="pular" href="#texto">Pular para a mensagem</a>
+<div class="app" id="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e agentes"></aside>
+
+  <main class="principal conversa">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><h1 id="titulo-agente">Configurador de agentes</h1><p id="subtitulo">Monte um agente por conversa: identidade, regras, ferramentas e aprendizado.</p></div>
+      <div class="acoes"><button class="btn primario" id="btn-novo-topo"><svg class="ic" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Novo agente</button></div>
+    </header>
+
+    <div class="faixa" id="faixa" hidden>
+      <span><svg class="ic" viewBox="0 0 24 24"><path d="M6 3h9l3 3v15H6z"/><path d="M9 10h6M9 14h4"/></svg>Continuando criação anterior</span>
+      <button class="btn fantasma" id="btn-descartar">Descartar e começar do zero</button>
+    </div>
+
+    <section class="chat" id="chat" aria-live="polite" aria-label="Conversa de configuração"></section>
+
+    <form class="compositor" id="compositor">
+      <input type="file" id="arquivo" accept="image/png,image/jpeg,image/webp,application/pdf,text/plain,text/markdown,.md" hidden>
+      <button type="button" class="btn icone" id="btn-anexo" title="Anexar imagem, PDF ou texto (até 2 MB)" aria-label="Anexar arquivo"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12l-8.5 8.5a5 5 0 01-7-7L14 5a3.5 3.5 0 015 5l-8.5 8.5a2 2 0 01-3-3L15 8"/></svg></button>
+      <button type="button" class="btn icone" id="btn-mic" title="Ditar (reconhecimento de voz do navegador)" aria-label="Ditar mensagem"><svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg></button>
+      <label class="sr" for="texto">Mensagem</label>
+      <input id="texto" placeholder="Escreva sua resposta…" autocomplete="off" maxlength="2000">
+      <button class="btn primario" id="btn-enviar">Enviar</button>
+    </form>
+  </main>
+</div>
+<script type="module" src="/configurador.js"></script>
+</body>
+</html>

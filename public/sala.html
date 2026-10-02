@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sala 3D · Prospector</title>
+<meta name="description" content="O escritório dos agentes: cada um aparece fazendo o que está fazendo de verdade.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%238f75e6'/%3E%3Cpath d='M10 23V9h6.5a4.5 4.5 0 010 9H10' fill='none' stroke='%230c0c11' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/sala.css">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e equipe"></aside>
+
+  <main class="principal sala">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><h1>Sala 3D</h1><p id="chips" class="saude">Montando o escritório…</p></div>
+      <div class="acoes">
+        <button class="btn" id="btn-centralizar" title="Volta a câmera para a visão geral">Centralizar</button>
+        <button class="btn" id="btn-som" aria-pressed="false" title="Digitação e envelopes, gerados no navegador">Som desligado</button>
+        <button class="btn" id="btn-pausa">Pausar agentes</button>
+      </div>
+    </header>
+
+    <div class="palco">
+      <div id="cena" class="cena" aria-label="Escritório 3D dos agentes. A mesma informação está na barra lateral e no Painel."></div>
+      <p class="carregando" id="carregando" role="status">Carregando personagens…</p>
+      <p class="dica" id="dica">Arraste para girar · role para aproximar · clique em um agente</p>
+      <p class="sem-webgl" id="sem-webgl" hidden>O navegador não abriu o WebGL. A barra lateral e o <a href="/">Painel</a> mostram as mesmas informações.</p>
+      <aside class="ficha-agente" id="ficha" hidden aria-live="polite">
+        <button class="btn icone fantasma fechar" id="fechar-ficha" aria-label="Fechar"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <div id="ficha-conteudo"></div>
+      </aside>
+      <ol class="trilha" id="trilha" aria-label="Últimos eventos"></ol>
+    </div>
+  </main>
+</div>
+<script type="module" src="/sala.js"></script>
+</body>
+</html>

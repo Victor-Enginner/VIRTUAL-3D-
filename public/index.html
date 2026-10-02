@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Painel · Prospector</title>
+<meta name="description" content="Agentes de prospecção locais: acham empresas sem site, decidem com modelos abertos e preparam a abordagem.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%238f75e6'/%3E%3Cpath d='M10 23V9h6.5a4.5 4.5 0 010 9H10' fill='none' stroke='%230c0c11' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/painel.css">
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e equipe"></aside>
+
+  <main class="principal" id="conteudo">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><h1>Painel</h1><p id="saude" class="saude">Carregando o estado dos agentes…</p></div>
+      <div class="acoes">
+        <button class="btn" id="btn-ajustes">Ajustes</button>
+        <button class="btn" id="btn-pausa">Pausar agentes</button>
+      </div>
+    </header>
+
+    <section class="comando" aria-label="Comando por voz ou texto">
+      <button class="mic" id="mic" type="button" title="Falar um comando" aria-label="Falar um comando">
+        <svg class="ic" viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+      </button>
+      <form id="form-comando">
+        <label class="sr" for="comando">Comando para os agentes</label>
+        <input id="comando" autocomplete="off" placeholder='Diga ou digite: "varre barbearias em Franca SP", "resumo do dia", "pausar"'>
+      </form>
+      <p class="resposta" id="resposta-comando" aria-live="polite"></p>
+    </section>
+
+    <section class="funil" id="kpis" aria-label="Funil de prospecção"></section>
+
+    <div class="grade">
+      <section class="leads" aria-labelledby="t-leads">
+        <div class="leads-cab">
+          <h2 id="t-leads">Leads</h2>
+          <div class="abas" id="abas" role="tablist" aria-label="Etapas"></div>
+          <label class="busca"><span class="sr">Buscar</span><svg class="ic" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg><input id="busca" type="search" placeholder="Empresa, cidade ou ramo"></label>
+        </div>
+        <div class="tabela-wrap">
+          <table class="tabela">
+            <thead><tr><th scope="col">Empresa</th><th scope="col">Situação do site</th><th scope="col">Prioridade</th><th scope="col">Contato</th><th scope="col">Google</th></tr></thead>
+            <tbody id="linhas"></tbody>
+          </table>
+          <div class="vazio" id="vazio-leads" hidden></div>
+        </div>
+      </section>
+
+      <aside class="lado" aria-label="Operação">
+        <section>
+          <h2>Fila de envio</h2>
+          <div id="envio-status" class="envio-status"></div>
+          <ul class="lista" id="envios"></ul>
+        </section>
+        <section>
+          <h2>Nova varredura</h2>
+          <form id="form-varredura" class="form-varredura">
+            <label class="campo">Cidade<input name="cidade" required placeholder="Franca" autocomplete="address-level2"></label>
+            <label class="campo">UF<input name="uf" required maxlength="2" value="SP"></label>
+            <label class="campo largo">Ramo<select name="nicho" id="sel-nicho"></select></label>
+            <label class="campo">Fonte<select name="fonte" id="sel-fonte"></select></label>
+            <label class="campo">Limite<input name="limite" type="number" min="1" max="60" value="20"></label>
+            <button class="btn primario largo">Colocar na fila do Atlas</button>
+          </form>
+          <ul class="lista" id="varreduras"></ul>
+        </section>
+        <section>
+          <h2>Atividade</h2>
+          <ol class="feed" id="feed"></ol>
+        </section>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="gaveta" id="gaveta" hidden>
+  <div class="gaveta-fundo" data-fechar></div>
+  <article class="gaveta-corpo" role="dialog" aria-modal="true" aria-labelledby="g-nome">
+    <button class="btn icone fantasma fechar" data-fechar aria-label="Fechar"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div id="gaveta-conteudo"></div>
+  </article>
+</div>
+
+<dialog id="dlg-ajustes" class="dlg" aria-labelledby="t-ajustes">
+  <form method="dialog" id="form-ajustes">
+    <h2 id="t-ajustes">Ajustes</h2>
+    <fieldset>
+      <legend>Quem assina a mensagem</legend>
+      <label class="campo">Seu nome<input name="remetente_nome"></label>
+      <label class="campo">O que você oferece<input name="remetente_oferta"></label>
+      <label class="campo">Link do portfólio (opcional)<input name="remetente_portfolio" type="url" placeholder="https://"></label>
+    </fieldset>
+    <fieldset>
+      <legend>Ritmo de envio no WhatsApp</legend>
+      <div class="linha3">
+        <label class="campo">Máximo por dia<input name="limite_diario" type="number" min="1" max="50"></label>
+        <label class="campo">Espera mínima (min)<input name="intervalo_min_m" type="number" min="1" max="120"></label>
+        <label class="campo">Espera máxima (min)<input name="intervalo_max_m" type="number" min="1" max="120"></label>
+        <label class="campo">Começa às (h)<input name="janela_inicio_h" type="number" min="0" max="23"></label>
+        <label class="campo">Termina às (h)<input name="janela_fim_h" type="number" min="1" max="24"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="exigir_aprovacao"> Exigir minha aprovação em cada mensagem</label>
+      <label class="check"><input type="checkbox" name="so_celular"> Enviar só para celular</label>
+    </fieldset>
+    <menu><button class="btn fantasma" value="cancelar">Cancelar</button><button class="btn primario" id="salvar-ajustes" value="salvar">Salvar ajustes</button></menu>
+  </form>
+</dialog>
+
+<script type="module" src="/app.js"></script>
+</body>
+</html>

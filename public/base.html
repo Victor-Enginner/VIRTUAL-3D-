@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Base do Mestre · Prospector</title>
+<meta name="description" content="A base do criador, separada do escritório dos agentes.">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/sala.css">
+<style>
+  .resumo-base { z-index: 2; position: absolute; left: var(--esp-3); top: var(--esp-3); width: min(320px, calc(100% - 24px)); background: rgb(17 17 23 / .92); border: 1px solid var(--linha); border-radius: var(--raio-bloco); padding: var(--esp-4); display: grid; gap: var(--esp-2); backdrop-filter: blur(6px); }
+  .resumo-base p { margin: 0; color: var(--texto-2); font-size: var(--t-13); }
+  .resumo-base b { color: var(--texto); font-variant-numeric: tabular-nums; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }
+</script>
+</head>
+<body>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e equipe"></aside>
+  <main class="principal sala">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><h1>Base do Mestre</h1><p>Sua base, separada do escritório dos agentes.</p></div>
+    </header>
+    <div class="palco">
+      <div id="cena" class="cena" aria-label="Base do Mestre em 3D"></div>
+      <p class="carregando" id="carregando" role="status">Carregando a base…</p>
+      <section class="resumo-base" id="resumo" aria-live="polite"><p>Carregando…</p></section>
+    </div>
+  </main>
+</div>
+<script type="module">
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  import { carregarModelo, normalizar } from '/sala/modelos.js';
+  import { montarShell, atualizarShell } from '/ui/shell.js';
+  montarShell('base');
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const alvo = document.querySelector('#cena');
+  const r = new THREE.WebGLRenderer({ antialias: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  r.toneMapping = THREE.ACESFilmicToneMapping;
+  r.shadowMap.enabled = true;
+  alvo.appendChild(r.domElement);
+  const cena = new THREE.Scene();
+  cena.background = new THREE.Color(0x0c0c11);
+  cena.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+  cena.environmentIntensity = 0.5;
+  const sol = new THREE.DirectionalLight(0xfff1dc, 1.6);
+  sol.position.set(4, 7, 5); sol.castShadow = true;
+  cena.add(sol, new THREE.HemisphereLight(0xffffff, 0x3a3a48, 0.8));
+  const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  cam.position.set(5.2, 4.2, 5.6);
+  const ctl = new OrbitControls(cam, r.domElement);
+  ctl.target.set(0, 1, 0); ctl.enableDamping = true; ctl.maxPolarAngle = Math.PI * 0.47; ctl.minDistance = 2; ctl.maxDistance = 14;
+  new ResizeObserver(() => { r.setSize(alvo.clientWidth, alvo.clientHeight); cam.aspect = alvo.clientWidth / alvo.clientHeight; cam.updateProjectionMatrix(); }).observe(alvo);
+  r.setAnimationLoop(() => { ctl.update(); r.render(cena, cam); });
+  carregarModelo('base-do-mestre').then((m) => { cena.add(normalizar(m, 'base-do-mestre')); document.querySelector('#carregando').hidden = true; })
+    .catch((e) => { document.querySelector('#carregando').textContent = `A base não carregou: ${e.message}`; });
+
+  // o que é seu: aprovações pendentes e o que os agentes aprenderam com você
+  async function resumo() {
+    const [estado, { cabecas }] = await Promise.all([fetch('/api/estado').then((x) => x.json()), fetch('/api/aprendizado').then((x) => x.json())]);
+    atualizarShell(estado);
+    const n = estado.funil?.mensagem || 0, b = estado.briefing || {};
+    document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
+      <p><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
+      <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
+      ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}`;
+  }
+  resumo().catch(() => {});
+  setInterval(() => resumo().catch(() => {}), 5000);
+</script>
+</body>
+</html>

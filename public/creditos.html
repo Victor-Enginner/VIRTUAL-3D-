@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Créditos dos modelos 3D · Prospector</title>
+<meta name="description" content="Autores e licenças dos modelos 3D usados na Sala 3D.">
+<link rel="stylesheet" href="/ui/base.css">
+<style>
+  .creditos { padding: 0 var(--esp-8) var(--esp-10); max-width: 1100px; }
+  .creditos p.aviso { max-width: 70ch; color: var(--texto-2); border-left: 2px solid var(--alerta); padding: var(--esp-1) var(--esp-3); margin: 0 0 var(--esp-6); }
+  table { width: 100%; border-collapse: collapse; font-size: var(--t-13); }
+  th { text-align: left; color: var(--texto-3); font-weight: 500; font-size: var(--t-12); padding: var(--esp-2) var(--esp-3); border-bottom: 1px solid var(--linha); }
+  td { padding: var(--esp-3); border-bottom: 1px solid var(--linha-suave); vertical-align: top; }
+  .nc { color: var(--alerta); font-weight: 600; }
+  @media (max-width: 720px) { .creditos { padding: 0 var(--esp-4) var(--esp-8); } th:nth-child(4), td:nth-child(4) { display: none; } }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e equipe"></aside>
+  <main class="principal">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><h1>Créditos dos modelos 3D</h1><p>Licenças lidas dos próprios arquivos GLB (metadados do Sketchfab).</p></div>
+    </header>
+    <section class="creditos">
+      <p class="aviso">Modelos marcados <span class="nc">NC</span> (não comercial) estão aqui só para uso pessoal neste computador, por decisão do operador. Não use a Sala 3D com eles para vender ou mostrar a clientes.</p>
+      <table>
+        <thead><tr><th>Modelo</th><th>Autor</th><th>Licença</th><th>Fonte</th></tr></thead>
+        <tbody id="linhas"></tbody>
+      </table>
+    </section>
+  </main>
+</div>
+<script type="module">
+  import { montarShell, atualizarShell } from '/ui/shell.js';
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const link = (url, txt) => (url && /^https?:\/\//.test(url) ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>` : esc(txt));
+  montarShell('');
+  fetch('/api/estado').then((r) => r.json()).then(atualizarShell).catch(() => {});
+  const lista = await (await fetch('/assets/creditos.json')).json();
+  document.querySelector('#linhas').innerHTML = lista.map((c) => `<tr>
+    <td>${esc(c.titulo)}${c.nao_comercial ? ' <span class="nc">NC</span>' : ''}</td>
+    <td>${link(c.autor_url, c.autor)}</td>
+    <td>${link(c.licenca_url, c.licenca)}</td>
+    <td>${link(c.fonte, 'ver original')}</td></tr>`).join('');
+</script>
+</body>
+</html>

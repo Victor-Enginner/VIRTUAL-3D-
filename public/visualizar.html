@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Visualizar modelo · Prospector</title>
+<link rel="stylesheet" href="/ui/base.css">
+<style>
+  body { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
+  header { display: flex; gap: var(--esp-3); align-items: center; padding: var(--esp-3) var(--esp-4); border-bottom: 1px solid var(--linha); flex-wrap: wrap; }
+  header select { width: auto; }
+  #info { font-family: var(--fonte-mono); font-size: var(--t-12); color: var(--texto-2); }
+  #palco { position: relative; min-height: 0; }
+  canvas { display: block; }
+</style>
+<script type="importmap">{ "imports": { "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js", "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/" } }</script>
+</head>
+<body>
+<header>
+  <strong>Visualizar modelo</strong>
+  <label class="sr" for="modelo">Modelo</label><select id="modelo"></select>
+  <span id="info">carregando…</span>
+</header>
+<div id="palco"></div>
+<script type="module">
+  // Ferramenta de inspeção: mostra o GLB otimizado, as medidas reais (m) e a grade de 1 m no chão.
+  import * as THREE from 'three';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+  import { MeshoptDecoder } from 'three/addons/libs/meshopt_decoder.module.js';
+  import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  const palco = document.querySelector('#palco');
+  const r = new THREE.WebGLRenderer({ antialias: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+  r.toneMapping = THREE.ACESFilmicToneMapping;
+  palco.appendChild(r.domElement);
+  const cena = new THREE.Scene();
+  cena.background = new THREE.Color(0x15151c);
+  cena.environment = new THREE.PMREMGenerator(r).fromScene(new RoomEnvironment(), 0.04).texture;
+  cena.add(new THREE.GridHelper(40, 40, 0x555566, 0x2a2a35));
+  const cam = new THREE.PerspectiveCamera(45, 1, 0.01, 500);
+  const ctl = new OrbitControls(cam, r.domElement);
+  const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
+  let atual = null;
+  r.localClippingEnabled = true;
+  window.__vis = { THREE, r, cena, cam, ctl, get modelo() { return atual; } };
+  const lista = (await (await fetch('/assets/creditos.json')).json()).filter((c) => !['kenney-furniture-kit', 'xbot'].includes(c.slug));
+  const sel = document.querySelector('#modelo');
+  sel.innerHTML = lista.map((c) => `<option value="${c.slug}">${c.slug}</option>`).join('');
+  const pedido = new URLSearchParams(location.search).get('m');
+  if (pedido) sel.value = pedido;
+  async function abrir(slug) {
+    document.querySelector('#info').textContent = 'carregando…';
+    if (atual) cena.remove(atual);
+    try {
+      const g = await loader.loadAsync(`/assets/modelos/${slug}.glb`);
+      atual = g.scene;
+      cena.add(atual);
+      const caixa = new THREE.Box3().setFromObject(atual), t = caixa.getSize(new THREE.Vector3()), c = caixa.getCenter(new THREE.Vector3());
+      let tris = 0; atual.traverse((o) => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
+      document.querySelector('#info').textContent = `L ${t.x.toFixed(2)} × A ${t.y.toFixed(2)} × P ${t.z.toFixed(2)} (unidades) · min.y ${caixa.min.y.toFixed(2)} · ${Math.round(tris).toLocaleString('pt-BR')} triângulos · animações: ${g.animations.map((a) => a.name).join(', ') || 'nenhuma'}`;
+      const d = Math.max(t.x, t.y, t.z);
+      ctl.target.copy(c); cam.position.copy(c).add(new THREE.Vector3(d * 0.9, d * 0.7, d * 1.1)); cam.near = d / 500; cam.far = d * 20; cam.updateProjectionMatrix();
+    } catch (e) { document.querySelector('#info').textContent = `não carregou: ${e.message}`; }
+  }
+  sel.addEventListener('change', () => { history.replaceState(null, '', `?m=${sel.value}`); abrir(sel.value); });
+  new ResizeObserver(() => { r.setSize(palco.clientWidth, palco.clientHeight); cam.aspect = palco.clientWidth / palco.clientHeight; cam.updateProjectionMatrix(); }).observe(palco);
+  r.setAnimationLoop(() => { ctl.update(); r.render(cena, cam); });
+  abrir(sel.value);
+</script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "name": "prospector",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agentes de prospecção locais: acham empresas sem site ou com site fraco, auditam, decidem com modelo aberto e preparam a abordagem no WhatsApp com ritmo seguro.",
+  "type": "module",
+  "engines": { "node": ">=22.5" },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test"
+  }
+}
