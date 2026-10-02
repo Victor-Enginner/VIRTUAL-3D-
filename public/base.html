@@ -10,6 +10,15 @@
 <style>
   .resumo-base { z-index: 2; position: absolute; left: var(--esp-3); top: var(--esp-3); width: min(320px, calc(100% - 24px)); background: rgb(17 17 23 / .92); border: 1px solid var(--linha); border-radius: var(--raio-bloco); padding: var(--esp-4); display: grid; gap: var(--esp-2); backdrop-filter: blur(6px); }
   @media (max-width: 640px) { .resumo-base { top: auto; bottom: var(--esp-3); left: var(--esp-3); right: var(--esp-3); width: auto; padding: var(--esp-3) var(--esp-4); } }
+  .resumo-base { max-height: calc(100% - 24px); overflow: auto; }
+  .resumo-base h3 { margin: var(--esp-2) 0 0; font-size: var(--t-13); }
+  .regras { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-2); }
+  .regras li { display: grid; gap: 6px; padding: var(--esp-3); border: 1px solid var(--linha-suave); border-radius: var(--raio-controle); }
+  .regras li small { color: var(--texto-3); font-size: var(--t-12); }
+  .regras li div { display: flex; gap: var(--esp-2); }
+  .estado { font-size: var(--t-12); padding: 1px 6px; border-radius: 6px; background: var(--superficie-3); color: var(--texto-2); margin-right: 4px; }
+  .estado.e-ativa { color: var(--ok); } .estado.e-proposta { color: var(--acento-texto); }
+  .vazio-regras { color: var(--texto-3) !important; }
   .resumo-base p { margin: 0; color: var(--texto-2); font-size: var(--t-13); }
   .resumo-base b { color: var(--texto); font-variant-numeric: tabular-nums; }
 </style>
@@ -73,15 +82,34 @@
       <p>Fidelidade aos planos: <b>${f.total ? Math.round((100 * f.preservados) / f.total) : 100}%</b> de ${f.total} job(s)${t.presos?.length ? ` · <b>${t.presos.length}</b> lead(s) fora da fila` : ''}</p>`;
   }
 
+  // meta-skills: o que os agentes propõem a partir dos seus descartes; nada vale sem você aceitar
+  const BOTOES = { proposta: [['aceitar', 'Aceitar', 'primario'], ['recusar', 'Recusar', '']], ativa: [['desativar', 'Desativar', '']], revisada: [['reativar', 'Reativar', '']] };
+  const ESTADO = { proposta: 'proposta', ativa: 'ativa', revisada: 'desativada' };
+  function regras(lista) {
+    if (!lista?.length) return '<p class="vazio-regras">Quando você descartar leads pelo mesmo motivo, os agentes propõem regras aqui.</p>';
+    return `<h3>Regras aprendidas</h3><ul class="regras">${lista.map((h) => `<li>
+      <p><span class="estado e-${h.estado}">${ESTADO[h.estado]}</span> Quando <b>${esc(h.quando)}</b> → ${esc(h.fornecer)}</p>
+      <small>${h.evidencias.length} descarte(s) seu(s) como evidência${h.aplicada ? ` · aplicada ${h.aplicada}×` : ''}</small>
+      <div>${(BOTOES[h.estado] || []).map(([a, r, c]) => `<button class="btn ${c}" data-regra="${esc(h.id)}" data-acao="${a}">${r}</button>`).join('')}</div></li>`).join('')}</ul>`;
+  }
+  document.querySelector('#resumo').addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-regra]');
+    if (!b) return;
+    b.setAttribute('aria-busy', 'true');
+    await fetch(`/api/habilidades/${encodeURIComponent(b.dataset.regra)}/${b.dataset.acao}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }).catch(() => {});
+    resumo().catch(() => {});
+  });
+
   async function resumo() {
-    const [estado, { cabecas }] = await Promise.all([fetch('/api/estado').then((x) => x.json()), fetch('/api/aprendizado').then((x) => x.json())]);
+    const [estado, { cabecas }, { habilidades }] = await Promise.all(['/api/estado', '/api/aprendizado', '/api/habilidades'].map((u) => fetch(u).then((x) => x.json())));
     atualizarShell(estado);
     const n = estado.funil?.mensagem || 0, b = estado.briefing || {};
     document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
       <p><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
       <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
       ${tocomas(estado.tocomas)}
-      ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}`;
+      ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}
+      ${regras(habilidades)}`;
   }
   resumo().catch(() => {});
   setInterval(() => resumo().catch(() => {}), 5000);

@@ -3,6 +3,11 @@
 > **Implementado (F1):** `src/tocomas/` — `contratos.mjs` (validador), `grafo.mjs` (nós, arestas, visão por domínio),
 > `crenca.mjs` (fatos com fonte/validade, pendências, lead preso), `fidelidade.mjs` (plano declarado × ferramentas usadas),
 > `controlador.mjs` (estoque de mensagens/leads × teto de envios). Ligado em `criarOrquestrador` (`src/agentes.mjs`).
+>
+> **Implementado (F2):** `habilidades.mjs` — seus descartes com motivo (6 opções fixas) viram propostas de regra quando o
+> mesmo motivo se repete num padrão (≥ 2 evidências, nenhum lead parecido aprovado). Regra só vale depois de aceita na
+> Base do Mestre; efeitos possíveis: descartar, baixar prioridade em 30, evitar um ângulo. Cada regra guarda os ids dos
+> descartes que a motivaram e quantas vezes foi aplicada.
 
 > Base: `extracted_papers.json` (16 PDFs, texto das páginas 1–2 de cada) e o código atual do Prospector.
 > Tudo que está aqui ou vem desse texto (citado pelo ID arXiv) ou é decisão de projeto, marcada como **[decisão]**.

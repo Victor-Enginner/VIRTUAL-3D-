@@ -14,6 +14,7 @@ import { lerMensagemRecebida, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
+import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
 const db = abrirBanco(CONFIG.dataDir);
@@ -92,12 +93,16 @@ rota('POST', '/api/leads/:id/aprovar', ({ params, body }) => {
   return { ok: true };
 });
 
-rota('POST', '/api/leads/:id/descartar', ({ params }) => {
+rota('POST', '/api/leads/:id/descartar', ({ params, body }) => {
   const l = db.prepare('SELECT * FROM leads WHERE id = ?').get(params.id);
   if (!l) throw new HttpError(404, 'lead não encontrado');
+  const motivo = body.motivo == null ? null : String(body.motivo);
+  if (motivo && !MOTIVOS[motivo]) throw new HttpError(400, 'motivo desconhecido');
   db.prepare("UPDATE leads SET etapa = 'descartado', atualizado_em = ? WHERE id = ?").run(agora(), l.id);
   db.prepare("UPDATE envios SET status = 'cancelado' WHERE lead_id = ? AND status = 'aprovado'").run(l.id);
-  registrar(db, 'leo', 'descartado', `${l.nome}: descartado pelo operador`, { lead_id: l.id });
+  registrar(db, 'leo', 'descartado', `${l.nome}: descartado por você${motivo ? ` (${MOTIVOS[motivo].toLowerCase()})` : ''}`, { lead_id: l.id, dados: motivo ? { motivo, retrato: retrato(l) } : null });
+  // meta-skills: seus motivos repetidos viram proposta de regra (só vale depois que você aceitar)
+  for (const h of propor(db)) registrar(db, 'alva', 'habilidade_proposta', `Proposta de regra: quando ${h.quando} → ${h.fornecer}. Aceite ou recuse na Base do Mestre.`, { dados: { habilidade: h.id } });
   // descartar um lead que os agentes recomendaram é o sinal mais claro de gosto do operador
   if (l.decisao && ['qualificado', 'mensagem', 'sem_contato'].includes(l.etapa)) {
     const a = aprender(db, 'aprovacao', l, 0);
@@ -107,6 +112,14 @@ rota('POST', '/api/leads/:id/descartar', ({ params }) => {
 });
 
 rota('GET', '/api/aprendizado', () => ({ cabecas: resumoAprendizado(db) }));
+rota('GET', '/api/habilidades', () => ({ habilidades: listarHabilidades(db), motivos: MOTIVOS }));
+rota('POST', '/api/habilidades/:id/:acao', ({ params }) => {
+  try {
+    const h = mudarEstado(db, params.id, params.acao);
+    registrar(db, 'alva', 'habilidade', `Regra ${{ ativa: 'aceita', descartada: 'recusada', revisada: 'desativada' }[h.estado] || h.estado}: quando ${h.quando}`, { dados: { habilidade: h.id } });
+    return { habilidade: h };
+  } catch (e) { throw new HttpError(409, e.message); }
+});
 
 rota('POST', '/api/leads/:id/enviado-manual', ({ params }) => {
   const l = db.prepare('SELECT * FROM leads WHERE id = ?').get(params.id);

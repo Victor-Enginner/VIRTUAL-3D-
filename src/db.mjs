@@ -115,6 +115,22 @@ CREATE TABLE IF NOT EXISTS crencas (
   atualizado_em TEXT NOT NULL
 );
 
+-- meta-skills (arXiv 2609.38143): regras que os agentes propõem a partir dos seus descartes.
+-- Só valem depois que você aceita (estado = 'ativa').
+CREATE TABLE IF NOT EXISTS habilidades (
+  id TEXT PRIMARY KEY,
+  motivo TEXT NOT NULL,
+  quando TEXT NOT NULL,
+  fornecer TEXT NOT NULL,
+  condicao TEXT NOT NULL,
+  efeito TEXT NOT NULL,
+  evidencias TEXT NOT NULL DEFAULT '[]',
+  estado TEXT NOT NULL DEFAULT 'proposta',  -- proposta | ativa | revisada | descartada
+  aplicada INTEGER NOT NULL DEFAULT 0,
+  criado_em TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS conversas_config (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   agente_id TEXT NOT NULL REFERENCES agentes_custom(id) ON DELETE CASCADE,

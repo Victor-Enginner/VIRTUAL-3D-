@@ -160,6 +160,9 @@ function blocoCrenca(c) {
     ${c.pendencias.length ? `<p>Pendências: ${c.pendencias.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}</section>`;
 }
 
+// mesmos motivos de src/tocomas/habilidades.mjs (a API recusa qualquer outro)
+const MOTIVOS = { nicho: 'Ramo que não atendo', regiao: 'Fora da minha região', site_bom: 'Já tem site bom', grande: 'Negócio grande demais', mensagem: 'Mensagem ruim', outro: 'Outro motivo' };
+
 async function abrirLead(id) {
   leadAberto = id;
   const { lead: l, eventos, envios, crenca } = await api(`/api/leads/${encodeURIComponent(id)}`);
@@ -189,7 +192,11 @@ async function abrirLead(id) {
         ${l.wa_link && l.mensagem ? `<a class="btn" id="g-wa" href="${esc(l.wa_link)}" target="_blank" rel="noopener noreferrer">Abrir no WhatsApp</a>` : ''}
         ${naFila ? '<button class="btn" id="g-manual">Já enviei à mão</button>' : ''}
         <button class="btn" id="g-reprocessar">Refazer auditoria</button>
-        ${!['descartado', 'nao_contatar'].includes(l.etapa) ? '<button class="btn perigo" id="g-descartar">Descartar</button>' : ''}
+        ${!['descartado', 'nao_contatar'].includes(l.etapa) ? '<button class="btn perigo" id="g-descartar" aria-expanded="false" aria-controls="g-motivos">Descartar</button>' : ''}
+      </div>
+      <div class="motivos" id="g-motivos" hidden>
+        <p>Por quê? Um toque. Motivos repetidos viram proposta de regra na Base do Mestre.</p>
+        <div>${Object.entries(MOTIVOS).map(([k, v]) => `<button class="btn" data-motivo="${k}">${esc(v)}</button>`).join('')}</div>
       </div>
     </section>
     <section class="bloco"><h3>Histórico</h3><ol class="feed">${eventos.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>—</span></li>'}</ol></section>`;
@@ -199,7 +206,14 @@ async function abrirLead(id) {
   $('#g-aprovar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/aprovar`, { texto: $('#g-msg').value })));
   $('#g-manual')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/enviado-manual`, {})));
   $('#g-reprocessar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/reprocessar`, {})));
-  $('#g-descartar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/descartar`, {})));
+  $('#g-descartar')?.addEventListener('click', (ev) => {
+    const m = $('#g-motivos'); m.hidden = !m.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!m.hidden));
+    if (!m.hidden) m.querySelector('button').focus();
+  });
+  $('#g-motivos')?.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-motivo]');
+    if (b) acao(() => api(`/api/leads/${id}/descartar`, { motivo: b.dataset.motivo }));
+  });
 }
 
 function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; }

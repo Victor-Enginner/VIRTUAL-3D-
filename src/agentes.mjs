@@ -30,6 +30,7 @@ import { exigirHandoff, visao } from './tocomas/grafo.mjs';
 import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
+import { aplicar as aplicarHabilidades } from './tocomas/habilidades.mjs';
 
 export const AGENTES = {
   alva: { nome: 'Alva', papel: 'Assistente executiva', funcao: 'Abre o expediente, reabre varreduras e resume o dia', cor: '#d9468f' },
@@ -200,7 +201,16 @@ async function qualificar(db, job, ctx) {
   const sinais = aud?.sinais || [];
   const motivo = [SITUACOES[lead.situacao_site], ...sinais].filter(Boolean).join(' · ');
   const nivel = nivelOportunidade(lead.situacao_site, sinais);
-  const angulos = angulosPermitidos(lead, sinais);
+  // regras que você aceitou na Base do Mestre (meta-skills) entram antes de qualquer decisão
+  const hab = aplicarHabilidades(db, lead, angulosPermitidos(lead, sinais));
+  if (hab.descartar) {
+    db.prepare("UPDATE leads SET score = 0, motivo = ?, etapa = 'descartado', atualizado_em = ? WHERE id = ?")
+      .run(`regra aprendida: quando ${hab.descartar.quando}`, agora(), lead.id);
+    registrar(db, 'nova', 'habilidade_aplicada', `${lead.nome}: descartado pela regra que você aceitou (quando ${hab.descartar.quando})`, { lead_id: lead.id, dados: { habilidade: hab.descartar.id } });
+    return;
+  }
+  const todos = angulosPermitidos(lead, sinais);
+  const angulos = todos.filter((a) => !hab.evitar.includes(a)).length ? todos.filter((a) => !hab.evitar.includes(a)) : todos;
   const regra = (type, chave, extra = {}) => ({ type, origem: 'regra', probabilities: { [chave]: 1 }, confidence: 1, coverage: 1, ...extra });
   const oportunidade = regra('score', String(nivel), { score: nivel / 4, level: nivel });
 
@@ -238,10 +248,11 @@ async function qualificar(db, job, ctx) {
   const x = caracteristicas({ ...lead, decisao: json(decisao) });
   const m = misturar(scoreRegra, cabecas, x);
   decisao.aprendizado = { ...m, contribuicoes: contribuicoes(cabecas.aprovacao, x) };
-  const score = m.score;
+  const score = Math.max(0, m.score - hab.rebaixar);
+  if (hab.aplicadas.length) decisao.habilidades = hab.aplicadas.map((h) => ({ id: h.id, quando: h.quando, fornecer: h.fornecer }));
   db.prepare('UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = ?, atualizado_em = ? WHERE id = ?')
     .run(json(decisao), score, motivo, etapa, agora(), lead.id);
-  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms`, { lead_id: lead.id });
+  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms${hab.aplicadas.length ? ` · ${hab.aplicadas.length} regra(s) aprendida(s)` : ''}`, { lead_id: lead.id });
   registrarFatos(db, lead.id, [
     { chave: 'nivel_oportunidade', valor: nivel, fonte: 'regra' },
     ...(ativo.origem === 'sem_modelo' ? [] : [{ chave: 'ativo', valor: ativo.noul, fonte: 'modelo', confianca: ativo.confidence }]),

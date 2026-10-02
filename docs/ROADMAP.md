@@ -23,7 +23,7 @@ conferidos pela API em 02/10/2026 — todos existem) e o código atual. Cada ite
 | Checagem de fidelidade | `src/tocomas/fidelidade.mjs`: `declarar(plano)`, `usar(ferramenta)`, `fechar()` | evento `fidelidade` aparece no Painel |
 | Controlador em modo regra | `src/tocomas/controlador.mjs`: `opcoes(estado)`, `valor(op)`, `escolher()` | `criarOrquestrador` passa a perguntar ao controlador o próximo job |
 
-### F2 — Aprender com o Victor (meta-skills)
+### F2 — Aprender com o Victor (meta-skills) — **feita em 02/10/2026** (`src/tocomas/habilidades.mjs`, `test/habilidades.test.mjs`)
 | Tarefa | Funções | Pronto quando |
 |---|---|---|
 | Motivo do descarte | botão "por quê?" no Painel (opções fixas) → evento | 1 clique, sem texto obrigatório |
