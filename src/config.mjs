@@ -24,6 +24,7 @@ export const CONFIG = {
     sessionId: env('OPENWA_SESSION_ID'),
   },
   webhookToken: env('WEBHOOK_TOKEN'),
+  acessoSenha: env('ACESSO_SENHA'), // vazio = sem acesso remoto (só o próprio PC)
   python: env('PYTHON', 'python'),
 };
 

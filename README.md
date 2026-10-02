@@ -20,7 +20,9 @@ npm test                  # 30 testes (node:test)
 | `/sala.html` | Sala 3D: o mesmo estado, desenhado como escritório vivo |
 | `/configurador.html` | Configurador de Agentes: cria agentes por conversa guiada |
 
-O servidor só escuta em `127.0.0.1` (não tem login). O Ollama é opcional: sem ele, a decisão e a
+O servidor só escuta em `127.0.0.1`. Quem usa o próprio PC entra direto; acesso pelo celular é por túnel
+(`cloudflared tunnel --url http://127.0.0.1:4300`) e exige a senha `ACESSO_SENHA` do `.env` (`src/acesso.mjs`:
+sessão assinada por 7 dias, 5 tentativas erradas por IP a cada 10 min). Sem `ACESSO_SENHA`, o acesso remoto fica desligado. O Ollama é opcional: sem ele, a decisão e a
 escrita das mensagens ficam indisponíveis e o painel mostra isso; o resto funciona.
 
 ## Interface

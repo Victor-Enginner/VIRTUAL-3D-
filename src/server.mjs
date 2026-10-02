@@ -13,6 +13,7 @@ import { saudeOllama } from './llm.mjs';
 import { lerMensagemRecebida, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
+import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
 const db = abrirBanco(CONFIG.dataDir);
 const orq = criarOrquestrador(db);
@@ -218,6 +219,32 @@ rota('POST', '/webhooks/openwa', ({ url, body }) => {
   return { ok: true };
 });
 
+const limitador = criarLimitador();
+rota('POST', '/api/entrar', ({ req, res, body }) => {
+  if (!CONFIG.acessoSenha) throw new HttpError(403, 'acesso remoto desligado (defina ACESSO_SENHA no .env)');
+  const ip = ipDe(req);
+  if (limitador.bloqueado(ip)) throw new HttpError(429, 'muitas tentativas; espere 10 minutos');
+  if (!iguais(String(body.senha ?? ''), CONFIG.acessoSenha)) { limitador.errou(ip); throw new HttpError(401, 'senha incorreta'); }
+  res.setHeader('Set-Cookie', cookieSessao(criarSessao(CONFIG.acessoSenha), req.headers['x-forwarded-proto'] === 'https'));
+  return { ok: true };
+});
+rota('POST', '/api/sair', ({ res }) => { res.setHeader('Set-Cookie', cookieSair()); return { ok: true }; });
+
+// quem não está no próprio PC só passa com sessão válida
+function barrarRemoto(req, res, url) {
+  if (ehLocal(req)) return false;
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'no-referrer');
+  if (LIVRES.has(url.pathname) || url.pathname.startsWith('/webhooks/')) return false;
+  if (CONFIG.acessoSenha && sessaoValida(CONFIG.acessoSenha, lerCookie(req))) return false;
+  if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
+    res.writeHead(302, { Location: `/entrar.html?volta=${encodeURIComponent(url.pathname)}` }).end();
+  } else {
+    res.writeHead(401, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify({ erro: 'entre com a senha' }));
+  }
+  return true;
+}
+
 function sse(req, res) {
   res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
   res.write('retry: 3000\n\n');
@@ -239,6 +266,7 @@ function arquivo(res, p) {
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   try {
+    if (barrarRemoto(req, res, url)) return;
     if (url.pathname === '/api/stream') return sse(req, res);
     const r = rotas.find((x) => x.metodo === req.method && x.re.test(url.pathname));
     if (!r) {
@@ -260,7 +288,7 @@ const servidor = http.createServer(async (req, res) => {
   }
 });
 
-// 127.0.0.1: o painel não tem login, então não pode ficar exposto na rede.
+// 127.0.0.1: nada da rede chega direto. Acesso de fora só pelo túnel, e aí com senha (src/acesso.mjs).
 servidor.listen(CONFIG.port, '127.0.0.1', () => {
   console.log(`Prospector em http://127.0.0.1:${CONFIG.port}  (decisão: ${CONFIG.decideBackend}/${CONFIG.decideModel})`);
   orq.iniciar();

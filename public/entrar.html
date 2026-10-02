@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Entrar · Prospector</title>
+<link rel="stylesheet" href="/ui/base.css">
+<style>
+  main { min-height: 100dvh; display: grid; place-items: center; padding: var(--esp-4); }
+  form { width: min(360px, 100%); display: grid; gap: var(--esp-4); }
+  .marca { display: flex; align-items: center; gap: var(--esp-3); }
+  .marca span { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: var(--sobre-acento); display: grid; place-items: center; font-weight: 700; }
+  h1 { margin: 0; font-size: var(--t-20); }
+  p { margin: 0; color: var(--texto-2); font-size: var(--t-13); }
+  input { min-height: 44px !important; font-size: 16px; }
+  .btn { min-height: 44px; }
+  .erro { color: var(--perigo); min-height: 1.5em; }
+</style>
+</head>
+<body>
+<main>
+  <form id="f">
+    <div class="marca"><span>P.</span><div><h1>Prospector</h1><p>Acesso remoto ao seu painel</p></div></div>
+    <label class="campo">Senha
+      <input id="senha" type="password" autocomplete="current-password" required autofocus>
+    </label>
+    <button class="btn primario" type="submit">Entrar</button>
+    <p class="erro" id="erro" role="alert"></p>
+  </form>
+</main>
+<script>
+  const f = document.querySelector('#f'), erro = document.querySelector('#erro'), btn = f.querySelector('button');
+  f.addEventListener('submit', async (e) => {
+    e.preventDefault(); erro.textContent = ''; btn.setAttribute('aria-busy', 'true');
+    try {
+      const r = await fetch('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha: document.querySelector('#senha').value }) });
+      if (!r.ok) { erro.textContent = (await r.json().catch(() => ({}))).erro || 'Não deu para entrar.'; return; }
+      const volta = new URLSearchParams(location.search).get('volta') || '/';
+      location.href = volta.startsWith('/') && !volta.startsWith('//') ? volta : '/';
+    } catch { erro.textContent = 'Sem conexão com o PC.'; }
+    finally { btn.removeAttribute('aria-busy'); }
+  });
+</script>
+</body>
+</html>
