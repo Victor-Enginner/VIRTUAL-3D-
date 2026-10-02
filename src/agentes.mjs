@@ -24,7 +24,7 @@ import { decide } from './decide/index.mjs';
 import { gerarTexto, saudeOllama } from './llm.mjs';
 import { CONFIG } from './config.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
-import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR } from './envio/openwa.mjs';
+import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
 import { exigirHandoff, visao } from './tocomas/grafo.mjs';
 import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
@@ -416,6 +416,8 @@ export function situacaoDoEnvio(db) {
 async function despachar(db, ctx) {
   const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' ORDER BY e.id LIMIT 1").get();
   if (!pendente || !openwaConfigurado()) return false;
+  // sessão desconectada não pode virar "erro" no envio: espera o WhatsApp voltar
+  if (!(await saudeOpenwa()).ok) return false;
   const ajustes = lerAjustes(db);
   const prox = lerFlag(db, 'proximo_envio_em', null);
   const aval = avaliarEnvio({ agora: new Date(), enviadosHoje: enviadosHoje(db), proximoPermitido: prox ? new Date(prox) : null, cfg: ajustes.envio });

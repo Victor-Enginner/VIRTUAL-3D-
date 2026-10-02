@@ -370,3 +370,41 @@ montarShell('painel');
 prepararVoz();
 atualizarTudo().then(carregarFeed).then(ligarEventos).then(() => { if (location.hash === '#ajustes') abrirAjustes(); });
 setInterval(() => carregarEstado().catch(() => {}), 5000);
+
+// ---------------------------------------------------------------- WhatsApp (OpenWA)
+// Conectar = criar/iniciar a sessão "prospector" e mostrar o QR até o celular escanear.
+const ROTULO_WA = { ready: 'Conectado', qr_ready: 'Esperando você escanear o QR', initializing: 'Iniciando…', authenticating: 'Autenticando…', disconnected: 'Desconectado', failed: 'Falhou', created: 'Criada', action_required: 'Precisa de ação no celular' };
+let qrTimer = null;
+async function desenharWhatsapp() {
+  const caixa = $('#whatsapp');
+  if (!caixa) return;
+  let w;
+  try { w = await api('/api/whatsapp'); } catch (e) { caixa.innerHTML = `<p class="aviso">${esc(e.message)}</p>`; return; }
+  if (!w.chave) { caixa.innerHTML = '<p class="aviso">OpenWA sem chave: defina OPENWA_API_KEY no .env.</p>'; return; }
+  if (w.erro && !w.status) { caixa.innerHTML = `<p class="aviso">OpenWA não respondeu (${esc(w.erro)}). Ele está ligado?</p>`; return; }
+  const st = w.status || 'sem sessão';
+  let html = `<p><span class="selo ${w.ok ? 's-site_proprio' : 's-so_rede_social'}">${esc(ROTULO_WA[st] || st)}</span>${w.telefone ? ` · ${esc(w.telefone)}` : ''}</p>`;
+  if (w.restricao) html += `<p class="aviso">O WhatsApp aplicou uma restrição à conta. Pare os envios.</p>`;
+  if (w.ok) html += '<button class="btn" id="wa-teste">Enviar teste para o meu número</button>';
+  else html += '<button class="btn primario" id="wa-conectar">Conectar WhatsApp</button>';
+  if (st === 'qr_ready') {
+    const q = await api('/api/whatsapp/qr').catch(() => ({}));
+    if (q.qrCode?.startsWith('data:image/png;base64,')) html += `<img class="qr" src="${q.qrCode}" alt="QR para conectar o WhatsApp"><p class="dica-qr">No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho.</p>`;
+  }
+  caixa.innerHTML = html + '<p class="erro-msg" id="wa-erro"></p>';
+  $('#wa-conectar')?.addEventListener('click', async (ev) => {
+    ev.currentTarget.setAttribute('aria-busy', 'true');
+    try { await api('/api/whatsapp/conectar', {}); } catch (e) { $('#wa-erro').textContent = e.message; }
+    desenharWhatsapp();
+  });
+  $('#wa-teste')?.addEventListener('click', async (ev) => {
+    ev.currentTarget.setAttribute('aria-busy', 'true');
+    try { const r = await api('/api/whatsapp/teste', {}); $('#wa-erro').textContent = `Teste enviado para ${r.telefone}. Confira no seu WhatsApp.`; }
+    catch (e) { $('#wa-erro').textContent = e.message; }
+    ev.currentTarget?.removeAttribute('aria-busy');
+  });
+  clearTimeout(qrTimer);
+  // enquanto não conecta, o QR muda a cada ~20 s: atualiza sozinho
+  if (!w.ok && ['qr_ready', 'initializing', 'authenticating'].includes(st)) qrTimer = setTimeout(desenharWhatsapp, 4000);
+}
+desenharWhatsapp();

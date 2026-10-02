@@ -155,3 +155,9 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
 .motivos { display: grid; gap: var(--esp-2); padding: var(--esp-3); border: 1px solid var(--linha); border-radius: var(--raio-controle); background: var(--superficie-2); }
 .motivos p { margin: 0; font-size: var(--t-12); color: var(--texto-3); }
 .motivos div { display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+
+/* WhatsApp: status + QR */
+.whatsapp { display: grid; gap: var(--esp-2); justify-items: start; }
+.whatsapp p { margin: 0; font-size: var(--t-13); color: var(--texto-2); }
+.whatsapp .qr { width: 232px; height: 232px; image-rendering: pixelated; background: #fff; padding: 8px; border-radius: var(--raio-controle); }
+.whatsapp .dica-qr { font-size: var(--t-12); color: var(--texto-3); }

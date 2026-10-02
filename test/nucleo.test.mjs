@@ -107,7 +107,13 @@ test('comando: literais saem do código', () => {
 
 test('webhook: leitura defensiva e opt-out', () => {
   assert.deepEqual(lerMensagemRecebida({ event: 'message.received', data: { from: '5516993850531@c.us', body: 'Quero saber mais', fromMe: false } }),
-    { evento: 'message.received', telefone: '5516993850531', texto: 'Quero saber mais', deMim: false });
+    { evento: 'message.received', telefone: '5516993850531', texto: 'Quero saber mais', deMim: false, status: null });
+  // id de privacidade (@lid) sem senderPhone não vira telefone; com senderPhone, vira
+  assert.equal(lerMensagemRecebida({ event: 'message.received', data: { from: '123456789@lid', body: 'oi' } }).telefone, null);
+  assert.equal(lerMensagemRecebida({ event: 'message.received', data: { from: '123456789@lid', senderPhone: '5516993850531', body: 'oi' } }).telefone, '5516993850531');
+  // grupo nunca é resposta de lead
+  assert.equal(lerMensagemRecebida({ event: 'message.received', data: { from: '5516993850531@c.us', isGroup: true, kind: 'group', body: 'oi' } }).telefone, null);
+  assert.equal(lerMensagemRecebida({ event: 'session.status', data: { sessionId: 'x', status: 'ready' } }).status, 'ready');
   assert.ok(PEDIU_PARA_SAIR.test('SAIR'));
   assert.ok(PEDIU_PARA_SAIR.test('não tenho interesse, obrigado'));
   assert.ok(!PEDIU_PARA_SAIR.test('Quero saber o preço'));

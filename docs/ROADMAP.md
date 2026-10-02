@@ -156,6 +156,8 @@ Conjunto fixo de leads de teste, métricas de calibração das decisões (`[R:62
 96. Mensagem de áudio gerada localmente (estudo, só com seu ok) `[R:181]` VoiceStudio
 97. Transcrever áudio recebido localmente `[R:188]` OpenWhispr
 98. Integração com outros canais (Telegram) — estudo `[R:167]` ChannelsSDK
+    - Alternativa oficial ao OpenWA: `david-lev/pywa` (MIT) sobre a WhatsApp Cloud API da Meta — sem risco de banimento,
+      mas exige número dedicado, conta Meta Business e modelo aprovado (pago) para a 1ª mensagem a quem nunca falou com você.
 99. Caixa de entrada única por lead `[R:123]` pizza-bot (estudo de UX)
 100. Proposta em PDF gerada a partir do lead `[C]`
 101. Mini-site de demonstração gerado para o lead (mostrar antes de vender) `[C]`

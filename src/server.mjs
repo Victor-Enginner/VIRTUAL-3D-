@@ -3,14 +3,14 @@ import http from 'node:http';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { CONFIG, ROOT } from './config.mjs';
-import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes } from './db.mjs';
+import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
 import { AGENTES, ROTULO_ABORDAGEM, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio } from './agentes.mjs';
 import { interpretar } from './comando.mjs';
 import { saudeOllama } from './llm.mjs';
-import { lerMensagemRecebida, saudeOpenwa } from './envio/openwa.mjs';
+import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSessao, lerMensagemRecebida, qrSessao, saudeOpenwa, sessaoId, temChave } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
@@ -19,6 +19,7 @@ import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal,
 
 const db = abrirBanco(CONFIG.dataDir);
 const orq = criarOrquestrador(db);
+if (!sessaoId()) definirSessao(lerFlag(db, 'openwa_sessao', null)); // sessão conectada pelo Painel
 const PUBLIC = path.join(ROOT, 'public');
 
 class HttpError extends Error { constructor(status, msg) { super(msg); this.status = status; } }
@@ -230,9 +231,40 @@ rota('POST', '/webhooks/openwa', ({ url, body }) => {
   const esperado = CONFIG.webhookToken;
   if (!esperado || tok.length !== esperado.length || !crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(esperado))) throw new HttpError(401, 'token inválido');
   const m = lerMensagemRecebida(body);
+  if (m.status) { registrar(db, 'leo', 'whatsapp', `WhatsApp: sessão ${m.status}`); return { ok: true }; }
   const lead = receberMensagem(db, m);
   if (!lead && m.telefone) registrar(db, 'leo', 'webhook', `Evento ${m.evento || '?'} de número fora da base`, { dados: { evento: m.evento } });
   return { ok: true };
+});
+
+// ---------- WhatsApp (OpenWA): conectar pelo QR, status e um teste para o seu próprio número
+const exigirChave = () => { if (!temChave()) throw new HttpError(409, 'OpenWA sem chave: defina OPENWA_API_KEY no .env (o OpenWA grava a chave em data/.api-key no 1º boot)'); };
+rota('GET', '/api/whatsapp', async () => ({ chave: temChave(), sessao: sessaoId(), ...(await saudeOpenwa()) }));
+rota('POST', '/api/whatsapp/conectar', async () => {
+  exigirChave();
+  if (!CONFIG.webhookToken || CONFIG.webhookToken.length < 16) throw new HttpError(409, 'defina WEBHOOK_TOKEN (16+ caracteres) no .env');
+  try {
+    const id = await garantirSessao();
+    definirSessao(id); salvarFlag(db, 'openwa_sessao', id);
+    const s = await saudeOpenwa();
+    if (!s.ok && !['qr_ready', 'initializing', 'authenticating'].includes(s.status)) await iniciarSessao();
+    const webhook = await garantirWebhook(`http://127.0.0.1:${CONFIG.port}/webhooks/openwa?token=${CONFIG.webhookToken}`, CONFIG.webhookToken);
+    registrar(db, 'leo', 'whatsapp', `Sessão do WhatsApp iniciada; webhook ${webhook}. Escaneie o QR no Painel.`);
+    return { sessao: id, webhook, ...(await saudeOpenwa()) };
+  } catch (e) { throw new HttpError(502, e.message); }
+});
+rota('GET', '/api/whatsapp/qr', async () => {
+  exigirChave();
+  try { return await qrSessao(); } catch (e) { return { qrCode: null, ...(await saudeOpenwa()), aviso: e.message }; }
+});
+// o único envio que não passa pela fila: para o seu próprio número, para provar que a conexão funciona
+rota('POST', '/api/whatsapp/teste', async () => {
+  const s = await saudeOpenwa();
+  if (!s.ok || !s.telefone) throw new HttpError(409, `WhatsApp não está pronto (${s.status || s.erro || 'sem sessão'})`);
+  try { await enviarTexto(s.telefone, 'Teste do Prospector: o WhatsApp está conectado. Nenhum cliente recebeu esta mensagem.'); }
+  catch (e) { throw new HttpError(502, e.message); }
+  registrar(db, 'leo', 'whatsapp', `Teste enviado para o seu próprio número (${formatarTelefone(s.telefone)})`);
+  return { ok: true, telefone: s.telefone };
 });
 
 const limitador = criarLimitador();
