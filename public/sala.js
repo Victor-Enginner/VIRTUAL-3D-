@@ -2,7 +2,7 @@
 // cada agente decide onde estar pela máquina de estados (sala/comportamento.js), anda pela
 // grade com A* (sala/caminhos.js) e mostra no monitor o que está fazendo de verdade.
 import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { MapControls } from 'three/addons/controls/MapControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { criarEscritorio } from './sala/cena.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
@@ -57,11 +57,61 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 cena.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 cena.environmentIntensity = 0.32;
 const camera = new THREE.PerspectiveCamera(40, 1, 0.1, 200);
-const controles = new OrbitControls(camera, renderer.domElement);
+// Câmera de "mapa" (padrão de jogos de escritório/cidade), não de órbita em volta de um objeto:
+//   arrastar (esquerdo / 1 dedo) = andar pelo chão, como a mãozinha · direito (2 dedos) = girar
+//   scroll / pinça = aproximar ONDE o mouse aponta · WASD/setas = andar · a câmera não sai da sala
+const controles = new MapControls(camera, renderer.domElement);
 controles.target.set(0, 0.6, -0.5);
 controles.enableDamping = true;
-controles.maxPolarAngle = Math.PI * 0.45;
-controles.minDistance = 4;
+controles.dampingFactor = 0.14;          // para logo depois de soltar (antes "flutuava")
+controles.screenSpacePanning = false;    // arrastar move no plano do chão, não sobe/desce
+controles.zoomToCursor = true;           // aproxima no ponto do cursor, não no centro da tela
+controles.zoomSpeed = 1.1;
+controles.rotateSpeed = 0.55;
+controles.panSpeed = 1.0;
+controles.maxPolarAngle = Math.PI * 0.45; // nunca por baixo do piso
+controles.minPolarAngle = Math.PI * 0.08; // nem totalmente de cima (perde a noção de profundidade)
+controles.minDistance = 2.2;              // dá para chegar perto de uma mesa
+const ALVO_Y = 0.6;
+// limites do alvo: o centro da tela fica sempre dentro da sala (26 × 18 m, com folga nas paredes)
+const LIMITE = { x0: -12.2, x1: 12.2, z0: -8.2, z1: 8.2 };
+const auxDelta = new THREE.Vector3();
+function prenderNaSala() {
+  const t = controles.target;
+  auxDelta.set(
+    Math.min(LIMITE.x1, Math.max(LIMITE.x0, t.x)) - t.x,
+    ALVO_Y - t.y,
+    Math.min(LIMITE.z1, Math.max(LIMITE.z0, t.z)) - t.z,
+  );
+  if (auxDelta.lengthSq() > 1e-10) { t.add(auxDelta); camera.position.add(auxDelta); } // move os dois juntos: não gira a vista
+}
+// cursor de "mãozinha": aberta para arrastar, fechada enquanto arrasta
+renderer.domElement.style.cursor = 'grab';
+renderer.domElement.addEventListener('pointerdown', (e) => { if (e.button === 0) renderer.domElement.style.cursor = 'grabbing'; });
+addEventListener('pointerup', () => { renderer.domElement.style.cursor = 'grab'; });
+// teclado: WASD/setas andam pelo chão na direção em que a câmera olha (fora de campos de texto)
+const teclas = new Set();
+addEventListener('keydown', (e) => {
+  if (/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) { teclas.add(k); e.preventDefault(); }
+});
+addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+addEventListener('blur', () => teclas.clear());
+const auxFrenteCam = new THREE.Vector3(), auxLado = new THREE.Vector3();
+function andarComTeclado(dt) {
+  if (!teclas.size) return;
+  camera.getWorldDirection(auxFrenteCam); auxFrenteCam.y = 0; auxFrenteCam.normalize();
+  auxLado.crossVectors(auxFrenteCam, camera.up).normalize();
+  const f = (teclas.has('w') || teclas.has('arrowup') ? 1 : 0) - (teclas.has('s') || teclas.has('arrowdown') ? 1 : 0);
+  const l = (teclas.has('d') || teclas.has('arrowright') ? 1 : 0) - (teclas.has('a') || teclas.has('arrowleft') ? 1 : 0);
+  if (!f && !l) return;
+  // mais longe = anda mais rápido (como no mapa), entre 3 e 12 m/s
+  const vel = Math.min(12, Math.max(3, camera.position.distanceTo(controles.target) * 0.45));
+  auxDelta.copy(auxFrenteCam).multiplyScalar(f).addScaledVector(auxLado, l).normalize().multiplyScalar(vel * dt);
+  controles.target.add(auxDelta); camera.position.add(auxDelta);
+  if (!cameraMexida) { cameraMexida = true; voo = null; marcarVista(null); }
+}
 const DIRECAO_CAMERA = new THREE.Vector3(0.55, 0.78, 0.92).normalize();
 // celular em pé: câmera mais alta e mais perto, a sala inteira não cabe na largura sem virar miniatura
 const DIRECAO_RETRATO = new THREE.Vector3(1.0, 1.15, 0.3).normalize(); // olhando pelo lado: o comprimento da sala vira a altura da tela
@@ -706,7 +756,9 @@ renderer.setAnimationLoop(() => {
   const robo = escritorio.robo?.();
   if (robo) { if (!multidao.agentes.has('robo')) entrar(multidao, 'robo', robo.x, robo.z); fixar(multidao, 'robo', true, robo.x, robo.z); }
   animarPainelLed(escritorio.painel, dt, t, semMovimento);
+  andarComTeclado(dt);
   controles.update();
+  prenderNaSala();
   renderer.render(cena, camera);
   rotulos.render(cena, camera);
 });
