@@ -44,3 +44,4 @@ git checkout main
 |---|---|---|---|---|---|
 | `producao-2026-10-03` | 0b5b244 | 2026-10-03 | 74 | data/estados/producao-2026-10-03.db | B1 portão, B7 preso 3 sinais, B10 calibração, B3 3 zonas, trava de verificação, PDF do workflow |
 | `producao-2026-10-03-2` | 43cc60c | 2026-10-03 | 74 | data/estados/producao-2026-10-03-2.db | Frontend nº 1: aprovação em cartões com desfazer e gesto |
+| `producao-2026-10-03-3` | 4c54660 | 2026-10-03 | 77 | data/estados/producao-2026-10-03-3.db | Visual Órbita: preto + neon, rede neural viva, fonte nativa; cartões de aprovação |
