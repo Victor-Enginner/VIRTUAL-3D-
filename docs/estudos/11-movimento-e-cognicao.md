@@ -39,7 +39,17 @@ simulação de multidões resolvem isso.
 (menor distância 0,54 m = dois corpos), velocidade máxima 1,05 m/s, todos chegam a < 5 cm do
 lugar, rodas de conversa formadas; 5 para a copa ao mesmo tempo: 25 s (antes 37 s, com travamento).
 
+## Feito em 04/10/2026 (segunda rodada)
+| Peça | Arquivo | Fonte |
+|---|---|---|
+| **Rotina do dia** (camada de plano dos Generative Agents): café, reunião da Alva às 9h, almoço, café da tarde; muda por dia, estável no dia; trabalho real passa na frente | `public/sala/rotina.js` + `comportamento.js` | 2304.03442 |
+| **Reunião diária**: 4 cadeiras da mesa de reunião (quem sobra fica em pé em volta), Alva conduz na TV | `cena.js`, `vagas.js` | — |
+| **Olhar**: na roda, olham para quem fala; na reunião, para a Alva. Mede o rosto real depois da animação e gira só a diferença, no eixo vertical do mundo convertido para o osso (P⁻¹·R·P), limite ~55°. Trata pose que reescreve a cabeça (em pé) e pose que não reescreve (sentado) | `sala.js` (`olhar`) | prática de jogos (look-at) |
+| **Agenda de hoje** na ficha de cada agente | `sala.js`, `sala.css` | — |
+
+Medido: na reunião os 4 olham para a Alva com erro de 0° (ou no limite do pescoço); o teste pegou um
+café da manhã que invadia a reunião em certos dias (corrigido: o café sempre termina antes das 9h).
+
 ## Próximos passos sugeridos
-- **Rotina do dia por agente** (Generative Agents): café de manhã, almoço, reunião da Alva às 9h — hoje a pausa é por inatividade.
 - **Behavior Tree** no lugar da máquina de estados quando os comportamentos crescerem (survey 2005.05842).
-- **Olhar**: cabeça vira para quem fala na roda (o osso Head já existe em `personagens.js`).
+- **Memória e reflexão** (Generative Agents): o agente lembrar com quem conversou e preferir/evitar a roda.

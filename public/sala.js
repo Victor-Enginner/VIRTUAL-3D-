@@ -10,6 +10,7 @@ import { buscarCaminho } from './sala/caminhos.js';
 import { proximoEstado, sortearPonto, escolherArea, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS } from './sala/comportamento.js';
 import { criarMultidao, entrar, seguir, fixar, passo, velocidade } from './sala/multidao.js';
 import { criarVagas, reservar, liberarVaga, livresEm, roda, grupos, quemFala } from './sala/vagas.js';
+import { planoDoDia, blocoAgora, proximoBloco, diaDe } from './sala/rotina.js';
 import { criarTela, desenharTela } from './sala/telas.js';
 import { desenharPainelLed, animarPainelLed, letreiroLed } from './sala/led.js';
 import { montarTV } from './sala/tv.js';
@@ -89,6 +90,7 @@ escritorio.pronto.then(() => {
     copa: [...P.copa, ...roda(G, 9.6, -0.4, 4)],
     lounge: [...roda(G, -1, 4.0, 4, 0.85)],
     janela: P.janela, biblioteca: P.biblioteca, sofa: P.sofa, tv: P.tv,
+    reuniao: [...P.reuniao, ...roda(G, -10, -6, 6, 1.45).map(({ roda: _r, ...l }) => l)], // cadeiras primeiro; quem sobra fica em pé
   });
 });
 
@@ -165,6 +167,8 @@ function bonecoReserva(cor) {
 function sentar(a, digitando) {
   a.sentado = true;
   fixar(multidao, a.id, true, a.ponto?.x, a.ponto?.z); // sentado vira obstáculo fixo
+  // o boneco vai exatamente para o assento (mesa de trabalho, cadeira da reunião ou sofá)
+  if (a.ponto) { a.p.grupo.position.x = a.ponto.x; a.p.grupo.position.z = a.ponto.z; if (a.ponto.rot != null) a.p.grupo.rotation.y = a.ponto.rot; }
   a.alturaY = offsetSentado;
   a.p.tocar(digitando ? 'digitando' : 'sentado');
 }
@@ -206,9 +210,12 @@ function atualizarAgente(a, dt, agoraMs) {
   const info = estado?.agentes?.[a.id];
   const trabalhando = info?.status === 'trabalhando';
   if (trabalhando) a.ultimaAtividade = agoraMs;
+  const hoje = new Date(agoraMs), dia = diaDe(hoje);
+  if (a.planoDia !== dia) { a.plano = planoDoDia(a.id, dia); a.planoDia = dia; }
+  a.bloco = blocoAgora(a.plano, hoje);
   const dec = proximoEstado({
     trabalhando, pausadoGlobal: estado?.pausado, ultimaAtividade: a.ultimaAtividade,
-    apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa,
+    apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa, bloco: a.bloco,
   }, agoraMs);
   // na pausa, de tempos em tempos troca de lugar (copa → janela → biblioteca), no ritmo do agente
   if (dec.estado === 'pausa' && agoraMs > a.trocaPontoEm && !a.emCaminho && vagas) {
@@ -238,6 +245,57 @@ function atualizarAgente(a, dt, agoraMs) {
   }
   g.position.y += (a.alturaY - g.position.y) * Math.min(1, dt * 6);
   a.p.mixer?.update(dt * (trabalhando ? 1.15 : 1));
+  olhar(a, dt);
+}
+
+// Olhar: na roda, todos olham para quem está falando (e quem fala olha para o grupo); na reunião,
+// todos olham para a Alva. A cada quadro mede para onde o ROSTO aponta depois da animação e gira só
+// a diferença até o alvo (limitado a ~55° do corpo), no eixo vertical do mundo convertido para o
+// osso (P⁻¹·R·P). Assim funciona em pé, sentado e com qualquer pose, sem presumir eixo do modelo.
+const auxOlhar = new THREE.Quaternion(), auxPai = new THREE.Quaternion(), auxPaiInv = new THREE.Quaternion(), auxCab = new THREE.Quaternion();
+const eixoMundoY = new THREE.Vector3(0, 1, 0), auxFrente = new THREE.Vector3(), auxPosCab = new THREE.Vector3();
+const anguloY = (q) => Math.atan2(2 * (q.w * q.y + q.x * q.z), 1 - 2 * (q.y * q.y + q.x * q.x)); // giro em torno de Y
+const normal = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+function olhar(a, dt) {
+  const cabeca = a.p.cabeca, frente = a.p.frenteCabeca;
+  if (!cabeca || !frente || !cabeca.parent) return;
+  const g = a.p.grupo;
+  cabeca.updateWorldMatrix(true, false);
+  cabeca.getWorldQuaternion(auxCab);
+  auxFrente.copy(frente).applyQuaternion(auxCab);
+  const rostoAgora = Math.atan2(auxFrente.x, auxFrente.z); // para onde a animação deixou o rosto
+  const corpo = anguloY(g.quaternion);
+  // sem alvo: volta o rosto para a frente do corpo. Algumas poses (sentado) não animam a cabeça e o
+  // giro acumularia; como o desejo é medido sobre o rosto REAL, isso também corrige o acúmulo.
+  let desejo = normal(corpo - rostoAgora);
+  if (Math.abs(desejo) < 0.08) desejo = 0; // não briga com o balanço natural da animação
+  const alvo = a.olharPara && agentes[a.olharPara]?.p.grupo.position;
+  if (alvo) {
+    cabeca.getWorldPosition(auxPosCab);
+    const paraAlvo = Math.atan2(alvo.x - auxPosCab.x, alvo.z - auxPosCab.z);
+    const relCorpo = Math.max(-0.95, Math.min(0.95, normal(paraAlvo - corpo))); // não torce o pescoço além de ~55°
+    desejo = normal(corpo + relCorpo - rostoAgora);
+  }
+  // a animação desta pose reescreveu a cabeça neste quadro? (andando/em pé: sim; sentado: não)
+  const reescrita = !a.qCabeca || cabeca.quaternion.angleTo(a.qCabeca) > 1e-5;
+  const ganho = Math.min(1, dt * 4);
+  let giro;
+  if (reescrita) {
+    // pose nova a cada quadro: o giro é o total desejado, suavizado no tempo
+    a.olharYaw = (a.olharYaw || 0) + (desejo - (a.olharYaw || 0)) * ganho;
+    giro = a.olharYaw;
+  } else {
+    // a cabeça guarda o giro anterior: aplica só um passo proporcional (converge sem passar do ponto)
+    giro = desejo * ganho;
+    a.olharYaw = 0;
+  }
+  if (Math.abs(giro) >= 0.002) {
+    cabeca.parent.getWorldQuaternion(auxPai);
+    auxPaiInv.copy(auxPai).invert();
+    auxOlhar.setFromAxisAngle(eixoMundoY, giro);
+    cabeca.quaternion.premultiply(auxPaiInv.multiply(auxOlhar).multiply(auxPai)); // P⁻¹ · R(mundo) · P
+  }
+  (a.qCabeca ||= new THREE.Quaternion()).copy(cabeca.quaternion);
 }
 
 function chegar(a) {
@@ -255,12 +313,21 @@ function chegar(a) {
 // conversas = rodas (F-formation, arXiv 1907.10384): quem chegou num lugar da mesma roda está no
 // mesmo grupo, já virado para o centro pelo próprio lugar. Turno de fala ~2 s: um fala, os outros escutam.
 function atualizarConversas() {
-  for (const a of Object.values(agentes)) a.conversando = false;
+  for (const a of Object.values(agentes)) { a.conversando = false; a.olharPara = null; }
   const agora = Date.now();
   const falando = new Set();
   if (vagas) for (const membros of grupos(vagas, (id) => agentes[id] && !agentes[id].emCaminho && agentes[id].estado !== 'trabalhando')) {
     for (const id of membros) agentes[id].conversando = true;
-    falando.add(quemFala(membros, agora + membros.length * 700));
+    const fala = quemFala(membros, agora + membros.length * 700);
+    falando.add(fala);
+    // quem escuta olha para quem fala; quem fala olha para um ouvinte (troca a cada turno)
+    for (const id of membros) agentes[id].olharPara = id === fala ? membros[(membros.indexOf(fala) + 1) % membros.length] : fala;
+  }
+  // reunião diária: quem está sentado à mesa olha para a Alva apresentando na TV
+  const alva = agentes.alva;
+  if (alva && alva.estado === 'apresentando' && !alva.emCaminho) {
+    falando.add('alva');
+    for (const a of Object.values(agentes)) if (a.estado === 'reuniao' && !a.emCaminho) a.olharPara = 'alva';
   }
   for (const a of Object.values(agentes)) {
     if (a.conversando) a.estado = 'conversando';
@@ -300,7 +367,8 @@ function atualizarRotulos() {
     const txt = {
       trabalhando: info.tarefas?.map((t) => t.texto).join(' · ') || 'Trabalhando', na_mesa: info.fila ? `${info.fila} na fila` : 'Na mesa, aguardando',
       pausa: { copa: 'Tomando um café', janela: 'Olhando pela janela', biblioteca: 'Na biblioteca', lounge: 'No lounge' }[a.destino] || 'Em pausa',
-      conversando: 'Conversando', apresentando: 'Apresentando o resumo', desligado: 'Pausado (no sofá)',
+      conversando: 'Conversando', apresentando: a.bloco?.atividade === 'reuniao' ? 'Conduz a reunião diária' : 'Apresentando o resumo', desligado: 'Pausado (no sofá)',
+      rotina: a.bloco?.rotulo || 'Pausa', reuniao: 'Na reunião diária',
     }[a.estado] || '';
     // TOCOMAS: quem o controlador segurou mostra o motivo; a Alva mostra os leads que saíram da fila
     const ctrl = estado?.tocomas?.controlador || {};
@@ -468,6 +536,8 @@ async function abrirFicha(id, rolar = true) {
   $('#ficha-conteudo').innerHTML = `
     <h2>${esc(info.nome)}</h2><p class="papel">${esc(info.papel)} — ${esc(info.funcao)}</p>
     ${a ? `<p class="agora">Agora: <b>${esc(a.el.querySelector('.tarefa')?.textContent || a.estado)}</b></p>` : ''}
+    ${a?.plano ? `<section class="bloco"><h3>Agenda de hoje</h3><ol class="agenda">${a.plano.map((b) => `<li class="${a.bloco === b ? 'agora' : ''}"><time>${esc(b.das)}–${esc(b.ate)}</time><span>${esc(b.rotulo)}</span></li>`).join('')}</ol>
+      <p class="nota-agenda">Trabalho real passa na frente do plano: se chegar um lead, ${esc(info.nome)} volta para a mesa.</p></section>` : ''}
     ${id === 'operador' && estado.funil.mensagem ? `<a class="btn primario" href="/">Abrir ${estado.funil.mensagem} mensagem(ns) para aprovar</a>` : ''}
     ${extra}
     <section class="bloco"><h3>Últimos eventos</h3><ol class="feed">${meus.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>Nada ainda.</span></li>'}</ol></section>`;

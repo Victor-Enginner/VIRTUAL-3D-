@@ -258,6 +258,7 @@ export function criarEscritorio(cena, cores) {
     sofa: [{ x: -2.6, z: 7.15, rot: Math.PI, senta: true }, { x: -1.6, z: 7.15, rot: Math.PI, senta: true }, { x: -0.4, z: 7.15, rot: Math.PI, senta: true },
       { x: 0.6, z: 7.15, rot: Math.PI, senta: true }, { x: -4.2, z: 5.2, rot: Math.PI / 2, senta: true }],
     tv: [{ x: -8.6, z: -7.9, rot: Math.PI * 0.15 }],
+    reuniao: [[-0.45, -0.85, 0], [0.45, -0.85, 0], [-0.45, 0.85, Math.PI], [0.45, 0.85, Math.PI]].map(([dx, dz, rot]) => ({ x: -10 + dx, z: -6 + dz, rot, senta: true })),
   };
 
   // telão de LED de parede (fundo, centro): matriz de LEDs real com o funil (sala/led.js)

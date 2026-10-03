@@ -7,16 +7,22 @@
 //   apresentando → acabou de fazer o briefing (Alva) ou relatório: fica em pé na TV da reunião
 //   desligado    → agentes pausados pelo operador: descansam no sofá do lounge
 //   na_mesa      → ocioso há pouco tempo: continua sentado, sem digitar (pode vir tarefa já)
+//   rotina       → o plano do dia (rotina.js) manda: café, almoço, pausa da tarde
+//   reuniao      → reunião diária da Alva às 9h: senta à mesa de reunião (a Alva apresenta na TV)
 
 export const PAUSA_APOS_MS = 45_000;      // a especificação fala em 15 min; na demonstração ao vivo 45 s mostra a vida da sala
 export const APRESENTACAO_MS = 25_000;
 export const TEMPO_NO_PONTO_MS = [18_000, 40_000]; // quanto tempo fica na copa/janela antes de trocar de lugar
 
+// Prioridades (de cima para baixo): pausado por você > trabalho real > briefing da Alva > você chamou
+// a equipe > ROTINA DO DIA (plano: café, reunião, almoço) > ficou ativo há pouco > pausa por ócio.
+// `ag.bloco` = o que o plano do dia manda agora (rotina.js), ou null.
 export function proximoEstado(ag, agora) {
   if (ag.pausadoGlobal) return { estado: 'desligado', destino: 'sofa' };
   if (ag.trabalhando) return { estado: 'trabalhando', destino: 'mesa' };
   if (ag.apresentarAte && agora < ag.apresentarAte) return { estado: 'apresentando', destino: 'tv' };
   if (ag.chamadoAteMs && agora < ag.chamadoAteMs) return { estado: 'na_mesa', destino: 'mesa' };
+  if (ag.bloco) return { estado: ag.bloco.atividade === 'reuniao' ? (ag.bloco.area === 'tv' ? 'apresentando' : 'reuniao') : 'rotina', destino: ag.bloco.area, rotulo: ag.bloco.rotulo };
   if (agora - (ag.ultimaAtividade ?? agora) < PAUSA_APOS_MS) return { estado: 'na_mesa', destino: 'mesa' };
   return { estado: 'pausa', destino: ag.pontoDePausa || 'copa' };
 }

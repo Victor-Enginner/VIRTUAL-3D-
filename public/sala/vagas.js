@@ -42,7 +42,7 @@ export function reservar(v, agente, area) {
   const livres = livresEm(v, area);
   if (!livres.length) return null;
   // roda primeiro (gente junta conversa), a mais cheia antes; lugar solo (balcão, janela) só quando a roda enche
-  const nota = (l) => (l.roda ? 10 + [...v.lugares.values()].filter((o) => o.roda === l.roda && o.dono).length : 0);
+  const nota = (l) => (l.senta ? 30 : l.roda ? 10 + [...v.lugares.values()].filter((o) => o.roda === l.roda && o.dono).length : 0);
   livres.sort((a, b) => nota(b) - nota(a));
   livres[0].dono = agente;
   return livres[0];

@@ -143,6 +143,15 @@ export function criarPersonagem(base, cor) {
   // passo da animação acompanha a velocidade real (sem pé deslizando nem "correria")
   const V_CLIPE = 1.0; // m/s em que o ciclo de caminhada do modelo parece natural
   function ritmoPasso(v) { if (acoes.walk) acoes.walk.timeScale = Math.min(1.25, Math.max(0.55, v / V_CLIPE)); }
+  // "para onde o rosto aponta" no espaço do osso da cabeça, medido na pose de repouso (o personagem
+  // olha para +Z): não dá para presumir um eixo fixo, o Xbot tem a cabeça com eixos girados
+  const cabeca = osso(raiz, 'Head');
+  let frenteCabeca = null;
+  if (cabeca) {
+    grupo.updateMatrixWorld(true);
+    const q = cabeca.getWorldQuaternion(new THREE.Quaternion()).invert();
+    frenteCabeca = new THREE.Vector3(0, 0, 1).applyQuaternion(q).normalize();
+  }
   tocar('idle', 0);
-  return { grupo, raiz, mixer, tocar, gesto, ritmoPasso, cabeca: osso(raiz, 'Head') };
+  return { grupo, raiz, mixer, tocar, gesto, ritmoPasso, cabeca, frenteCabeca };
 }
