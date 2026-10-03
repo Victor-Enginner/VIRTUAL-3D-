@@ -9,9 +9,3 @@
   to = "https://prospector-demo.onrender.com/api/:splat"
   status = 200
   force = true
-
-# demonstração não precisa aparecer em buscador
-[[headers]]
-  for = "/*"
-  [headers.values]
-    X-Robots-Tag = "noindex"
