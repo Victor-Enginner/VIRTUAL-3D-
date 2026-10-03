@@ -24,6 +24,7 @@
       <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
       <div class="titulo"><h1>Sala 3D</h1><p id="chips" class="saude">Montando o escritório…</p></div>
       <div class="acoes">
+        <button class="btn" id="btn-tv" aria-expanded="false" aria-controls="tv-painel" title="TV ao vivo na sala de reunião">TV</button>
         <button class="btn" id="btn-som" aria-pressed="false" title="Digitação e envelopes, gerados no navegador">Som desligado</button>
         <button class="btn" id="btn-pausa">Pausar agentes</button>
       </div>
@@ -33,6 +34,7 @@
       <div id="cena" class="cena" aria-label="Escritório 3D dos agentes. A mesma informação está na barra lateral e no Painel."></div>
       <p class="carregando" id="carregando" role="status">Carregando personagens…</p>
       <nav class="vistas" id="vistas" aria-label="Pontos de vista da câmera"></nav>
+      <aside class="tv-painel" id="tv-painel" hidden aria-label="TV ao vivo"></aside>
       <p class="dica" id="dica">Arraste para girar · role para aproximar · clique em um agente</p>
       <p class="sem-webgl" id="sem-webgl" hidden>O navegador não abriu o WebGL. A barra lateral e o <a href="/">Painel</a> mostram as mesmas informações.</p>
       <aside class="ficha-agente" id="ficha" hidden aria-live="polite">

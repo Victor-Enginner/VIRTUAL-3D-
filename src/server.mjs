@@ -7,7 +7,7 @@ import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjuste
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
-import { AGENTES, ROTULO_ABORDAGEM, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio } from './agentes.mjs';
+import { AGENTES, ROTULO_ABORDAGEM, reavaliarBloqueados, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio } from './agentes.mjs';
 import { interpretar } from './comando.mjs';
 import { saudeOllama } from './llm.mjs';
 import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSessao, lerMensagemRecebida, qrSessao, saudeOpenwa, sessaoId, temChave } from './envio/openwa.mjs';
@@ -232,6 +232,11 @@ rota('POST', '/api/ajustes', ({ body }) => {
     },
   };
   salvarAjustes(db, novo);
+  // B16: desligar "só celular" libera na hora os leads fixos que estavam parados antes da Maia
+  if (atual.envio.so_celular !== false && novo.envio.so_celular === false) {
+    const n = reavaliarBloqueados(db);
+    if (n) registrar(db, 'alva', 'reavaliacao', `"Só celular" desligado: ${n} lead(s) de telefone fixo foram para a Maia`);
+  }
   return { ajustes: novo };
 });
 

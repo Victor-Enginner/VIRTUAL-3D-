@@ -45,12 +45,13 @@ export const AGENTES = {
 // de que precisa (portão de handoff). Recusado, vira pendência na crença em vez de job que vai falhar.
 export function passar(db, de, para, ref) {
   exigirHandoff(de, para);
-  const lead = db.prepare('SELECT nome, etapa FROM leads WHERE id = ?').get(ref);
+  const lead = db.prepare('SELECT nome, etapa, telefone_tipo FROM leads WHERE id = ?').get(ref);
   if (lead) {
-    const falta = conferirHandoff(lerCrenca(db, ref, lead.etapa), para);
+    const contexto = { soCelular: lerAjustes(db).envio.so_celular !== false, telefoneTipo: lead.telefone_tipo };
+    const falta = conferirHandoff(lerCrenca(db, ref, lead.etapa), para, contexto);
     if (falta.length) {
       if (marcarBloqueio(db, ref, para, falta)) {
-        const lista = falta.map((f) => `${f.chave}${f.tipo === 'conflito' ? ' (fontes discordam)' : ''}`).join(', ');
+        const lista = falta.map((f) => (f.chave === 'telefone_celular' ? 'telefone celular ("só celular" está ligado nos Ajustes)' : `${f.chave}${f.tipo === 'conflito' ? ' (fontes discordam)' : ''}`)).join(', ');
         registrar(db, 'alva', 'handoff_bloqueado', `${lead.nome}: não passei para "${para}" — falta ${lista}`, { lead_id: ref, dados: { de, para, falta } });
       }
       return null;
@@ -58,6 +59,17 @@ export function passar(db, de, para, ref) {
     limparBloqueio(db, ref);
   }
   return enfileirar(db, para, ref);
+}
+
+// B16: depois de mudar um ajuste que afeta os portões (ex.: desligar "só celular"), os leads
+// parados antes da Maia são reavaliados na hora em vez de esperar o próximo expediente
+export function reavaliarBloqueados(db) {
+  let liberados = 0;
+  for (const l of db.prepare("SELECT id FROM leads WHERE etapa = 'qualificado'").all()) {
+    if (estaPreso(db, l.id)) continue;
+    if (passar(db, 'controle', 'redigir', l.id)) liberados++;
+  }
+  return liberados;
 }
 
 const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

@@ -368,3 +368,25 @@ button.etapa[aria-pressed="true"] .escala { background: linear-gradient(to right
 .cartao-carimbo.aprova { color: var(--acento); text-shadow: 0 0 10px #b7ff0060; }
 .cartoes-progresso i { box-shadow: 0 0 8px #b7ff0060; }
 .toast { background: #000000f2; border-color: #55747e; box-shadow: 0 0 18px #00edff14; }
+
+/* ---------- linha do tempo do lead (gaveta) ---------- */
+.tempo { list-style: none; margin: var(--esp-3) 0 0; padding: 0; display: grid; gap: 0; position: relative; }
+.tempo-dia { margin: var(--esp-3) 0 var(--esp-2); font: 500 11px var(--fonte-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--texto-3); }
+.tempo-dia:first-child { margin-top: 0; }
+.tempo-item { position: relative; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; padding-bottom: 14px; }
+/* o fio entre os passos */
+.tempo-item::before { content: ""; position: absolute; left: 12px; top: 26px; bottom: 0; width: 2px; background: linear-gradient(var(--cor-ag), #1c1d22); opacity: .5; }
+.tempo-item:last-child::before { display: none; }
+.tempo-no { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font: 600 11px var(--fonte); color: var(--cor-ag); background: #050709; border: 1px solid color-mix(in srgb, var(--cor-ag) 60%, transparent); }
+.tempo-item p { margin: 0; font-size: var(--t-13); line-height: 1.5; }
+.tempo-item b { color: var(--cor-ag); font-weight: 600; }
+.tempo-acao { color: var(--texto-2); }
+.tempo-item time { margin-left: 4px; font: 400 11px var(--fonte-mono); color: var(--texto-3); }
+.tempo-msg { color: var(--texto-2); overflow-wrap: anywhere; }
+/* marcos: sua decisão (lima), envio e resposta (ciano), portão/fila (violeta), sair (vermelho) */
+.tempo-item.marco .tempo-no { box-shadow: 0 0 10px color-mix(in srgb, var(--cor-ag) 45%, transparent); }
+.tempo-item.voce .tempo-no { color: var(--acento); border-color: var(--acento); }
+.tempo-item.envio .tempo-no, .tempo-item.resposta .tempo-no { color: var(--ciano); border-color: var(--ciano); box-shadow: 0 0 10px #00edff40; }
+.tempo-item.resposta .tempo-msg { color: var(--texto); }
+.tempo-item.portao .tempo-no { color: var(--violeta); border-color: var(--violeta); }
+.tempo-item.sair .tempo-no { color: var(--perigo); border-color: var(--perigo); }

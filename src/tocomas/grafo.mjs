@@ -44,15 +44,25 @@ export const REQUISITOS = {
   T4_redigir: ['telefone', 'situacao_site', 'angulo'],
 };
 
-// recebe a crença (contrato "crenca") e devolve o que falta; vazio = pode passar
-export function conferirHandoff(crenca, paraJob) {
-  const precisa = REQUISITOS[noDoJob(paraJob)] || [];
+// Políticas do operador por nó (B16): não são fatos do lead, são escolhas suas nos Ajustes.
+// "só celular" ligado = a Maia não escreve para fixo (a mensagem nunca poderia ser aprovada).
+export const POLITICAS = {
+  T4_redigir: [{ chave: 'telefone_celular', vale: (ctx) => !ctx.soCelular || ctx.telefoneTipo === 'celular' }],
+};
+
+// recebe a crença (contrato "crenca") e devolve o que falta; vazio = pode passar.
+// contexto opcional: { soCelular, telefoneTipo } para as políticas do nó
+export function conferirHandoff(crenca, paraJob, contexto = null) {
+  const no = noDoJob(paraJob);
+  const precisa = REQUISITOS[no] || [];
   const falta = [];
   for (const chave of precisa) {
     const p = crenca.pendencias.find((x) => x.chave === chave && (x.tipo === 'falta_dado' || x.tipo === 'conflito'));
     if (p) falta.push({ chave, tipo: p.tipo });
     else if (!crenca.fatos.some((f) => f.chave === chave)) falta.push({ chave, tipo: 'falta_dado' });
   }
+  // política só vale com telefone conhecido: sem telefone, a falta do fato já diz tudo (evita motivo duplicado)
+  if (contexto && !falta.some((f) => f.chave === 'telefone')) for (const p of POLITICAS[no] || []) if (!p.vale(contexto)) falta.push({ chave: p.chave, tipo: 'politica' });
   return falta;
 }
 

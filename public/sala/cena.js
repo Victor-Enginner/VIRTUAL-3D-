@@ -2,6 +2,7 @@
 // O kit é modelado em escala ~1:2 (porta = 1,01); ESCALA_KIT = 2 deixa tudo em metros reais.
 // Cada modelo é "aterrado" pela caixa delimitadora (ideia do 3D-World-Creator: min.y vira 0).
 import * as THREE from 'three';
+import { criarPainelLed } from './led.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloquear, buscarCaminho, criarGrade } from './caminhos.js';
 import { criarColocador, metade, padronizar } from './modelos.js';
@@ -198,7 +199,7 @@ export function criarEscritorio(cena, cores) {
   porModelo('maquete-predio', -10, -6, 0.3, { y: 0.75, obstaculo: false });
   for (const [dx, dz, r] of [[-0.45, -0.85, 0], [0.45, -0.85, 0], [-0.45, 0.85, Math.PI], [0.45, 0.85, Math.PI]])
     porModelo('cadeira-anos60', -10 + dx, -6 + dz, r, { obstaculo: false });
-  por('televisionModern', -10, Z0 + 0.45, 0, { y: 0.9, obstaculo: false, escala: 1.6 });
+  const tvReuniao = por('televisionModern', -10, Z0 + 0.45, 0, { y: 0.9, obstaculo: false, escala: 1.6 }); // tela ao vivo: sala/tv.js
   por('speaker', -12.4, -8.4, 0);
 
   // ---------------- biblioteca (parede esquerda) ----------------
@@ -253,15 +254,11 @@ export function criarEscritorio(cena, cores) {
     tv: [{ x: -8.6, z: -7.9, rot: Math.PI * 0.15 }],
   };
 
-  // painel LED de parede (fundo, centro): mostra o funil real — 3D com função, não decoração
-  const canvasPainel = document.createElement('canvas');
-  canvasPainel.width = 1024; canvasPainel.height = 448;
-  const texturaPainel = new THREE.CanvasTexture(canvasPainel);
-  texturaPainel.colorSpace = THREE.SRGBColorSpace;
-  texturaPainel.anisotropy = 4;
+  // telão de LED de parede (fundo, centro): matriz de LEDs real com o funil (sala/led.js)
+  const painelLed = criarPainelLed();
   const moldura = new THREE.Mesh(new THREE.BoxGeometry(3.36, 1.52, 0.06), new THREE.MeshStandardMaterial({ color: 0x2a2c31, roughness: 0.3, metalness: 1 }));
   moldura.position.set(0, 1.62, Z0 + 0.22);
-  const tela = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.4), new THREE.MeshBasicMaterial({ map: texturaPainel, toneMapped: false }));
+  const tela = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.4), painelLed.material);
   tela.position.set(0, 1.62, Z0 + 0.255);
   cena.add(moldura, tela);
   // faixa de LED difusa no topo das divisórias de vidro (perfil de alumínio aceso)
@@ -319,7 +316,7 @@ export function criarEscritorio(cena, cores) {
     g.position.y = Math.abs(Math.sin(robo.passo)) * 0.025; // passada das pernas
   }
 
-  return { grade, postos, pontos, janelas, adicionarPosto, atualizar, painel: { canvas: canvasPainel, textura: texturaPainel }, vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
+  return { grade, postos, pontos, janelas, adicionarPosto, atualizar, painel: painelLed, tv: tvReuniao, vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
 }
 
 // piso de tacos: tábuas com tons levemente diferentes e juntas escuras, desenhado no canvas

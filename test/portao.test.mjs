@@ -9,7 +9,7 @@ import { lerCrenca, liberar, registrarFatos } from '../src/tocomas/crenca.mjs';
 
 function banco() {
   const db = abrirBanco(':memory:');
-  db.prepare("INSERT INTO leads (id, nome, fonte, etapa, criado_em, atualizado_em) VALUES ('L', 'Barbearia Y', 'maps', 'qualificado', ?, ?)").run(agora(), agora());
+  db.prepare("INSERT INTO leads (id, nome, fonte, etapa, telefone_tipo, criado_em, atualizado_em) VALUES ('L', 'Barbearia Y', 'maps', 'qualificado', 'celular', ?, ?)").run(agora(), agora());
   return db;
 }
 const jobs = (db, tipo) => db.prepare('SELECT COUNT(*) n FROM jobs WHERE tipo = ?').get(tipo).n;
@@ -56,4 +56,40 @@ test('portão: fato vencido conta como falta; reprocessar limpa', () => {
 test('portão: auditar não exige fato (o lead acabou de chegar)', () => {
   const db = banco();
   assert.ok(passar(db, 'varrer', 'auditar', 'L'));
+});
+
+// B16 — "só celular": a Maia não escreve para fixo; desligar o ajuste libera na hora
+import { reavaliarBloqueados } from '../src/agentes.mjs';
+import { salvarAjustes, lerAjustes } from '../src/db.mjs';
+
+function bancoFixo(tipo) {
+  const db = abrirBanco(':memory:');
+  db.prepare("INSERT INTO leads (id, nome, fonte, etapa, telefone, telefone_tipo, criado_em, atualizado_em) VALUES ('F', 'Oficina X', 'maps', 'qualificado', '551637000000', ?, ?, ?)").run(tipo, agora(), agora());
+  registrarFatos(db, 'F', [{ chave: 'telefone', valor: '551637000000', fonte: 'maps' }, { chave: 'situacao_site', valor: 'sem_site', fonte: 'auditoria' }, { chave: 'angulo', valor: 'ser_encontrado', fonte: 'regra' }]);
+  return db;
+}
+
+test('B16: com "só celular" ligado, fixo para antes da Maia com motivo de política', () => {
+  const db = bancoFixo('fixo');
+  assert.equal(passar(db, 'qualificar', 'redigir', 'F'), null);
+  assert.equal(jobs(db, 'redigir'), 0);
+  const p = lerCrenca(db, 'F', 'qualificado').pendencias.find((x) => x.tipo === 'handoff_bloqueado');
+  assert.deepEqual(p.falta, ['telefone_celular']);
+  assert.match(db.prepare("SELECT msg FROM eventos WHERE tipo = 'handoff_bloqueado'").get().msg, /só celular/);
+});
+
+test('B16: celular passa normalmente; política não vale para outras etapas', () => {
+  const db = bancoFixo('celular');
+  assert.ok(passar(db, 'qualificar', 'redigir', 'F'));
+  assert.deepEqual(conferirHandoff(lerCrenca(db, 'F', 'auditado'), 'qualificar', { soCelular: true, telefoneTipo: 'fixo' }), []);
+});
+
+test('B16: desligar "só celular" reavalia e libera o fixo na hora', () => {
+  const db = bancoFixo('fixo');
+  passar(db, 'qualificar', 'redigir', 'F');
+  const a = lerAjustes(db);
+  salvarAjustes(db, { ...a, envio: { ...a.envio, so_celular: false } });
+  assert.equal(reavaliarBloqueados(db), 1);
+  assert.equal(jobs(db, 'redigir'), 1);
+  assert.equal(lerCrenca(db, 'F', 'qualificado').pendencias.some((x) => x.tipo === 'handoff_bloqueado'), false);
 });

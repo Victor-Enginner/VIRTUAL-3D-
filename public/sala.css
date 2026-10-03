@@ -60,3 +60,17 @@
 /* agente segurado pelo controlador (TOCOMAS): borda de alerta, não de erro */
 .rotulo.espera .cartao { border-color: color-mix(in oklab, var(--alerta) 70%, var(--linha)); }
 .rotulo.espera strong i { background: var(--alerta); }
+
+/* ---------- TV ao vivo ---------- */
+#btn-tv.ativo { border-color: var(--ciano); color: var(--ciano); box-shadow: var(--brilho-ciano); }
+.tv-painel { z-index: 4; position: absolute; right: var(--esp-3); top: var(--esp-3); width: min(340px, calc(100% - 24px)); display: grid; gap: 10px; padding: 14px; background: #000000e6; border: 1px solid #55747e; border-radius: 14px; box-shadow: 0 0 18px #00edff14; backdrop-filter: blur(6px); }
+.tv-painel header { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tv-painel header strong { font-weight: 600; }
+.tv-canal { font: 500 12px var(--fonte-mono); color: var(--ciano); }
+.tv-status { margin: 0; font-size: 13px; color: var(--texto-2); }
+.tv-status.ok { color: var(--acento); } .tv-status.erro { color: var(--perigo); }
+.tv-botoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.tv-trocar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+.tv-trocar input { min-height: 38px; }
+.tv-nota { margin: 0; font-size: 11px; color: var(--texto-3); line-height: 1.5; }
+@media (max-width: 640px) { .tv-painel { top: auto; bottom: 60px; } }

@@ -240,7 +240,7 @@ function blocoAuditoria(l) {
 }
 
 // crença do lead (TOCOMAS): cada fato com fonte e validade, o que falta, e se saiu da fila
-const ROTULO_FATO = { telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
+const ROTULO_FATO = { telefone_celular: 'Telefone celular', telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
 const ROTULO_PADRAO = { parado: 'parado', ciclo: 'andando em círculo', deriva: 'mudando sem resolver' };
 const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta', handoff_bloqueado: 'parado no portão' };
 
@@ -264,10 +264,37 @@ function blocoCrencaGaveta(c, l) {
   const d = c.progresso.diagnostico;
   const preso = c.progresso.preso ? `<p class="aviso">Fora da fila${d ? ` · ${esc(ROTULO_PADRAO[d.padrao] || d.padrao)}` : ''}: ${esc(c.progresso.motivo || '')}.<br>${esc(d?.recuperacao || '"Refazer auditoria" tenta de novo')}.</p>` : '';
   const bloq = c.pendencias.find((p) => p.tipo === 'handoff_bloqueado');
-  const portao = bloq ? `<p class="aviso">Parado antes de "${esc(bloq.chave)}": falta ${esc((bloq.falta || []).map((k) => ROTULO_FATO[k] || k).join(', '))}. "Refazer auditoria" busca de novo.</p>` : '';
+  const soPolitica = bloq?.falta?.length === 1 && bloq.falta[0] === 'telefone_celular';
+  const portao = bloq ? `<p class="aviso">Parado antes de "${esc(bloq.chave)}": falta ${esc((bloq.falta || []).map((k) => ROTULO_FATO[k] || k).join(', '))}. ${soPolitica ? 'O número é fixo e "só celular" está ligado: desligue nos Ajustes se ele tiver WhatsApp.' : '"Refazer auditoria" busca de novo.'}</p>` : '';
   const pend = c.pendencias.filter((p) => p.tipo !== 'handoff_bloqueado');
   return `${preso}${portao}<ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valorFato(f, l))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
     ${pend.length ? `<p class="sub">Pendências: ${pend.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}`;
+}
+
+// ---------------------------------------------------------------- linha do tempo do lead
+// Tudo o que aconteceu com o lead, em ordem: achado → auditoria → decisão → mensagem → você → envio.
+// Cada passo com a cor do agente; marcos (sua decisão, envio, resposta) em destaque.
+const MARCO_TIPO = { aprovado: 'voce', descartado: 'voce', enviado: 'envio', resposta: 'resposta', opt_out: 'sair', handoff_bloqueado: 'portao', preso: 'portao', zona_baixa: 'portao' };
+const ROTULO_TIPO = { auditoria: 'auditou o site', decisao: 'decidiu', mensagem: 'escreveu a mensagem', aprovado: 'você aprovou', descartado: 'você descartou', enviado: 'enviou',
+  resposta: 'o negócio respondeu', opt_out: 'pediu para sair', handoff_bloqueado: 'parou no portão', preso: 'tirou da fila', aprendizado: 'aprendeu', habilidade_aplicada: 'aplicou uma regra sua',
+  zona_baixa: 'descartou sozinha', aviso: 'aviso', erro: 'erro', reavaliacao: 'reavaliou' };
+function linhaDoTempo(l, eventos, envios) {
+  const itens = [{ ts: l.criado_em, agente: 'atlas', tipo: 'achado', msg: `Encontrado no ${l.fonte === 'osm' ? 'OpenStreetMap' : 'Google Maps'} em ${l.cidade}-${l.uf}` }]
+    .concat(eventos.map((e) => ({ ts: e.ts, agente: e.agente, tipo: e.tipo, msg: e.msg })));
+  // envio feito à mão ou erro de envio que não virou evento do lead
+  for (const e of envios) if (e.status === 'erro' && !eventos.some((x) => x.tipo === 'erro')) itens.push({ ts: e.criado_em, agente: 'leo', tipo: 'erro', msg: `Envio com erro${e.resposta?.erro ? `: ${e.resposta.erro}` : ''}` });
+  itens.sort((a, b) => String(a.ts).localeCompare(String(b.ts)));
+  let dia = '';
+  return `<ol class="tempo">${itens.map((it) => {
+    const d = new Date(it.ts);
+    const rotDia = Number.isNaN(+d) ? '' : d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' });
+    const cab = rotDia && rotDia !== dia ? `<li class="tempo-dia">${esc((dia = rotDia))}</li>` : '';
+    const ag = it.tipo === 'aprovado' || it.tipo === 'descartado' ? 'operador' : it.agente;
+    const quem = ag === 'operador' ? 'Você' : estado?.agentes?.[ag]?.nome || ag;
+    const marco = MARCO_TIPO[it.tipo] || '';
+    return `${cab}<li class="tempo-item ${marco ? `marco ${marco}` : ''}" data-agente="${esc(ag)}"><span class="tempo-no" aria-hidden="true">${esc(quem[0])}</span>
+      <div><p><b>${esc(quem)}</b> <span class="tempo-acao">${esc(ROTULO_TIPO[it.tipo] || (it.tipo === 'achado' ? 'achou o lead' : it.tipo))}</span> <time>${esc(hora(it.ts))}</time></p><p class="tempo-msg">${esc(it.msg)}</p></div></li>`;
+  }).join('')}</ol>`;
 }
 
 // aviso curto no canto (o que acabou de acontecer)
@@ -323,7 +350,7 @@ async function abrirLead(id) {
     <details class="g-detalhe"><summary>O que os agentes sabem <span class="meta">versão ${crenca?.versao ?? 0}</span></summary>${blocoCrencaGaveta(crenca, l)}</details>
     <details class="g-detalhe"><summary>O que o Atlas mediu no site</summary>${blocoAuditoria(l)}</details>
     <details class="g-detalhe"><summary>Como a Nova decidiu</summary>${blocoDecisao(l.decisao)}</details>
-    <details class="g-detalhe"><summary>Histórico <span class="meta">${eventos.length}</span></summary><ol class="feed">${eventos.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>—</span></li>'}</ol></details>
+    <details class="g-detalhe" open><summary>Linha do tempo <span class="meta">${eventos.length + 1} passo(s)</span></summary>${linhaDoTempo(l, eventos, envios)}</details>
     <p class="g-mais"><button class="btn fantasma" id="g-reprocessar">Refazer auditoria</button>${naFila ? '<button class="btn fantasma" id="g-manual">Já enviei à mão</button>' : ''}</p>
 
     <footer class="g-acoes">

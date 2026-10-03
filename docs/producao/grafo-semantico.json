@@ -101,6 +101,20 @@
       "arquivo": "public/ui/neural.js"
     },
     {
+      "id": "telao_led",
+      "rotulo": "Telão de LED (shader)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/sala/led.js"
+    },
+    {
+      "id": "tv_3d",
+      "rotulo": "TV ao vivo 3D",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/sala/tv.js"
+    },
+    {
       "id": "api",
       "rotulo": "API HTTP + SSE",
       "camada": "api",
@@ -165,7 +179,7 @@
     },
     {
       "id": "grafo",
-      "rotulo": "Grafo de tarefas + portão (B1)",
+      "rotulo": "Grafo + portão (B1, B16)",
       "camada": "tocomas",
       "status": "pronto",
       "arquivo": "src/tocomas/grafo.mjs",
@@ -338,6 +352,13 @@
       "camada": "externo",
       "status": "pronto",
       "arquivo": ".ferramentas/cloudflared"
+    },
+    {
+      "id": "famelack",
+      "rotulo": "Famelack (sinais HLS)",
+      "camada": "externo",
+      "status": "pronto",
+      "arquivo": "opcional; só baixa com a TV ligada"
     }
   ],
   "arestas": [
@@ -350,6 +371,16 @@
       "de": "cartoes",
       "para": "api",
       "rel": "aprova/descarta com desfazer"
+    },
+    {
+      "de": "telao_led",
+      "para": "api",
+      "rel": "funil + eventos"
+    },
+    {
+      "de": "tv_3d",
+      "para": "famelack",
+      "rel": "lista + sinal HLS"
     },
     {
       "de": "neural_ui",

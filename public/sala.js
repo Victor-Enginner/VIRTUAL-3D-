@@ -8,7 +8,9 @@ import { criarEscritorio } from './sala/cena.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
 import { buscarCaminho } from './sala/caminhos.js';
 import { proximoEstado, sortearPonto, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS } from './sala/comportamento.js';
-import { criarTela, desenharTela, desenharPainelLed } from './sala/telas.js';
+import { criarTela, desenharTela } from './sala/telas.js';
+import { desenharPainelLed, animarPainelLed, letreiroLed } from './sala/led.js';
+import { montarTV } from './sala/tv.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { montarShell, atualizarShell } from './ui/shell.js';
 
@@ -365,6 +367,8 @@ function aoEvento(e, historico = false) {
   const ag = agentes[e.agente];
   if (ag) ag.ultimaAtividade = Date.now();
   if (ultimasLinhas[e.agente]) { ultimasLinhas[e.agente].unshift(e.msg); ultimasLinhas[e.agente].length = Math.min(6, ultimasLinhas[e.agente].length); }
+  // o telão passa o último evento no letreiro (o histórico só define o primeiro texto)
+  if (!historico || !escritorio.painel.temEvento) { letreiroLed(escritorio.painel, `${estado?.agentes?.[e.agente]?.nome || e.agente}: ${e.msg}`); escritorio.painel.temEvento = true; }
   if (!historico) {
     const rota = ROTAS[`${e.agente}:${e.tipo}`];
     if (rota && !document.hidden) voar(rota[0], rota[1], estado?.agentes?.[e.agente]?.cor || '#888');
@@ -496,6 +500,7 @@ const VISTAS = {
   copa: { rotulo: 'Copa', alvo: [10, 0.8, 1], dir: [-1, 0.9, 0.35], dist: 7, largura: 6 },
   espera: { rotulo: 'Espera', alvo: [10, 0.5, -6], dir: [-0.6, 1.0, 0.9], dist: 7, largura: 5 },
   alva: { rotulo: 'Mesa da Alva', alvo: [9.4, 0.8, 6.6], dir: [-1, 0.95, -0.25], dist: 6, largura: 3.5 },
+  tv: { rotulo: 'TV', alvo: [-10, 1.35, -8.4], dir: [0, 0.18, 1], dist: 3, largura: 2.4 },
 };
 function destinoDa(nome) {
   if (nome === 'geral') return vistaGeral();
@@ -601,14 +606,51 @@ renderer.setAnimationLoop(() => {
   animarVoo(dt);
   medirQualidade(performance.now());
   escritorio.atualizar?.(semMovimento ? 0 : dt, t);
+  animarPainelLed(escritorio.painel, dt, t, semMovimento);
   controles.update();
   renderer.render(cena, camera);
   rotulos.render(cena, camera);
 });
 
+// ------------------------------------------------------------ TV ao vivo (sala de reunião)
+const painelTv = $('#tv-painel');
+const tv = montarTV({ grupoTv: escritorio.tv, aoMudar: desenharTv });
+function desenharTv(s = tv.estado()) {
+  $('#btn-tv').textContent = s.ligada ? 'TV ligada' : 'TV';
+  $('#btn-tv').classList.toggle('ativo', s.ligada);
+  painelTv.innerHTML = `<header><strong>TV ao vivo</strong><span class="tv-canal">${esc(s.canal.nome)}</span></header>
+    <p class="tv-status ${s.erro ? 'erro' : s.ligada ? 'ok' : ''}" aria-live="polite">${s.carregando ? 'Sintonizando…' : s.erro ? esc(s.erro) : s.ligada ? `No ar${s.som ? ' · com som' : ' · sem som'}` : 'Desligada: não baixa nada até você ligar.'}</p>
+    <div class="tv-botoes"><button class="btn ${s.ligada ? '' : 'primario'}" data-tv="${s.ligada ? 'desligar' : 'ligar'}">${s.ligada ? 'Desligar' : 'Ligar'}</button>
+      <button class="btn" data-tv="som" ${s.ligada ? '' : 'disabled'}>${s.som ? 'Tirar o som' : 'Ligar o som'}</button><button class="btn" data-tv="ver">Ver a TV</button></div>
+    <form class="tv-trocar" data-tv-form><label class="sr" for="tv-link">Link de canal da Famelack</label><input id="tv-link" placeholder="Cole um link famelack.com/tv/…" autocomplete="off"><button class="btn">Trocar</button></form>
+    <p class="tv-nota">Sinal público da emissora (o mesmo da <a href="${esc(s.canal.pagina)}" target="_blank" rel="noopener noreferrer">Famelack</a>). Pausa sozinha quando você sai da aba.</p>`;
+}
+$('#btn-tv').addEventListener('click', (ev) => {
+  painelTv.hidden = !painelTv.hidden;
+  ev.currentTarget.setAttribute('aria-expanded', String(!painelTv.hidden));
+  if (!painelTv.hidden) desenharTv();
+});
+painelTv.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-tv]');
+  if (!b) return;
+  if (b.dataset.tv === 'ligar') { irParaVista('tv'); await tv.ligar(); }
+  else if (b.dataset.tv === 'desligar') tv.desligar();
+  else if (b.dataset.tv === 'som') tv.som();
+  else if (b.dataset.tv === 'ver') irParaVista('tv');
+});
+painelTv.addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const link = painelTv.querySelector('#tv-link').value.trim();
+  if (!link) return;
+  const st = painelTv.querySelector('.tv-status');
+  st.textContent = 'Procurando o canal…'; st.className = 'tv-status';
+  try { const c = await tv.trocar(link); desenharTv(); painelTv.querySelector('.tv-status').textContent = `Canal: ${c.nome}${c.geoBloqueado ? ' (pode ter bloqueio por região)' : ''}`; }
+  catch (e) { st.textContent = e.message; st.className = 'tv-status erro'; }
+});
+
 // ------------------------------------------------------------ início
 montarShell('sala', { fundoNeural: false }); // a cena 3D já é o fundo
-window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar }; // inspeção pelo console do navegador
+window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar, tv }; // inspeção pelo console do navegador
 const carregando = $('#carregando');
 try {
   base = await carregarBase((f) => { carregando.textContent = `Carregando personagens… ${Math.min(100, Math.round(f * 100))}%`; /* o total pode vir do tamanho comprimido */ });

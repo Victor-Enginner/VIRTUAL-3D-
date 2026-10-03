@@ -10,7 +10,7 @@ const DOMINIO = { coleta: 'Coleta', juizo: 'Juízo', escrita: 'Escrita', decisao
 const NOME_NO = { T1_varrer: 'Varrer o mapa', T2_auditar: 'Auditar o site', T3_qualificar: 'Qualificar', T4_redigir: 'Redigir a mensagem', T5_aprovar: 'Sua aprovação', T6_despachar: 'Enviar', T7_acompanhar: 'Acompanhar respostas', T8_aprender: 'Aprender com você' };
 const ENTREGA = { T1_varrer: 'Leads novos com fonte (Maps/OSM)', T2_auditar: 'Situação do site + sinais de atraso medidos', T3_qualificar: 'Oportunidade (regra), atividade e ângulo (modelo), prioridade', T4_redigir: 'Mensagem checada contra contradições', T5_aprovar: 'Aprovar ou descartar com motivo', T6_despachar: 'Envio no ritmo seguro', T7_acompanhar: 'Resposta, SAIR ou silêncio de 72 h', T8_aprender: 'Cabeças, calibração e propostas de regra' };
 const DONO = { atlas: 'Atlas', nova: 'Nova', maia: 'Maia', leo: 'Leo', operador: 'Você' };
-const ROT_REQ = { telefone: 'telefone', situacao_site: 'situação do site', angulo: 'ângulo' };
+const ROT_REQ = { telefone: 'telefone', situacao_site: 'situação do site', angulo: 'ângulo', telefone_celular: 'celular (se "só celular" estiver ligado)' };
 const FERRAMENTA = { coletor_maps: 'coletor do Maps', overpass: 'OpenStreetMap', buscar_seguro: 'abrir site com proteções', regras: 'regras de fato', decide: 'decide()', gerar_texto: 'modelo de escrita', checar_contradicao: 'checagem de contradições', texto_fixo: 'texto pronto', openwa: 'WhatsApp', webhook: 'webhook', aprendizado: 'aprendizado' };
 const PAPERS = [
   ['2609.37953', 'TOCOMAS', 'Grafo de tarefas, handoff só por aresta e portão de passagem (sem ele: −40,85)', 'Etapas · Portões'],
