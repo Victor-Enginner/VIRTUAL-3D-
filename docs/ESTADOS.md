@@ -49,3 +49,4 @@ git checkout main
 | `producao-2026-10-03-5` | 9096527 | 2026-10-03 | 82 | data/estados/producao-2026-10-03-5.db | B16, linha do tempo, telão LED real, TV ao vivo 3D |
 | `producao-2026-10-03-6` | 19e1cb2 | 2026-10-03 | 92 | data/estados/producao-2026-10-03-6.db | Movimento de multidão, rodas de conversa, TV nas duas telas |
 | `producao-2026-10-03-7` | dd97f6e | 2026-10-03 | 97 | data/estados/producao-2026-10-03-7.db | Rotina do dia, reunião das 9h, olhar para quem fala |
+| `producao-2026-10-03-8` | dd68117 | 2026-10-03 | 97 | data/estados/producao-2026-10-03-8.db | Câmera de mapa: arrastar anda, zoom no cursor, WASD |
