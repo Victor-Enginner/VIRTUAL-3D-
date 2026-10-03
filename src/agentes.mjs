@@ -27,6 +27,7 @@ import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politic
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
 import { conferirHandoff, exigirHandoff, visao } from './tocomas/grafo.mjs';
+import { prontidao, zona } from './tocomas/zonas.mjs';
 import { estaPreso, fatosDaFonte, fecharCiclo, lerCrenca, limparBloqueio, marcarBloqueio, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
@@ -263,6 +264,15 @@ async function qualificar(db, job, ctx) {
   decisao.aprendizado = { ...m, contribuicoes: contribuicoes(cabecas.aprovacao, x) };
   const score = Math.max(0, m.score - hab.rebaixar);
   if (hab.aplicadas.length) decisao.habilidades = hab.aplicadas.map((h) => ({ id: h.id, quando: h.quando, fornecer: h.fornecer }));
+  // 3 zonas (B3): só com o nicho calibrado; zona baixa = a Nova descarta sozinha, sem gastar a Maia
+  decisao.zona = zona(m.p_aprovacao, prontidao(db, lead.nicho), lead.id);
+  if (decisao.zona.zona === 'baixa') {
+    const chance = `${Math.round(m.p_aprovacao * 100)}%`;
+    db.prepare("UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = 'descartado', atualizado_em = ? WHERE id = ?")
+      .run(json(decisao), score, `a Nova descartou sozinha: ${chance} de chance de você aprovar (zona baixa)`, agora(), lead.id);
+    registrar(db, 'nova', 'zona_baixa', `${lead.nome}: descartei sozinha — ${chance} de chance de você aprovar, nicho calibrado com ${decisao.zona.n} decisões suas (ECE ${decisao.zona.ece})`, { lead_id: lead.id, dados: decisao.zona });
+    return;
+  }
   db.prepare('UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = ?, atualizado_em = ? WHERE id = ?')
     .run(json(decisao), score, motivo, etapa, agora(), lead.id);
   registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms${hab.aplicadas.length ? ` · ${hab.aplicadas.length} regra(s) aprendida(s)` : ''}`, { lead_id: lead.id });

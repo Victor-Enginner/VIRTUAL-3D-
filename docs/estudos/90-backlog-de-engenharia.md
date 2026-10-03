@@ -5,7 +5,7 @@ Prospector agora (modelos locais pequenos, 10 envios/dia, você aprova tudo).
 
 | # | Mudança | Onde | Fonte | Pronto quando |
 |---|---|---|---|---|
-| **B3** | **Política de 3 zonas** nas decisões da Nova: decide sozinha só nos extremos de probabilidade; o meio vai para você ("revisar") | `src/agentes.mjs` (qualificar) + Painel | 2609.33401 (System One), 2610.02076 | leads no meio aparecem marcados "a Nova pediu sua opinião" |
+| **B3** ✅ 03/10 | **Política de 3 zonas** nas decisões da Nova: decide sozinha só nos extremos de probabilidade; o meio vai para você ("revisar") | `src/agentes.mjs` (qualificar) + Painel | 2609.33401 (System One), 2610.02076 | leads no meio aparecem marcados "a Nova pediu sua opinião" |
 | **B1** ✅ 03/10 | **Portão de handoff:** antes de passar para o próximo nó, conferir se ele consegue consumir (ex.: redigir exige telefone + ângulo + situação do site válidos na crença); senão bloqueia com motivo | `passar()` + `src/tocomas/grafo.mjs` (requisitos por aresta) | 2609.37953 (VHS −40,85 sem isso) | teste: handoff sem fato obrigatório é recusado e vira pendência |
 | **B7** ✅ 03/10 | **Preso com 3 sinais** (persistência da lacuna, estagnação, recorrência) e padrão **Parado/Ciclo/Deriva**, cada um com recuperação própria (não só "tirar da fila") | `src/tocomas/crenca.mjs` | 2610.01415 (PoS) | teste com sequências artificiais classifica os 3 padrões |
 | **B6** | Separar pendência **epistêmica** (falta saber) de **realização** (falta fazer) e escolher **uma lacuna ativa** por lead | `pendencias()` | 2610.01415 | gaveta mostra "falta saber" × "falta fazer" |
@@ -20,6 +20,12 @@ Prospector agora (modelos locais pequenos, 10 envios/dia, você aprova tudo).
 | **B8** | Verificar **ordem** dos passos de planos com vários passos | `fidelidade.mjs` | 2609.38108 | quando existir plano multi-passo |
 | **B14** | **Gateway de decisões** com orçamento, cache e estatística de custo/latência (estilo JEV Showcase) | `src/decide/` | JEV Showcase `gateway/` | `/api/decide/stats` |
 | **B15** | Revisar o fetch do Atlas contra vazamento pela web: URL só vem do Maps/OSM, nunca de texto gerado por modelo | `src/auditoria.mjs` | 2610.01768 | teste: URL vinda de texto livre é recusada |
+
+## Decisões de implementação (03/10/2026)
+- **B3 só liga por nicho calibrado** (B10: 30+ decisões suas nas últimas 60, ECE ≤ 0,10). Antes disso tudo passa por você.
+- **Zona baixa** = a Nova descarta sozinha; **zona alta** só marca confiança — envio continua exigindo sua aprovação.
+- **Amostra de conferência:** 1 em 10 leads da zona baixa vem para você mesmo assim, senão a calibração dessa faixa
+  pararia de ser medida (viés de seleção).
 
 ## O que os estudos dizem para NÃO fazer
 - Não trocar o controlador por regra por um controlador LLM com orçamento pequeno (2609.38147, §7.3).

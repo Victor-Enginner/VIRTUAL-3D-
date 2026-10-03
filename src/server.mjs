@@ -14,6 +14,7 @@ import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSes
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
 import { relatorio as relatorioCalibracao } from './tocomas/calibracao.mjs';
+import { LIMITES as LIMITES_ZONA, resumoZonas } from './tocomas/zonas.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
 import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
@@ -60,7 +61,7 @@ rota('GET', '/api/estado', async () => {
     funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
     ajustes: lerAjustes(db),
-    tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20) },
+    tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20), zonas: { limites: LIMITES_ZONA, nichos: resumoZonas(db) } },
   };
 });
 

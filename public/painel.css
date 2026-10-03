@@ -268,3 +268,7 @@ button.etapa:first-child[aria-pressed="true"]::after { left: 0; }
   .foco-acao .btn { width: 100%; }
   .foco-acao .sub { display: none; }
 }
+
+/* B3: lead em que a Nova pediu sua opinião */
+.selo-zona { display: inline-block; margin-top: 4px; padding: 1px 8px; border-radius: 999px; font-size: 11px; line-height: 18px;
+  color: var(--texto-2, inherit); border: 1px dashed currentColor; opacity: .85; white-space: nowrap; }

@@ -120,12 +120,21 @@
 
   // o que é seu: aprovações pendentes e o que os agentes aprenderam com você
   // TOCOMAS: o que o controlador segurou, fidelidade aos planos e leads que saíram da fila
-  function tocomas(t) {
+  function tocomas(t, nomes = {}) {
     if (!t) return '';
     const ctrl = Object.values(t.controlador || {}).filter((d) => d.escolhida === 'esperar' || d.escolhida === 'parar_varredura');
     const f = t.fidelidade || { total: 0, preservados: 0 };
     return `${ctrl.map((d) => `<p>Controlador: ${esc(d.laco === 'varrer' ? 'varredura parada' : 'escrita em espera')} · ${esc(d.motivo)}</p>`).join('')}
-      <p>Fidelidade aos planos: <b>${f.total ? Math.round((100 * f.preservados) / f.total) : 100}%</b> de ${f.total} job(s)${t.presos?.length ? ` · <b>${t.presos.length}</b> lead(s) fora da fila` : ''}</p>`;
+      <p>Fidelidade aos planos: <b>${f.total ? Math.round((100 * f.preservados) / f.total) : 100}%</b> de ${f.total} job(s)${t.presos?.length ? ` · <b>${t.presos.length}</b> lead(s) fora da fila` : ''}</p>
+      ${zonas(t.zonas, nomes)}`;
+  }
+
+  // B3: em que nichos a Nova já pode descartar sozinha (só com a calibração confiável)
+  function zonas(z, nomes = {}) {
+    if (!z?.nichos?.length) return '';
+    const ligados = z.nichos.filter((n) => n.pronta);
+    const falta = z.nichos.filter((n) => !n.pronta).map((n) => `${esc(nomes[n.nicho] || n.nicho)}: ${n.faltam ? `faltam ${n.faltam} decisões` : `erro ${n.ece} acima de ${z.limites.ece_max}`}`);
+    return `<p>Decidir sozinha: ${ligados.length ? `<b>ligado</b> em ${ligados.map((n) => esc(nomes[n.nicho] || n.nicho)).join(', ')}` : '<b>desligado</b>'}${falta.length ? ` · ${falta.join(' · ')}` : ''}</p>`;
   }
 
   // meta-skills: o que os agentes propõem a partir dos seus descartes; nada vale sem você aceitar
@@ -160,7 +169,7 @@
     document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
       <p class="essencial"><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
       <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
-      ${tocomas(estado.tocomas)}
+      ${tocomas(estado.tocomas, estado.nichos)}
       ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}
       ${regras(habilidades)}
       <button class="btn fantasma alternar" aria-expanded="${cartaoAberto}">${cartaoAberto ? 'Menos detalhes' : 'Detalhes e regras'}</button>`;

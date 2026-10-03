@@ -159,7 +159,7 @@ async function carregarLeads() {
   $('#linhas').innerHTML = leads.map((l) => `<tr data-id="${esc(l.id)}" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}" tabindex="0" title="Com ${esc(NOME_AGENTE[DONO_DA_ETAPA[l.etapa]] || '—')} agora">
     <td><div class="nome">${esc(l.nome)}</div><div class="sub">${esc(l.categoria || '')} · <span class="sem-quebra">${esc(l.cidade)}-${esc(l.uf)}</span></div></td>
     <td>${l.situacao_site ? `<span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span>` : '<span class="sub">auditando…</span>'}</td>
-    <td>${l.score == null ? '<span class="sub">—</span>' : `<span class="prio"><b>${Number(l.score)}</b><span class="barra"><i style="width:${Number(l.score)}%"></i></span></span>`}</td>
+    <td>${l.score == null ? '<span class="sub">—</span>' : `<span class="prio"><b>${Number(l.score)}</b><span class="barra"><i style="width:${Number(l.score)}%"></i></span></span>`}${l.decisao?.zona?.zona === 'meio' && ['qualificado', 'mensagem'].includes(l.etapa) ? '<div class="selo-zona" title="Chance de aprovação no meio: a Nova deixou para você">pediu sua opinião</div>' : ''}</td>
     <td>${l.telefone ? `<span class="tel">${esc(l.telefone_fmt)}</span><div class="sub">${esc(l.telefone_tipo || '')}</div>` : '<span class="sub">sem telefone</span>'}</td>
     <td>${l.rating ? `<span class="nota">${esc(String(l.rating).replace('.', ','))} ★</span>${l.avaliacoes != null ? `<div class="sub">${esc(l.avaliacoes)} avaliações</div>` : ''}` : '<span class="sub">—</span>'}</td>
   </tr>`).join('');
@@ -191,7 +191,21 @@ function blocoDecisao(decisao) {
     const cob = a.coverage != null && a.coverage < 0.8 ? ` · <span title="massa de probabilidade que caiu nas opções">cobertura ${pct(a.coverage)}</span>` : '';
     const fonte = a.origem === 'regra' ? ' · <em>definido por regra (fato medido)</em>' : ' · <em>modelo</em>';
     return `<div class="pergunta"><span>${esc(perguntas[id] || id)}${fonte}${cob}</span>${linhas}</div>`;
-  }).join('') + blocoAprendizado(decisao.aprendizado, decisao.score_regra) + `<p class="meta">${esc(decisao.backend)} · ${esc(decisao.model || '—')} · ${esc(decisao.latency_ms)} ms${decisao.formula ? ` · prioridade = ${esc(decisao.formula)}` : ''}</p>`;
+  }).join('') + blocoAprendizado(decisao.aprendizado, decisao.score_regra) + blocoZona(decisao.zona) + `<p class="meta">${esc(decisao.backend)} · ${esc(decisao.model || '—')} · ${esc(decisao.latency_ms)} ms${decisao.formula ? ` · prioridade = ${esc(decisao.formula)}` : ''}</p>`;
+}
+
+// 3 zonas (B3): o que a Nova pôde decidir sozinha neste lead, e por quê
+const TEXTO_ZONA = {
+  baixa: 'Zona baixa: a Nova descartou sozinha.',
+  meio: 'Zona do meio: a Nova pediu sua opinião.',
+  alta: 'Zona alta: a Nova está confiante (o envio continua dependendo de você).',
+};
+function blocoZona(z) {
+  if (!z) return '';
+  const corpo = z.zona === 'sem_calibracao'
+    ? `A Nova ainda não decide sozinha neste nicho: ${esc(z.n)} de ${esc(z.n + z.faltam)} decisões suas${z.n && z.ece != null ? ` · erro de calibração ${esc(z.ece)}` : ''}.`
+    : `${esc(z.amostra ? 'Zona baixa, mas este lead caiu na amostra de conferência (1 em 10): ele vem para você para a Nova continuar sendo medida.' : TEXTO_ZONA[z.zona])} Chance de você aprovar: ${pct(z.p)} · calibrada com ${esc(z.n)} decisões (erro ${esc(z.ece)}).`;
+  return `<div class="pergunta"><span>Decidir sozinha ou perguntar · <em>3 zonas</em></span><p>${corpo}</p></div>`;
 }
 
 function blocoAprendizado(a, regra) {
