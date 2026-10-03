@@ -42,3 +42,4 @@ git checkout main
 
 | Tag | Commit | Data | Testes | Banco | O que tem |
 |---|---|---|---|---|---|
+| `producao-2026-10-03` | 0b5b244 | 2026-10-03 | 74 | data/estados/producao-2026-10-03.db | B1 portão, B7 preso 3 sinais, B10 calibração, B3 3 zonas, trava de verificação, PDF do workflow |
