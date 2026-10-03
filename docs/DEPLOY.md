@@ -1,5 +1,15 @@
 # Publicar a demonstração (Render + Netlify)
 
+**No ar desde 04/10/2026:**
+- Link para os amigos: **https://prospector-victor.netlify.app/inicio.html**
+- Servidor: **https://prospector-demo.onrender.com** (Render, conta "Vitor's workspace", Blueprint `prospector-demo`, sem relação com o Repass)
+- Republicar o site depois de mudar o front (a pasta está ligada ao `opensources-page`, por isso o `--site` explícito):
+  ```bash
+  netlify deploy --prod --dir public --site 5396338c-87fe-4c38-99a3-f1b51c9606d3
+  ```
+- O Render republica sozinho a cada push no `main` (`autoDeploy`).
+- O fluxo ao vivo (SSE) não passa pelo proxy do Netlify; as telas usam atualização periódica (Sala 3 s, Painel 8 s).
+
 A versão pública é a **demonstração** (`DEMO=1`, `src/demo.mjs`):
 - **Dados:** empresas fictícias "(exemplo)", com telefone e site de mentira; os seus leads reais nunca saem do PC.
 - **Agentes:** um simulador no lugar dos reais. Nada de Maps, Ollama ou WhatsApp, e nada é enviado.
