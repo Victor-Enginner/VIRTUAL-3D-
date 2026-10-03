@@ -568,7 +568,10 @@ export function criarOrquestrador(db) {
     if (!leadId) return;
     const etapa = db.prepare('SELECT etapa FROM leads WHERE id = ?').get(leadId)?.etapa;
     const c = fecharCiclo(db, leadId, versaoAntes, etapa);
-    if (c.preso) registrar(db, 'alva', 'preso', `Tirei da fila: ${c.motivo}. Use "Reprocessar" para tentar de novo.`, { lead_id: leadId });
+    if (c.preso && c.padrao) {
+      const d = lerCrenca(db, leadId, etapa).progresso.diagnostico;
+      registrar(db, 'alva', 'preso', `Tirei da fila (${d.padrao}): ${c.motivo}. ${d.recuperacao}.`, { lead_id: leadId, dados: d });
+    }
   }
 
   async function lacoLeo() {

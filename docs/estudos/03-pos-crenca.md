@@ -31,7 +31,8 @@ Melhor desempenho geral nos 4 benchmarks (execução e diagnóstico) com os 3 ba
 | Fatos com fonte, validade e confiança | `src/tocomas/crenca.mjs` (`registrarFatos`, `VALIDADE_DIAS`) | feito |
 | Pendências | `pendencias()` (falta_dado, conflito, aguardando_humano/resposta) | feito |
 | Conflito entre fontes | `conflitos` | feito (é a "inconsistência externa" simples) |
-| Preso por ciclos sem fato novo | `fecharCiclo` (LIMITE_PRESO = 3) | feito (só "estagnação") |
+| 3 sinais (estagnação, recorrência por Jaccard, persistência) + saúde H | `diagnosticar()` + `fecharCiclo` (janela de 4) | feito (B7) |
+| Lacuna ativa (uma por vez) | `lacunaAtiva()` | feito (B7) |
 | Separar lacuna **epistêmica** × **de realização** | — | backlog B6 |
-| Recorrência e padrões Parado/Ciclo/Deriva | — | backlog B7 |
-| Recuperação por tipo (não só "tirar da fila") | — | backlog B7 |
+| Padrões Parado/Ciclo/Deriva | `diagnosticar()` | feito (B7) |
+| Recuperação por padrão | `RECUPERACAO`: Ciclo vira conflito (corta a aresta), Parado/Deriva dizem o que fazer | feito (B7) |

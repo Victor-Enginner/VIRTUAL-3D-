@@ -224,6 +224,7 @@ function blocoAuditoria(l) {
 
 // crença do lead (TOCOMAS): cada fato com fonte e validade, o que falta, e se saiu da fila
 const ROTULO_FATO = { telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
+const ROTULO_PADRAO = { parado: 'parado', ciclo: 'andando em círculo', deriva: 'mudando sem resolver' };
 const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta', handoff_bloqueado: 'parado no portão' };
 
 // mesmos motivos de src/tocomas/habilidades.mjs (a API recusa qualquer outro)
@@ -243,7 +244,8 @@ function valorFato(f, l) {
 }
 function blocoCrencaGaveta(c, l) {
   if (!c || !c.fatos.length) return '<p class="sub">Os agentes ainda não registraram fatos sobre este lead.</p>';
-  const preso = c.progresso.preso ? `<p class="aviso">Fora da fila: ${esc(c.progresso.motivo || '')}. "Refazer auditoria" tenta de novo.</p>` : '';
+  const d = c.progresso.diagnostico;
+  const preso = c.progresso.preso ? `<p class="aviso">Fora da fila${d ? ` · ${esc(ROTULO_PADRAO[d.padrao] || d.padrao)}` : ''}: ${esc(c.progresso.motivo || '')}.<br>${esc(d?.recuperacao || '"Refazer auditoria" tenta de novo')}.</p>` : '';
   const bloq = c.pendencias.find((p) => p.tipo === 'handoff_bloqueado');
   const portao = bloq ? `<p class="aviso">Parado antes de "${esc(bloq.chave)}": falta ${esc((bloq.falta || []).map((k) => ROTULO_FATO[k] || k).join(', '))}. "Refazer auditoria" busca de novo.</p>` : '';
   const pend = c.pendencias.filter((p) => p.tipo !== 'handoff_bloqueado');

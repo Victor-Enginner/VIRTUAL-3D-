@@ -198,6 +198,27 @@
             },
             "motivo": {
               "type": "string"
+            },
+            "diagnostico": {
+              "description": "PoS (arXiv 2610.01415): 3 sinais, padrão e recuperação",
+              "type": "object",
+              "required": ["padrao", "saude", "sinais", "recuperacao"],
+              "properties": {
+                "padrao": { "enum": ["parado", "ciclo", "deriva"] },
+                "saude": { "type": "number", "minimum": 0, "maximum": 1 },
+                "sinais": {
+                  "type": "object",
+                  "required": ["estagnacao", "recorrencia", "persistencia"],
+                  "properties": {
+                    "estagnacao": { "type": "integer", "minimum": 0 },
+                    "recorrencia": { "type": "integer", "minimum": 0 },
+                    "persistencia": { "type": "integer", "minimum": 0 }
+                  }
+                },
+                "lacuna": { "type": ["string", "null"] },
+                "chaves": { "type": "array", "items": { "type": "string" } },
+                "recuperacao": { "type": "string" }
+              }
             }
           }
         },

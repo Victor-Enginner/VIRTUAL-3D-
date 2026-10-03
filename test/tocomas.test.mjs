@@ -70,7 +70,7 @@ test('preso: N ciclos sem fato novo tiram o lead da fila; reprocessar libera', (
   // progresso de verdade zera a contagem
   const v = versaoDe(db, 'L3');
   registrarFatos(db, 'L3', [{ chave: 'situacao_site', valor: 'sem_site', fonte: 'auditoria' }]);
-  assert.deepEqual(fecharCiclo(db, 'L3', v), { preso: false, ciclos: 0 });
+  assert.deepEqual(fecharCiclo(db, 'L3', v), { preso: false, ciclos: 0, saude: 1 });
 });
 
 test('fidelidade: ferramenta fora do plano é desvio', () => {
