@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; background: #000; }
+  body { position: relative; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #f4f4f5; }
+  canvas { position: absolute; inset: 0; }
+  /* brilho de fundo: ciano à direita, violeta embaixo, lima atrás do título */
+  .glow { position: absolute; border-radius: 50%; filter: blur(80px); opacity: .55; }
+  .g1 { width: 520px; height: 520px; right: -120px; top: -140px; background: #00edff33; }
+  .g2 { width: 600px; height: 380px; right: 80px; bottom: -220px; background: #a86bff38; }
+  .g3 { width: 420px; height: 300px; left: -80px; top: 120px; background: #b7ff0014; }
+  .conteudo { position: absolute; left: 72px; top: 58px; right: 470px; }
+  .marca { display: flex; align-items: center; gap: 14px; margin-bottom: 30px; }
+  .logo { width: 46px; height: 46px; border-radius: 13px; background: #b7ff00; display: grid; place-items: center; box-shadow: 0 0 22px #b7ff0080, 0 0 60px #b7ff0030; }
+  .marca b { font-size: 22px; font-weight: 650; letter-spacing: -.5px; }
+  .marca small { display: block; font-size: 13px; color: #a1a1aa; letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 10px; font-size: 14px; letter-spacing: 3px; text-transform: uppercase; color: #00edff; margin-bottom: 18px; }
+  .eyebrow i { width: 9px; height: 9px; border-radius: 50%; background: #b7ff00; box-shadow: 0 0 12px #b7ff00; }
+  h1 { font-size: 68px; line-height: .98; letter-spacing: -3.5px; font-weight: 700; }
+  h1 em { font-style: normal; color: #b7ff00; text-shadow: 0 0 28px #b7ff0066; }
+  .sub { margin-top: 18px; font-size: 20px; line-height: 1.45; color: #c8c8d0; max-width: 610px; }
+  .agentes { position: absolute; left: 72px; bottom: 48px; display: flex; gap: 10px; }
+  .ag { display: flex; align-items: center; gap: 9px; padding: 9px 15px 9px 9px; border-radius: 12px; background: #080b10f0; border: 1px solid #293741; font-size: 16px; font-weight: 550; }
+  .ag span { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-size: 14px; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 16%, #000); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 35%, transparent); }
+  /* painel à direita: "telão" de LED com o funil */
+  .painel { position: absolute; right: 64px; top: 92px; width: 380px; padding: 22px; border-radius: 22px; background: #070a0ff2; border: 1px solid #00edff40; box-shadow: 0 0 40px #00edff18, inset 0 1px 0 #00edff30; }
+  .painel .tit { display: flex; justify-content: space-between; font: 600 12px ui-monospace, Consolas, monospace; letter-spacing: 2px; color: #00b8c8; margin-bottom: 18px; }
+  .painel .tit b { color: #b7ff00; text-shadow: 0 0 10px #b7ff00; }
+  .orb { position: absolute; left: -30px; top: -30px; width: 62px; height: 62px; border-radius: 50%; padding: 3px; background: conic-gradient(from 45deg, #b7ff00, #e1ff9e, #00edff, #a86bff, #10262b, #b7ff00); box-shadow: 0 0 20px #00edff50, 0 0 50px #a86bff35; }
+  .orb span { display: block; width: 100%; height: 100%; border-radius: 50%; background: radial-gradient(ellipse at 30% 20%, #506273, #111b28 45%, #000 72%); box-shadow: inset 2px -3px 8px #00edff88; }
+  .etapa { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; padding: 11px 0; border-top: 1px solid #1c2530; }
+  .etapa:first-of-type { border-top: 0; }
+  .etapa small { font-size: 14px; color: #a1a1aa; }
+  .etapa b { font: 700 30px ui-monospace, Consolas, monospace; color: var(--c, #f4f4f5); text-shadow: 0 0 14px color-mix(in srgb, var(--c, #fff) 40%, transparent); }
+  .barra { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: #1c1d22; overflow: hidden; }
+  .barra i { display: block; height: 100%; width: var(--p); background: var(--c); box-shadow: 0 0 8px var(--c); }
+  .rodape { position: absolute; right: 64px; bottom: 66px; width: 380px; font-size: 15px; color: #8e8e98; text-align: right; }
+  .rodape b { color: #f4f4f5; font-weight: 600; }
+</style></head><body>
+<canvas id="rede" width="1200" height="630"></canvas>
+<div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
+
+<div class="conteudo">
+  <div class="marca">
+    <div class="logo"><svg width="26" height="26" viewBox="0 0 32 32"><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10" fill="none" stroke="#111900" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="22.5" r="2.2" fill="#111900"/></svg></div>
+    <div><b>Prospector</b><small>Escritório virtual 3D</small></div>
+  </div>
+  <p class="eyebrow"><i></i>Agentes de IA · ao vivo</p>
+  <h1>Sua equipe de IA<br>prospectando <em>sozinha.</em></h1>
+  <p class="sub">Acham empresas, auditam o site e escrevem a abordagem — num escritório 3D que você assiste trabalhar.</p>
+</div>
+
+<div class="agentes">
+  <div class="ag" style="--c:#d9468f"><span>A</span>Alva</div>
+  <div class="ag" style="--c:#0e9fb8"><span>A</span>Atlas</div>
+  <div class="ag" style="--c:#5b7bff"><span>N</span>Nova</div>
+  <div class="ag" style="--c:#9b6bff"><span>M</span>Maia</div>
+  <div class="ag" style="--c:#22c55e"><span>L</span>Leo</div>
+</div>
+
+<div class="painel">
+  <div class="orb"><span></span></div>
+  <div class="tit"><span>FUNIL AO VIVO</span><b>● AO VIVO</b></div>
+  <div class="etapa" style="--c:#f4f4f5;--p:100%"><small>Empresas encontradas</small><b>40</b><div class="barra"><i></i></div></div>
+  <div class="etapa" style="--c:#00edff;--p:62%"><small>Site fraco ou sem site</small><b>25</b><div class="barra"><i></i></div></div>
+  <div class="etapa" style="--c:#c9a2ff;--p:45%"><small>Mensagens escritas</small><b>18</b><div class="barra"><i></i></div></div>
+  <div class="etapa" style="--c:#b7ff00;--p:20%"><small>Responderam</small><b>08</b><div class="barra"><i></i></div></div>
+</div>
+<p class="rodape">Toque para <b>entrar no escritório</b> →</p>
+
+<script>
+// rede neural (mesma ideia do fundo do site): hubs com ramos e alguns impulsos acesos
+const c = document.getElementById('rede'), g = c.getContext('2d');
+let s = 9133; const r = () => ((s = (s * 16807) % 2147483647) - 1) / 2147483646;
+const nos = [], arestas = [];
+const add = (x, y, hub) => (nos.push({ x, y, hub }), nos.length - 1);
+for (let i = 0; i < 9; i++) {
+  const hx = [80, 640, 1130, 420, 900, 230, 1060, 560, 300][i], hy = [80, 40, 300, 600, 560, 420, 600, 330, 250][i];
+  const h = add(hx, hy, true);
+  for (let k = 0; k < 6; k++) {
+    const a = (k / 6) * Math.PI * 2 + r(), L = 70 + r() * 110;
+    const t = add(hx + Math.cos(a) * L, hy + Math.sin(a) * L);
+    arestas.push([h, t, r() > 0.6 ? '#a86bff' : '#00edff']);
+    for (const f of [-1, 1]) { const l = add(nos[t].x + Math.cos(a + f * .7) * L * .45, nos[t].y + Math.sin(a + f * .7) * L * .45); arestas.push([t, l, '#00edff']); }
+  }
+  if (i) arestas.push([h - 19 * 1, h, '#00edff']);
+}
+for (const [a, b, cor] of arestas) {
+  const p = nos[a], q = nos[b];
+  if (!p || !q) continue;
+  g.beginPath(); g.moveTo(p.x, p.y); g.quadraticCurveTo((p.x + q.x) / 2 + 20, (p.y + q.y) / 2 - 20, q.x, q.y);
+  g.strokeStyle = cor; g.globalAlpha = .16; g.lineWidth = 1; g.stroke();
+}
+for (const n of nos) { g.globalAlpha = n.hub ? .8 : .35; g.fillStyle = n.hub ? '#75fff5' : '#29a6ba'; g.beginPath(); g.arc(n.x, n.y, n.hub ? 2.6 : 1.2, 0, 7); g.fill(); }
+// impulsos acesos (lima e ciano) com brilho
+for (let i = 0; i < 26; i++) {
+  const n = nos[Math.floor(r() * nos.length)];
+  g.globalAlpha = .9; g.fillStyle = i % 3 ? '#00edff' : '#b7ff00'; g.shadowColor = g.fillStyle; g.shadowBlur = 14;
+  g.beginPath(); g.arc(n.x, n.y, 2.4, 0, 7); g.fill();
+}
+g.shadowBlur = 0; g.globalAlpha = 1;
+// escurece a área do texto para ler bem
+const grad = g.createLinearGradient(0, 0, 760, 0); grad.addColorStop(0, '#000000e0'); grad.addColorStop(1, '#00000000');
+g.fillStyle = grad; g.fillRect(0, 0, 760, 630);
+</script>
+</body></html>
