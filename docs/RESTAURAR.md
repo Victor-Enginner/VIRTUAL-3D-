@@ -46,8 +46,9 @@ Túnel temporário: baixar `cloudflared-windows-amd64.exe` (github.com/cloudflar
 
 ## Modelos 3D com restrição
 Desde 04/10/2026 o repositório é **público** (o Render da demonstração lê dele). Por isso:
-- `cadeira-branca.glb` (Sketchfab Standard, não pode ficar baixável) foi **removida** e trocada pela `cadeira-anos60` (CC-BY);
-  ela ainda existe no **histórico** do git — para sumir de vez, reescrever o histórico ou voltar o repo a privado.
+- `cadeira-branca.glb` (Sketchfab Standard) **continua** no frontend por decisão do Victor (04/10/2026). A licença
+  Standard não permite deixar o arquivo baixável; com o repo público ele fica. Se isso virar problema: repo privado
+  (e conectar o GitHub no Render/Netlify) ou tirar o arquivo do repositório.
 - `*-nc.glb` (CC-BY-NC / NC-SA) podem ser compartilhados **sem fins comerciais e com crédito** (`/creditos.html`).
   Nunca usar em material de cliente.
 - Nunca versionar `data/`, `.env` ou senhas (o `.gitignore` e a trava `npm run verificar` conferem).

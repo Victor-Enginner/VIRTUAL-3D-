@@ -37,6 +37,7 @@ export const MEDIDAS = {
   'mesa-principal': { eixo: 'z', m: 1.45 },
   'mesa-centro-vidro': { eixo: 'y', m: 0.42 },
   'cadeira-avulsa': { eixo: 'y', m: 0.8 },
+  'cadeira-branca': { eixo: 'y', m: 0.78 },
   tapete: { eixo: 'x', m: 2.41 },
 };
 

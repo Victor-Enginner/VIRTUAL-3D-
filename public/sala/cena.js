@@ -187,9 +187,8 @@ export function criarEscritorio(cena, cores) {
   porModelo('mesa-centro-vidro', X1 - 3.0, Z0 + 3.0, 0);
   porModelo('cadeira-avulsa', X1 - 4.4, Z0 + 2.4, Math.PI / 2.4, { folga: 0.1 });
   porModelo('cadeira-avulsa', X1 - 4.4, Z0 + 3.7, Math.PI / 1.7, { folga: 0.1 });
-  // (a cadeira branca era Sketchfab Standard, que não pode ficar baixável num repositório público)
-  porModelo('cadeira-anos60', X1 - 1.6, Z0 + 2.4, -Math.PI / 2.4, { folga: 0.1 });
-  porModelo('cadeira-anos60', X1 - 1.6, Z0 + 3.7, -Math.PI / 1.7, { folga: 0.1 });
+  porModelo('cadeira-branca', X1 - 1.6, Z0 + 2.4, -Math.PI / 2.4, { folga: 0.1 });
+  porModelo('cadeira-branca', X1 - 1.6, Z0 + 3.7, -Math.PI / 1.7, { folga: 0.1 });
   por('pottedPlant', X1 - 0.6, Z0 + 0.6, 0);
   por('bookcaseClosedWide', X1 - 3.0, Z0 + 0.35, 0);
   // o "operador" (você) não tem mesa no escritório: o que vai para você sai pela porta, rumo à Base
