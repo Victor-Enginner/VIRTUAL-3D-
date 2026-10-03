@@ -9,6 +9,11 @@
 <link rel="stylesheet" href="/sala.css">
 <style>
   .resumo-base { z-index: 2; position: absolute; left: var(--esp-3); top: var(--esp-3); width: min(320px, calc(100% - 24px)); background: var(--vidro); border: 1px solid var(--linha); border-radius: var(--raio-bloco); padding: var(--esp-4); display: grid; gap: var(--esp-2); backdrop-filter: blur(6px); }
+  @media (max-width: 640px) {
+    .resumo-base:not(.aberto) > :not(h2):not(.essencial):not(.btn):not(.alternar) { display: none; }
+    .resumo-base .alternar { justify-self: start; }
+  }
+  @media (min-width: 641px) { .resumo-base .alternar { display: none; } }
   @media (max-width: 640px) { .resumo-base { top: auto; bottom: var(--esp-3); left: var(--esp-3); right: var(--esp-3); width: auto; padding: var(--esp-3) var(--esp-4); } }
   .resumo-base { max-height: calc(100% - 24px); overflow: auto; }
   .resumo-base h3 { margin: var(--esp-2) 0 0; font-size: var(--t-13); }
@@ -35,7 +40,7 @@
       <div class="titulo"><h1>Base do Mestre</h1><p>Sua base, separada do escritório dos agentes.</p></div>
     </header>
     <div class="palco">
-      <div id="cena" class="cena" aria-label="Base do Mestre em 3D"></div>
+      <div id="cena" class="cena pronta" aria-label="Base do Mestre em 3D"></div>
       <p class="carregando" id="carregando" role="status">Carregando a base…</p>
       <section class="resumo-base" id="resumo" aria-live="polite"><p>Carregando…</p></section>
     </div>
@@ -46,6 +51,8 @@
   import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
   import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
   import { carregarModelo, normalizar } from '/sala/modelos.js';
+  import { carregarBase, criarPersonagem } from '/sala/personagens.js';
+  import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
   import { montarShell, atualizarShell } from '/ui/shell.js';
   montarShell('base');
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -67,8 +74,47 @@
   const ctl = new OrbitControls(cam, r.domElement);
   ctl.target.set(0, 1, 0); ctl.enableDamping = true; ctl.maxPolarAngle = Math.PI * 0.47; ctl.minDistance = 2; ctl.maxDistance = 14;
   new ResizeObserver(() => { r.setSize(alvo.clientWidth, alvo.clientHeight); cam.aspect = alvo.clientWidth / alvo.clientHeight; cam.updateProjectionMatrix();
-    const k = Math.min(1.8, Math.max(1, 0.95 / cam.aspect)); cam.position.set(5.2 * k, 4.2 * k, 5.6 * k); }).observe(alvo); // em pé, afasta para caber
-  r.setAnimationLoop(() => { ctl.update(); r.render(cena, cam); });
+    const k = Math.min(1.8, Math.max(1, 0.95 / cam.aspect)); const emPe = cam.aspect < 0.8;
+    ctl.target.set(0, emPe ? 0.1 : 1, emPe ? 0.9 : 0); cam.position.set(5.2 * k, 4.2 * k + (emPe ? -0.9 : 0), 5.6 * k + (emPe ? 0.9 : 0)); }).observe(alvo); // em pé: afasta e sobe o cômodo na tela
+  // rótulos HTML sobre a cena (mesmo estilo dos agentes da Sala 3D)
+  const rotulos = new CSS2DRenderer();
+  Object.assign(rotulos.domElement.style, { position: 'absolute', inset: '0', pointerEvents: 'none' });
+  alvo.appendChild(rotulos.domElement);
+  new ResizeObserver(() => rotulos.setSize(alvo.clientWidth, alvo.clientHeight)).observe(alvo);
+
+  // o Mestre (você) na cadeira da mesa: digita quando há mensagens esperando aprovação
+  const ASSENTO = { x: -0.18, z: -0.66, rot: Math.PI, altura: 0.5 }; // medido no modelo da base (mesa em z ≈ -1,5)
+  let mestre = null, rotuloMestre = null, elTarefa = null;
+  const relogio = new THREE.Clock();
+  carregarBase().then((base) => {
+    const p = criarPersonagem(base, '#f0953a');
+    p.grupo.updateMatrixWorld(true);
+    let quadril = null;
+    p.raiz.traverse((o) => { if (!quadril && o.isBone && /Hips$/.test(o.name)) quadril = o; });
+    const desce = quadril ? ASSENTO.altura - quadril.getWorldPosition(new THREE.Vector3()).y : 0;
+    p.grupo.position.set(ASSENTO.x, desce, ASSENTO.z);
+    p.grupo.rotation.y = ASSENTO.rot;
+    cena.add(p.grupo);
+    const el = document.createElement('div');
+    el.className = 'rotulo';
+    el.style.setProperty('--cor', '#f0953a');
+    el.innerHTML = '<div class="cartao"><strong><i></i>Você</strong><small>Mestre</small><div class="tarefa" id="tarefa-mestre">Na base</div></div>';
+    elTarefa = el.querySelector('.tarefa');
+    rotuloMestre = new CSS2DObject(el);
+    rotuloMestre.position.set(0, 1.55, 0);
+    p.grupo.add(rotuloMestre);
+    mestre = p;
+    atualizarMestre();
+  }).catch((e) => console.warn('personagem não carregou:', e.message));
+  let pendentes = 0;
+  function atualizarMestre() {
+    if (!mestre) return;
+    mestre.tocar(pendentes ? 'digitando' : 'sentado');
+    const t = elTarefa;
+    if (t) t.textContent = pendentes ? `${pendentes} mensagem(ns) para aprovar` : 'Tudo em dia';
+  }
+  r.setAnimationLoop(() => { const dt = Math.min(relogio.getDelta(), 0.1); mestre?.mixer.update(dt); ctl.update(); r.render(cena, cam); rotulos.render(cena, cam); });
+  window.__base = { THREE, cena, cam }; // inspeção pelo console
   carregarModelo('base-do-mestre').then((m) => { cena.add(normalizar(m, 'base-do-mestre')); document.querySelector('#carregando').hidden = true; })
     .catch((e) => { document.querySelector('#carregando').textContent = `A base não carregou: ${e.message}`; });
 
@@ -92,6 +138,12 @@
       <small>${h.evidencias.length} descarte(s) seu(s) como evidência${h.aplicada ? ` · aplicada ${h.aplicada}×` : ''}</small>
       <div>${(BOTOES[h.estado] || []).map(([a, r, c]) => `<button class="btn ${c}" data-regra="${esc(h.id)}" data-acao="${a}">${r}</button>`).join('')}</div></li>`).join('')}</ul>`;
   }
+  let cartaoAberto = false; // no celular o cartão começa compacto para não cobrir o 3D
+  document.querySelector('#resumo').addEventListener('click', (ev) => {
+    if (!ev.target.closest('.alternar')) return;
+    cartaoAberto = !cartaoAberto;
+    resumo().catch(() => {});
+  });
   document.querySelector('#resumo').addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-regra]');
     if (!b) return;
@@ -104,12 +156,15 @@
     const [estado, { cabecas }, { habilidades }] = await Promise.all(['/api/estado', '/api/aprendizado', '/api/habilidades'].map((u) => fetch(u).then((x) => x.json())));
     atualizarShell(estado);
     const n = estado.funil?.mensagem || 0, b = estado.briefing || {};
+    if (n !== pendentes) { pendentes = n; atualizarMestre(); }
     document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
-      <p><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
+      <p class="essencial"><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
       <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
       ${tocomas(estado.tocomas)}
       ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}
-      ${regras(habilidades)}`;
+      ${regras(habilidades)}
+      <button class="btn fantasma alternar" aria-expanded="${cartaoAberto}">${cartaoAberto ? 'Menos detalhes' : 'Detalhes e regras'}</button>`;
+    document.querySelector('#resumo').classList.toggle('aberto', cartaoAberto);
   }
   resumo().catch(() => {});
   setInterval(() => resumo().catch(() => {}), 5000);

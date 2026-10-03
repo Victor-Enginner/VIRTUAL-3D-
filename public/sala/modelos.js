@@ -134,9 +134,9 @@ function simplificar(m) {
   return s;
 }
 
-// Menos variações de shader = menos programas para a placa compilar na abertura da sala:
-// todo material desenha os dois lados (já eram 214 de 328) e o shader calcula as tangentes sozinho.
+// Menos variações de shader = menos programas para a placa compilar: o shader calcula as tangentes sozinho.
+// (O lado das faces NÃO é mexido: dioramas como a Base do Mestre dependem de as paredes da frente
+// só existirem por um lado — forçar os dois lados fechava o cômodo numa caixa.)
 export function padronizar(o) {
-  o.material.side = THREE.DoubleSide;
   if (o.geometry.attributes.tangent) o.geometry.deleteAttribute('tangent');
 }
