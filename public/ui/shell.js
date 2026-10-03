@@ -1,4 +1,5 @@
 // Barra lateral única das três telas. Mostra a equipe com o status REAL de /api/estado.
+import { montarNeural } from './neural.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const ic = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
@@ -11,7 +12,8 @@ export const ICONES = {
   menu: ic('<path d="M4 7h16M4 12h16M4 17h10"/>'),
 };
 
-const MARCA = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#f0953a"/><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10" fill="none" stroke="#0c0c11" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="22.5" r="2" fill="#0c0c11"/></svg>`;
+const MARCA = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#b7ff00"/><path d="M10 23V9h6.5a4.5 4.5 0 010 9H10" fill="none" stroke="#111900" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="21.5" cy="22.5" r="2" fill="#111900"/></svg>`;
+let neural = null; // rede do fundo (não nas telas que já têm cena 3D)
 
 const PAGINAS = [
   ['painel', '/', 'Painel'],
@@ -20,7 +22,8 @@ const PAGINAS = [
   ['base', '/base.html', 'Base do Mestre'],
 ];
 
-export function montarShell(ativa, { extra = false } = {}) {
+export function montarShell(ativa, { extra = false, fundoNeural = true } = {}) {
+  if (fundoNeural) neural = montarNeural();
   const lateral = document.querySelector('#lateral');
   lateral.innerHTML = `
     <div class="marca">${MARCA}<div><strong>Prospector</strong><small id="shell-status"><span class="ponto"></span>conectando…</small></div></div>
@@ -52,6 +55,7 @@ export function atualizarShell(estado) {
   if (!estado) return;
   const ags = Object.values(estado.agentes);
   const trabalhando = ags.filter((a) => a.status === 'trabalhando').length;
+  neural?.atividade(estado.pausado ? 0 : trabalhando); // a rede só se mexe quando a equipe trabalha
   const st = document.querySelector('#shell-status');
   if (st) {
     const cls = estado.pausado ? 'alerta' : trabalhando ? 'vivo' : 'ok';

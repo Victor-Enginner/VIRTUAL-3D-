@@ -329,3 +329,42 @@ body.sem-rolagem { overflow: hidden; }
 button.link { background: none; border: 0; padding: 0; font: inherit; color: var(--acento-texto); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 button.link:hover { color: var(--acento-forte); }
 button.link:focus-visible { outline: none; box-shadow: var(--anel-foco); border-radius: 2px; }
+
+/* ---------- camada Órbita (04/10/2026): preto, neon lima/ciano/violeta, cartões de número ---------- */
+.comando { background: #090c12f5; border-color: #687982; box-shadow: 0 0 0 1px #00edff0b, 0 18px 60px #000; }
+.comando:focus-within { border-color: var(--ciano); box-shadow: 0 0 0 1px #00edff44, 0 0 24px #00edff18; }
+.mic { background: #050709; border-color: #35434e; }
+.mic:hover { color: var(--ciano); border-color: var(--ciano); background: #050709; }
+/* funil vira 5 cartões de número, como os "stats" do Órbita */
+.funil { gap: 12px; border: 0; }
+.etapa, .etapa + .etapa { padding: var(--esp-5); border: 1px solid #293741; border-radius: 14px; background: #070a0ff2; }
+button.etapa { transition: border-color var(--dur-base), box-shadow var(--dur-base), background var(--dur-rapida); }
+button.etapa:hover { background: #0a0e14f2; border-color: #a1a1aa; }
+.etapa b { font-size: 32px; font-weight: 500; letter-spacing: -1px; }
+.etapa .conv { top: var(--esp-5); right: var(--esp-5); }
+.etapa.destaque { background: linear-gradient(130deg, #a86bff12, #08090ef5 80%); border-color: #a86bff77; box-shadow: inset 0 1px 0 #a86bff55, 0 0 20px #a86bff0b; }
+.etapa.destaque b { color: #c9a2ff; text-shadow: 0 0 16px #a86bff40; }
+button.etapa[aria-pressed="true"] { border-color: #b7ff0052; box-shadow: inset 0 1px 0 #b7ff0038, 0 0 18px #b7ff000d; }
+button.etapa[aria-pressed="true"] b { color: var(--acento); text-shadow: 0 0 14px #b7ff0040; }
+button.etapa[aria-pressed="true"]::after { display: none; }
+.etapa .escala { background: linear-gradient(to right, var(--ciano) var(--p), #1c1d22 var(--p)); opacity: .7; }
+button.etapa[aria-pressed="true"] .escala { background: linear-gradient(to right, var(--acento) var(--p), #1c1d22 var(--p)); box-shadow: 0 0 8px #b7ff0030; }
+/* destaque do topo: o número em neon (brilho só em número, nunca em texto corrido) */
+.foco h2 b { color: var(--acento); text-shadow: 0 0 18px #b7ff0045, 0 2px 12px #000; }
+.foco-acao .sub { color: var(--texto-3); }
+/* abas: a selecionada como o "badge verde" do Órbita */
+.aba[aria-selected="true"] { background: #b7ff000d; border-color: #b7ff002e; color: var(--acento); }
+.aba[aria-selected="true"] em { color: var(--acento); }
+.busca { background: #050709ee; border-color: #35434e; }
+.busca:focus-within { border-color: var(--ciano); box-shadow: 0 0 0 1px #00edff44; }
+/* lista sobre a rede: fundo quase preto para leitura */
+.tabela-wrap { background: #000000b8; border-radius: 12px; }
+.tabela tbody tr:hover { background: #0b0f15; }
+.tabela tbody tr:focus-visible { box-shadow: inset 0 0 0 2px var(--ciano); }
+.prio .barra i { background: var(--acento); box-shadow: 0 0 6px #b7ff0050; }
+/* gaveta e cartões em superfície quase preta */
+.gaveta-corpo { background: #050709f7; border-left-color: var(--linha-viva); }
+.cartao { background: #080b10f5; border-color: #293741; border-left-color: var(--acento); }
+.cartao-carimbo.aprova { color: var(--acento); text-shadow: 0 0 10px #b7ff0060; }
+.cartoes-progresso i { box-shadow: 0 0 8px #b7ff0060; }
+.toast { background: #000000f2; border-color: #55747e; box-shadow: 0 0 18px #00edff14; }

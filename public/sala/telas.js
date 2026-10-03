@@ -65,7 +65,7 @@ export function desenharPainelLed(painel, estado) {
   const oportunidade = Object.entries(s).filter(([k]) => k !== 'site_proprio').reduce((a, [, n]) => a + n, 0);
   const etapas = [[total, 'encontrados'], [oportunidade, 'site fraco'], [soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'sem_resposta'), 'mensagens'],
     [soma('enviado', 'respondeu', 'sem_resposta'), 'enviados'], [f.respondeu || 0, 'responderam']];
-  g.fillStyle = '#948a7b'; g.font = '500 26px "Bricolage Grotesque", system-ui, sans-serif';
+  g.fillStyle = '#a1a1aa'; g.font = '500 26px Inter, "Segoe UI", system-ui, sans-serif';
   g.fillText('Funil de prospecção', 40, 58);
   const trabalhando = Object.values(estado.agentes || {}).filter((a) => a.status === 'trabalhando');
   g.textAlign = 'right';
@@ -75,14 +75,14 @@ export function desenharPainelLed(painel, estado) {
   const col = (W - 80) / etapas.length;
   etapas.forEach(([n, rot], i) => {
     const x = 40 + i * col;
-    g.fillStyle = i === etapas.length - 1 && n ? '#ffc98c' : '#f3eee5';
-    g.font = '600 120px "Bricolage Grotesque", system-ui, sans-serif';
+    g.fillStyle = i === etapas.length - 1 && n ? '#d9ff78' : '#f4f4f5';
+    g.font = '600 120px Inter, "Segoe UI", system-ui, sans-serif';
     g.fillText(String(n), x, 250);
-    g.fillStyle = '#948a7b'; g.font = '400 26px "Bricolage Grotesque", system-ui, sans-serif';
+    g.fillStyle = '#a1a1aa'; g.font = '400 26px Inter, "Segoe UI", system-ui, sans-serif';
     g.fillText(rot, x + 4, 300);
   });
   g.fillStyle = '#1b1e26'; g.fillRect(40, 350, W - 80, 2);
-  g.fillStyle = '#948a7b'; g.font = '400 22px "JetBrains Mono", ui-monospace, monospace';
+  g.fillStyle = '#a1a1aa'; g.font = '400 22px "JetBrains Mono", ui-monospace, monospace';
   const e = estado.envio || {};
   g.fillText(`envios hoje ${e.enviados_hoje ?? 0}/${e.limite ?? 10}  ·  na fila ${e.na_fila ?? 0}  ·  para aprovar ${f.mensagem || 0}`, 40, 396);
   // matriz de LEDs

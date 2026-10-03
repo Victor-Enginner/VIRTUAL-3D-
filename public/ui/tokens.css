@@ -1,28 +1,30 @@
 /* Design system do Prospector — 3 níveis (primitivo → semântico → componente).
-   Direção (out/2026): o site é a "sala de controle" do mesmo escritório da Sala 3D. Grafite quente
-   em vez de preto azulado (o piso é madeira), e o acento é o âmbar das luminárias das mesas.
-   Assinatura: a cor de cada agente marca o trabalho dele no site inteiro (faixa à esquerda).
-   Regras mantidas: um acento só, sem gradiente nem brilho decorativo, texto ≥ 4.5:1. */
+   Direção (04/10/2026): a do Órbita Studio do Victor (github.com/Victor-Enginner/orbita-studio).
+   Preto absoluto no fundo, superfícies quase pretas, neon lima na ação principal, ciano na navegação e
+   na rede neural, violeta como destaque secundário. Fonte nativa: nítida no Windows e sem download.
+   Assinatura mantida: a cor de cada agente marca o trabalho dele no site inteiro (faixa à esquerda).
+   Regras: brilho neon só em botões, bordas, ícones e números — nunca em texto corrido; texto ≥ 4.5:1. */
 
-@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
-
-/* Nível 1 — primitivos: uma família de cinza quente (puxada ao marrom do piso) */
+/* Nível 1 — primitivos (tokens do Órbita: docs/DESIGN-SYSTEM.md de lá) */
 :root {
-  --n-950: #12100d;
-  --n-900: #181612;
-  --n-850: #1e1b17;
-  --n-800: #25221c;
-  --n-750: #2d2922;
-  --n-700: #38332b;
-  --n-600: #4a443a;
-  --n-450: #948a7b;   /* 5.0:1 sobre --n-900 */
-  --n-300: #c4baab;
-  --n-100: #f3eee5;
+  --n-950: #000000;   /* canvas */
+  --n-900: #090b10;   /* superfície */
+  --n-850: #0c0f15;
+  --n-800: #10141b;   /* superfície elevada */
+  --n-750: #161a22;
+  --n-700: #303035;   /* separador */
+  --n-600: #46464e;
+  --n-450: #8e8e98;   /* 6.1:1 sobre preto */
+  --n-300: #a1a1aa;   /* texto secundário */
+  --n-100: #f4f4f5;   /* texto principal */
 
-  --ambar-300: #ffc98c;
-  --ambar-400: #f8ac58;
-  --ambar-500: #f0953a;  /* a luz das luminárias */
-  --ambar-900: #3a2510;
+  --lima-300: #d9ff78;
+  --lima-400: #ceff52;
+  --lima-500: #b7ff00;   /* ação principal */
+  --lima-900: #1c2600;
+  --ciano-500: #00edff;
+  --violeta-500: #a86bff;
+  --pessego-500: #ff963b;
 
   --verde-400: #5fd394;
   --amarelo-400: #e9cf5b;
@@ -34,9 +36,10 @@
   --curva-saida: cubic-bezier(0.16, 1, 0.3, 1);   /* exponencial de saída */
   --dur-rapida: 140ms; --dur-base: 220ms; --dur-lenta: 420ms;
 
-  --fonte-titulo: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
-  --fonte: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
-  --fonte-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  /* fonte nativa: Inter se existir, senão a do sistema (Segoe UI no Windows) — legível em qualquer tamanho */
+  --fonte: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --fonte-titulo: var(--fonte);
+  --fonte-mono: ui-monospace, "Cascadia Mono", SFMono-Regular, Consolas, monospace;
   --t-12: 0.75rem; --t-13: 0.8125rem; --t-14: 0.875rem; --t-16: 1rem; --t-20: 1.25rem; --t-24: 1.5rem; --t-28: 1.75rem; --t-40: 2.5rem;
 }
 
@@ -48,22 +51,27 @@
   --superficie-2: var(--n-850);
   --superficie-3: var(--n-800);
   --elevado: var(--n-750);
-  --vidro: rgb(24 22 18 / .9);        /* cartões sobre a cena 3D */
+  --vidro: rgb(0 0 0 / .88);          /* cartões sobre a cena 3D e sobre a rede neural */
   --linha: var(--n-700);
-  --linha-suave: var(--n-800);
+  --linha-suave: #1c1d22;
+  --linha-viva: #00edff20;            /* borda da barra lateral e do topo */
   --texto: var(--n-100);
   --texto-2: var(--n-300);
   --texto-3: var(--n-450);
-  --acento: var(--ambar-500);
-  --acento-forte: var(--ambar-400);
-  --acento-texto: var(--ambar-300);
-  --acento-fundo: var(--ambar-900);
-  --sobre-acento: #1c1107;            /* texto escuro sobre o âmbar: 8.9:1 */
+  --acento: var(--lima-500);
+  --acento-forte: var(--lima-400);
+  --acento-texto: var(--lima-300);
+  --acento-fundo: var(--lima-900);
+  --sobre-acento: #111900;            /* texto escuro sobre o lima */
+  --ciano: var(--ciano-500);
+  --violeta: var(--violeta-500);
+  --brilho-acento: 0 0 8px #b7ff0050, 0 0 24px #b7ff0018;
+  --brilho-ciano: 0 0 14px #00edff14;
   --ok: var(--verde-400);
   --alerta: var(--amarelo-400);
   --perigo: var(--vermelho-400);
-  --anel-foco: 0 0 0 2px var(--fundo), 0 0 0 4px var(--acento-forte);
-  --sombra-elevada: 0 14px 36px -14px rgb(0 0 0 / .75), 0 2px 6px rgb(0 0 0 / .35);
+  --anel-foco: 0 0 0 2px var(--fundo), 0 0 0 4px var(--acento);
+  --sombra-elevada: 0 18px 60px #000, 0 0 0 1px #00edff0b;
 
   /* cores dos agentes (as mesmas da Sala 3D) */
   --ag-alva: #d9468f; --ag-atlas: #0e9fb8; --ag-nova: #3b5bdb; --ag-maia: #7c3aed; --ag-leo: #16a34a;

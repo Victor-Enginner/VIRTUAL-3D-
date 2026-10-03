@@ -607,7 +607,7 @@ renderer.setAnimationLoop(() => {
 });
 
 // ------------------------------------------------------------ início
-montarShell('sala');
+montarShell('sala', { fundoNeural: false }); // a cena 3D já é o fundo
 window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar }; // inspeção pelo console do navegador
 const carregando = $('#carregando');
 try {

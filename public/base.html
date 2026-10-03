@@ -54,7 +54,7 @@
   import { carregarBase, criarPersonagem } from '/sala/personagens.js';
   import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
   import { montarShell, atualizarShell } from '/ui/shell.js';
-  montarShell('base');
+  montarShell('base', { fundoNeural: false }); // a cena 3D já é o fundo
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const alvo = document.querySelector('#cena');
   const r = new THREE.WebGLRenderer({ antialias: true });
@@ -87,7 +87,7 @@
   let mestre = null, rotuloMestre = null, elTarefa = null;
   const relogio = new THREE.Clock();
   carregarBase().then((base) => {
-    const p = criarPersonagem(base, '#f0953a');
+    const p = criarPersonagem(base, '#b7ff00');
     p.grupo.updateMatrixWorld(true);
     let quadril = null;
     p.raiz.traverse((o) => { if (!quadril && o.isBone && /Hips$/.test(o.name)) quadril = o; });
@@ -97,7 +97,7 @@
     cena.add(p.grupo);
     const el = document.createElement('div');
     el.className = 'rotulo';
-    el.style.setProperty('--cor', '#f0953a');
+    el.style.setProperty('--cor', '#b7ff00');
     el.innerHTML = '<div class="cartao"><strong><i></i>Você</strong><small>Mestre</small><div class="tarefa" id="tarefa-mestre">Na base</div></div>';
     elTarefa = el.querySelector('.tarefa');
     rotuloMestre = new CSS2DObject(el);
