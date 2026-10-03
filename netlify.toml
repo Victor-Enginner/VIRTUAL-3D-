@@ -1,0 +1,17 @@
+# Netlify (páginas da DEMONSTRAÇÃO pública): serve public/ e repassa /api/* para o servidor no Render.
+# Depois de criar o serviço no Render, troque o endereço abaixo pelo dele (Settings → URL do serviço).
+[build]
+  publish = "public"
+  command = "echo 'site estático, sem build'"
+
+[[redirects]]
+  from = "/api/*"
+  to = "https://prospector-demo.onrender.com/api/:splat"
+  status = 200
+  force = true
+
+# demonstração não precisa aparecer em buscador
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"

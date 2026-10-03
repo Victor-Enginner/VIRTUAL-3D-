@@ -1,0 +1,17 @@
+# Render (servidor da DEMONSTRAÇÃO pública). Crie em: Render → New → Blueprint → este repositório.
+# Plano gratuito: dorme depois de ~15 min sem visita; a primeira visita depois disso leva ~1 min.
+# DEMO=1 = dados fictícios em memória + simulador (src/demo.mjs). Os leads reais nunca saem do seu PC.
+services:
+  - type: web
+    name: prospector-demo
+    runtime: node
+    plan: free
+    buildCommand: "echo 'sem dependências para instalar'"
+    startCommand: node src/server.mjs
+    healthCheckPath: /api/estado
+    autoDeploy: true
+    envVars:
+      - key: DEMO
+        value: "1"
+      - key: NODE_VERSION
+        value: "24"

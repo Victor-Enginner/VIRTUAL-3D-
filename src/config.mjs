@@ -26,6 +26,10 @@ export const CONFIG = {
   webhookToken: env('WEBHOOK_TOKEN'),
   acessoSenha: env('ACESSO_SENHA'), // vazio = sem acesso remoto (só o próprio PC)
   python: env('PYTHON', 'python'),
+  // DEMO=1: versão pública de demonstração (src/demo.mjs) — dados fictícios, simulador, sem senha
+  demo: env('DEMO') === '1',
+  // só a demo escuta fora do PC (o Render exige 0.0.0.0); o sistema real fica em 127.0.0.1
+  host: env('HOST', env('DEMO') === '1' ? '0.0.0.0' : '127.0.0.1'),
 };
 
 // Ajustes que o operador muda pela tela; ficam no banco (tabela config).

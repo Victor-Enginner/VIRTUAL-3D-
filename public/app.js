@@ -515,6 +515,10 @@ const atualizarEmBreve = () => { clearTimeout(agendado); agendado = setTimeout((
 
 function ligarEventos() {
   const fonte = new EventSource('/api/stream');
+  // se um proxy segurar o fluxo ao vivo, a lista continua atualizando a cada 8 s
+  let falhas = 0, reserva = null;
+  fonte.onerror = () => { if (++falhas >= 2 && !reserva) reserva = setInterval(() => atualizarTudo().catch(() => {}), 8000); };
+  fonte.onopen = () => { falhas = 0; };
   fonte.onmessage = (m) => {
     const e = JSON.parse(m.data);
     $('#feed').insertAdjacentHTML('afterbegin', linhaFeed(e));

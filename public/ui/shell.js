@@ -70,6 +70,14 @@ const TEXTO_STATUS = { trabalhando: 'trabalhando', ocioso: 'ocioso', pausado: 'p
 
 export function atualizarShell(estado) {
   if (!estado) return;
+  if (estado.demo && !document.querySelector('.faixa-demo')) {
+    const f = document.createElement('div');
+    f.className = 'faixa-demo';
+    f.setAttribute('role', 'note');
+    f.innerHTML = '<b>Demonstração</b> · empresas fictícias, nada é enviado. Os agentes trabalham sozinhos; aprove ou descarte à vontade. <a href="/creditos.html">Créditos dos modelos 3D</a>';
+    document.body.prepend(f);
+    document.body.classList.add('com-faixa-demo');
+  }
   const ags = Object.values(estado.agentes);
   const trabalhando = ags.filter((a) => a.status === 'trabalhando').length;
   neural?.atividade(estado.pausado ? 0 : trabalhando); // a rede só se mexe quando a equipe trabalha

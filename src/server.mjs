@@ -16,13 +16,16 @@ import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.m
 import { relatorio as relatorioCalibracao } from './tocomas/calibracao.mjs';
 import { LIMITES as LIMITES_ZONA, resumoZonas } from './tocomas/zonas.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
+import { semearDemo, criarSimulador, BLOQUEADAS_NA_DEMO } from './demo.mjs';
 import { ARESTAS, NOS, REQUISITOS } from './tocomas/grafo.mjs';
 import { prontidao } from './tocomas/zonas.mjs';
 import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
-const db = abrirBanco(CONFIG.dataDir);
-const orq = criarOrquestrador(db);
+// demonstração: banco em memória com empresas fictícias e simulador no lugar dos agentes reais
+const db = abrirBanco(CONFIG.demo ? ':memory:' : CONFIG.dataDir);
+if (CONFIG.demo) semearDemo(db);
+const orq = CONFIG.demo ? criarSimulador(db) : criarOrquestrador(db);
 if (!sessaoId()) definirSessao(lerFlag(db, 'openwa_sessao', null)); // sessão conectada pelo Painel
 const PUBLIC = path.join(ROOT, 'public');
 
@@ -59,6 +62,7 @@ rota('GET', '/api/estado', async () => {
   return {
     agentes: Object.fromEntries(Object.entries(AGENTES).map(([k, a]) => [k, { ...a, ...orq.estado()[k] }])),
     pausado: orq.pausado,
+    demo: CONFIG.demo,
     saude: { ollama, openwa, motor: { backend: CONFIG.decideBackend, modelo_decisao: CONFIG.decideModel, modelo_escrita: CONFIG.writeModel } },
     funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
@@ -317,6 +321,7 @@ rota('POST', '/api/sair', ({ res }) => { res.setHeader('Set-Cookie', cookieSair(
 
 // quem não está no próprio PC só passa com sessão válida
 function barrarRemoto(req, res, url) {
+  if (CONFIG.demo) return barrarNaDemo(req, res, url);
   if (ehLocal(req)) return false;
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'no-referrer');
@@ -330,12 +335,23 @@ function barrarRemoto(req, res, url) {
   return true;
 }
 
+// demonstração: aberta a todos, mas só a sandbox (aprovar/descartar/editar dados fictícios); nada
+// que varra de verdade, chame modelo, mexa em ajustes ou WhatsApp
+function barrarNaDemo(req, res, url) {
+  res.setHeader('X-Robots-Tag', 'noindex');
+  if (req.method === 'GET' && url.pathname !== '/api/whatsapp/qr') return false;
+  if (!BLOQUEADAS_NA_DEMO.some((r) => r.test(url.pathname))) return false;
+  res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify({ erro: 'na demonstração isso fica desligado' }));
+  return true;
+}
+
 function sse(req, res) {
-  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
+  // X-Accel-Buffering: proxies (Netlify, nginx) não seguram os eventos; ping curto mantém a conexão viva
+  res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache, no-transform', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
   res.write('retry: 3000\n\n');
   const envia = (ev) => res.write(`data: ${JSON.stringify(ev)}\n\n`);
   barramento.on('evento', envia);
-  const ping = setInterval(() => res.write(': ping\n\n'), 25_000);
+  const ping = setInterval(() => res.write(': ping\n\n'), 15_000);
   req.on('close', () => { barramento.off('evento', envia); clearInterval(ping); });
 }
 
@@ -380,8 +396,9 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 // 127.0.0.1: nada da rede chega direto. Acesso de fora só pelo túnel, e aí com senha (src/acesso.mjs).
-servidor.listen(CONFIG.port, '127.0.0.1', () => {
-  console.log(`Prospector em http://127.0.0.1:${CONFIG.port}  (decisão: ${CONFIG.decideBackend}/${CONFIG.decideModel})`);
+// A demonstração (DEMO=1) escuta em 0.0.0.0 porque roda num servidor na nuvem (Render).
+servidor.listen(CONFIG.port, CONFIG.host, () => {
+  console.log(`Prospector em http://${CONFIG.host}:${CONFIG.port}  ${CONFIG.demo ? '(DEMONSTRAÇÃO: dados fictícios)' : `(decisão: ${CONFIG.decideBackend}/${CONFIG.decideModel})`}`);
   orq.iniciar();
 });
 
