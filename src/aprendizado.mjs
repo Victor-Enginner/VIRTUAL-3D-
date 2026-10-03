@@ -15,6 +15,7 @@
 import { NICHOS } from './nichos.mjs';
 import { SITUACOES } from './regras.mjs';
 import { json, parse } from './db.mjs';
+import { registrarPrevisao } from './tocomas/calibracao.mjs';
 
 const SIT = Object.keys(SITUACOES);
 const RAMOS = Object.keys(NICHOS);
@@ -102,7 +103,10 @@ function salvarCabecas(db, cabecas) {
 // Treina, salva e recalcula a prioridade dos leads ainda em aberto (é só um produto interno por lead).
 export function aprender(db, qual, lead, y, peso = 1) {
   const cabecas = lerCabecas(db);
+  const nAntes = cabecas[qual].n;
   const p = treinarPasso(cabecas[qual], caracteristicas(lead), y, peso);
+  // guarda o que se previa antes deste exemplo (o p de treinarPasso é calculado antes do passo)
+  registrarPrevisao(db, { leadId: lead.id, nicho: lead.nicho, alvo: qual, pCabeca: p, pScore: lead.score == null ? null : lead.score / 100, y, peso, nAntes });
   salvarCabecas(db, cabecas);
   recalcularAbertos(db, cabecas);
   return { p_antes: +p.toFixed(3), n: cabecas[qual].n };

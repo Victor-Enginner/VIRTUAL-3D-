@@ -13,6 +13,7 @@ import { saudeOllama } from './llm.mjs';
 import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSessao, lerMensagemRecebida, qrSessao, saudeOpenwa, sessaoId, temChave } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
 import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.mjs';
+import { relatorio as relatorioCalibracao } from './tocomas/calibracao.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
 import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
@@ -114,6 +115,7 @@ rota('POST', '/api/leads/:id/descartar', ({ params, body }) => {
 });
 
 rota('GET', '/api/aprendizado', () => ({ cabecas: resumoAprendizado(db) }));
+rota('GET', '/api/calibracao', () => relatorioCalibracao(db));
 rota('GET', '/api/habilidades', () => ({ habilidades: listarHabilidades(db), motivos: MOTIVOS }));
 rota('POST', '/api/habilidades/:id/:acao', ({ params }) => {
   try {

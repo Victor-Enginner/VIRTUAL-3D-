@@ -118,6 +118,20 @@ CREATE TABLE IF NOT EXISTS crencas (
   atualizado_em TEXT NOT NULL
 );
 
+-- previsão que existia quando cada rótulo seu chegou (antes de aprender com ele): base da calibração (B10)
+CREATE TABLE IF NOT EXISTS previsoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id TEXT,
+  nicho TEXT,
+  alvo TEXT NOT NULL, -- aprovacao | resposta
+  p_cabeca REAL NOT NULL,
+  p_score REAL,
+  y INTEGER NOT NULL,
+  peso REAL NOT NULL DEFAULT 1,
+  n_antes INTEGER NOT NULL,
+  em TEXT NOT NULL
+);
+
 -- meta-skills (arXiv 2609.38143): regras que os agentes propõem a partir dos seus descartes.
 -- Só valem depois que você aceita (estado = 'ativa').
 CREATE TABLE IF NOT EXISTS habilidades (
