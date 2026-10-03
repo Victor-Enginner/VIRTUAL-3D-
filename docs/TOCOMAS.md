@@ -9,7 +9,10 @@
 > Base do Mestre; efeitos possíveis: descartar, baixar prioridade em 30, evitar um ângulo. Cada regra guarda os ids dos
 > descartes que a motivaram e quantas vezes foi aplicada.
 
-> Base: `extracted_papers.json` (16 PDFs, texto das páginas 1–2 de cada) e o código atual do Prospector.
+> **Atualização 03/10/2026:** os papers centrais foram lidos **por inteiro** — detalhes, números verificados e o que falta
+> implementar estão em [`docs/estudos/`](estudos/README.md) (um arquivo por paper + radar do arXiv + backlog B1–B15).
+>
+> Base original deste arquivo: `extracted_papers.json` (16 PDFs, texto das páginas 1–2 de cada) e o código atual do Prospector.
 > Tudo que está aqui ou vem desse texto (citado pelo ID arXiv) ou é decisão de projeto, marcada como **[decisão]**.
 > Não li as páginas 3+ dos papers: números e mecanismos que só aparecem lá ficam como "não verificado".
 

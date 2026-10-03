@@ -1,7 +1,8 @@
 # Prospector — regras para agentes de código
 
 Projeto do Victor (PT-BR). Agentes de prospecção com modelos abertos + escritório 3D. Leia `README.md`
-(o que existe), `docs/TOCOMAS.md` (arquitetura-alvo) e `docs/ROADMAP.md` (o que vem a seguir).
+(o que existe), `docs/TOCOMAS.md` (arquitetura-alvo), `docs/estudos/` (papers lidos e backlog B1–B15) e
+`docs/ROADMAP.md` (o que vem a seguir). Mudança motivada por paper cita o id do arXiv.
 
 ## Invioláveis
 - **Não mexer no Repass AI** nem em outras pastas de `opensource-marketplace/` fora de `prospector/`.
