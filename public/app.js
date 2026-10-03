@@ -1,6 +1,7 @@
 // Painel do Prospector. Tudo que vem da API pode conter texto de terceiros (fichas do Maps,
 // títulos de sites), então todo valor passa por esc() antes de entrar no HTML.
 import { montarShell, atualizarShell } from './ui/shell.js';
+import { abrirCartoes } from './cartoes.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -55,7 +56,7 @@ async function desenharFoco() {
     try { topo = (await api('/api/leads?etapa=mensagem')).leads[0]; } catch {}
     html = `<div class="foco-texto"><h2><b>${n}</b> ${n === 1 ? 'mensagem esperando' : 'mensagens esperando'} você</h2>
       <p>${topo ? `A mais promissora agora: <strong>${esc(topo.nome)}</strong> · prioridade ${esc(topo.score)}${topo.situacao_rotulo ? ` · ${esc(topo.situacao_rotulo.toLowerCase())}` : ''}` : 'Revise e aprove para entrarem na fila de envio.'}</p>${aoVivo}</div>
-      <div class="foco-acao"><button class="btn primario magnetico" id="foco-comecar">Começar a aprovar</button><span class="sub">na gaveta: A aprova · D descarta · J pula</span></div>`;
+      <div class="foco-acao"><button class="btn primario magnetico" id="foco-comecar">Começar a aprovar</button><span class="sub">um cartão por vez · A aprova · D descarta · <button class="link" id="foco-gaveta">ver na lista</button></span></div>`;
   } else if (vivos.length) {
     html = `<div class="foco-texto"><h2>Os agentes estão trabalhando</h2><p>Nada para você aprovar ainda. As mensagens aparecem aqui assim que a Maia terminar.</p>${aoVivo}</div>`;
   } else {
@@ -65,7 +66,9 @@ async function desenharFoco() {
       <div class="foco-acao"><button class="btn primario magnetico" id="foco-varrer">${total ? 'Nova varredura' : 'Fazer a primeira busca'}</button></div>`;
   }
   $('#foco').innerHTML = html;
-  $('#foco-comecar')?.addEventListener('click', async () => {
+  // a fila em cartões é o caminho rápido; a gaveta continua para quem quer ver tudo do lead
+  $('#foco-comecar')?.addEventListener('click', () => abrirCartoes({ motivos: MOTIVOS, avisar, aoFechar: atualizarTudo }));
+  $('#foco-gaveta')?.addEventListener('click', async () => {
     etapaAtual = 'mensagem'; soFraco = false; desenharAbas(); desenharFunil();
     await carregarLeads();
     const primeiro = idsNaTela()[0];

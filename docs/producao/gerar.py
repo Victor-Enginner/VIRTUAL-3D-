@@ -225,7 +225,7 @@ def proximas(pdf):
     fig = pagina("Próximas 10 evoluções de frontend", "Ordem recomendada. Cada uma usa algo que já existe no back (coluna 'base').")
     ax = fig.add_axes([0.03, 0.04, 0.94, 0.84])
     ax.axis("off")
-    linhas = [[str(e["n"]), e["titulo"], e["porque"], e["como"], e["base"]] for e in G["evolucoes_frontend"]]
+    linhas = [[str(e["n"]), ("✓ " if e.get("status") == "feito" else "") + e["titulo"], e["porque"], e["como"], e["base"]] for e in G["evolucoes_frontend"]]
     linhas = [[c if i < 2 else "\n".join(textwrap.wrap(c, 38)) for i, c in enumerate(l)] for l in linhas]
     linhas = [[l[0], "\n".join(textwrap.wrap(l[1], 24)), *l[2:]] for l in linhas]
     t = ax.table(cellText=linhas, colLabels=["#", "Evolução", "Por quê", "Como", "Base que já existe"],
