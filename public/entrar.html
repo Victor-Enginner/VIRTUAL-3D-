@@ -7,39 +7,65 @@
 <title>Entrar · Prospector</title>
 <link rel="stylesheet" href="/ui/base.css">
 <style>
+  /* LoginPanel (MANUS.AI.WEBSITES.3D.md): transição, validação e estado de erro */
   main { min-height: 100dvh; display: grid; place-items: center; padding: var(--esp-4); }
-  form { width: min(360px, 100%); display: grid; gap: var(--esp-4); }
-  .marca { display: flex; align-items: center; gap: var(--esp-3); }
-  .marca span { width: 40px; height: 40px; border-radius: 10px; background: var(--acento); color: var(--sobre-acento); display: grid; place-items: center; font-weight: 700; }
-  h1 { margin: 0; font-size: var(--t-20); }
-  p { margin: 0; color: var(--texto-2); font-size: var(--t-13); }
-  input { min-height: 44px !important; font-size: 16px; }
-  .btn { min-height: 44px; }
-  .erro { color: var(--perigo); min-height: 1.5em; }
+  .painel-entrar { width: min(380px, 100%); display: grid; gap: var(--esp-5); padding: var(--esp-8) var(--esp-6); background: var(--superficie); border: 1px solid var(--linha); border-radius: var(--raio-bloco); box-shadow: var(--sombra-elevada); }
+  @media (prefers-reduced-motion: no-preference) { .painel-entrar { animation: chegar 520ms var(--curva-saida) both; } .painel-entrar.erro { animation: tremer 320ms var(--curva-saida); } }
+  @keyframes chegar { from { opacity: 0; transform: translateY(12px) scale(.98); } }
+  @keyframes tremer { 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+  .marca-entrar { display: flex; align-items: center; gap: var(--esp-3); }
+  .marca-entrar span { width: 44px; height: 44px; border-radius: 12px; background: var(--acento); color: var(--sobre-acento); display: grid; place-items: center; font: 700 var(--t-20)/1 var(--fonte-titulo); }
+  h1 { margin: 0; font-size: var(--t-24); }
+  .marca-entrar p, .ajuda { margin: 0; color: var(--texto-3); font-size: var(--t-13); }
+  .campo-senha { position: relative; }
+  .campo-senha input { min-height: 48px !important; font-size: 16px; padding-right: 52px !important; font-family: var(--fonte-mono); letter-spacing: .04em; }
+  .campo-senha .ver { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); }
+  .painel-entrar.erro input { border-color: var(--perigo) !important; }
+  button[type=submit] { min-height: 48px; font-size: var(--t-16); }
+  .erro-msg { color: var(--perigo); font-size: var(--t-13); min-height: 1.4em; margin: calc(var(--esp-3) * -1) 0 0; }
 </style>
 </head>
 <body>
 <main>
-  <form id="f">
-    <div class="marca"><span>P.</span><div><h1>Prospector</h1><p>Acesso remoto ao seu painel</p></div></div>
+  <form class="painel-entrar" id="f" novalidate>
+    <div class="marca-entrar"><span>P.</span><div><h1>Prospector</h1><p>Acesso remoto ao seu painel</p></div></div>
     <label class="campo">Senha
-      <input id="senha" type="password" autocomplete="current-password" required autofocus>
+      <span class="campo-senha">
+        <input id="senha" type="password" autocomplete="current-password" required autofocus aria-describedby="erro ajuda" spellcheck="false" autocapitalize="off">
+        <button type="button" class="btn icone fantasma ver" id="ver" aria-label="Mostrar a senha" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </span>
     </label>
+    <p class="erro-msg" id="erro" role="alert"></p>
     <button class="btn primario" type="submit">Entrar</button>
-    <p class="erro" id="erro" role="alert"></p>
+    <p class="ajuda" id="ajuda">A senha está no arquivo .env do Prospector, no seu PC (ACESSO_SENHA). Depois de entrar, este aparelho fica conectado por 7 dias.</p>
   </form>
 </main>
 <script>
-  const f = document.querySelector('#f'), erro = document.querySelector('#erro'), btn = f.querySelector('button');
+  const f = document.querySelector('#f'), erro = document.querySelector('#erro'), btn = f.querySelector('[type=submit]'), senha = document.querySelector('#senha');
+  document.querySelector('#ver').addEventListener('click', (e) => {
+    const mostrar = senha.type === 'password';
+    senha.type = mostrar ? 'text' : 'password';
+    e.currentTarget.setAttribute('aria-pressed', String(mostrar));
+    e.currentTarget.setAttribute('aria-label', mostrar ? 'Esconder a senha' : 'Mostrar a senha');
+    senha.focus();
+  });
+  senha.addEventListener('input', () => { erro.textContent = ''; f.classList.remove('erro'); });
+  const falhar = (msg) => { erro.textContent = msg; f.classList.remove('erro'); void f.offsetWidth; f.classList.add('erro'); senha.select(); };
   f.addEventListener('submit', async (e) => {
-    e.preventDefault(); erro.textContent = ''; btn.setAttribute('aria-busy', 'true');
+    e.preventDefault();
+    if (!senha.value.trim()) return falhar('Digite a senha.');
+    btn.setAttribute('aria-busy', 'true'); btn.disabled = true;
     try {
-      const r = await fetch('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha: document.querySelector('#senha').value }) });
-      if (!r.ok) { erro.textContent = (await r.json().catch(() => ({}))).erro || 'Não deu para entrar.'; return; }
+      const r = await fetch('/api/entrar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senha: senha.value.trim() }) });
+      if (!r.ok) {
+        const j = await r.json().catch(() => ({}));
+        return falhar(r.status === 429 ? 'Muitas tentativas erradas. Espere 10 minutos e tente de novo.' : r.status === 401 ? 'Senha incorreta. Confira hífens e letras minúsculas.' : j.erro || 'Não deu para entrar.');
+      }
+      btn.textContent = 'Entrando…';
       const volta = new URLSearchParams(location.search).get('volta') || '/';
       location.href = volta.startsWith('/') && !volta.startsWith('//') ? volta : '/';
-    } catch { erro.textContent = 'Sem conexão com o PC.'; }
-    finally { btn.removeAttribute('aria-busy'); }
+    } catch { falhar('Sem conexão com o PC. Ele está ligado e com o túnel aberto?'); }
+    finally { btn.removeAttribute('aria-busy'); btn.disabled = false; }
   });
 </script>
 </body>

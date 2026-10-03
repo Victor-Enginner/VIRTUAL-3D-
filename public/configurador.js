@@ -124,6 +124,14 @@ function desenharChat() {
     return;
   }
   const { agente, mensagens } = dados;
+  // progresso: em que etapa da criação estamos (8 capítulos fixos)
+  const prog = $('#progresso');
+  const iEtapa = ETAPAS_CONVITE.findIndex(([t]) => t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') === String(agente.etapa).toLowerCase());
+  if (agente.status === 'em_criacao' && iEtapa >= 0) {
+    prog.innerHTML = `<p><b>Etapa ${iEtapa + 1} de ${ETAPAS_CONVITE.length}</b> · ${esc(ETAPAS_CONVITE[iEtapa][0])} <span class="sub">${esc(ETAPAS_CONVITE[iEtapa][1])}</span></p>
+      <ol>${ETAPAS_CONVITE.map(([t], i) => `<li class="${i < iEtapa ? 'feito' : i === iEtapa ? 'atual' : ''}" title="${esc(t)}"></li>`).join('')}</ol>`;
+    prog.hidden = false;
+  } else prog.hidden = true;
   $('#faixa').hidden = !(agente.status === 'em_criacao' && mensagens.some((m) => m.papel === 'operador'));
   let html = mensagens.map(bolha).join('');
   const ultima = mensagens.at(-1);

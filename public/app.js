@@ -30,6 +30,7 @@ async function carregarEstado() {
   estado = await api('/api/estado');
   atualizarShell(estado);
   desenharSaude();
+  desenharFoco();
   desenharFunil();
   desenharAbas();
   $('#btn-pausa').textContent = estado.pausado ? 'Retomar agentes' : 'Pausar agentes';
@@ -37,6 +38,64 @@ async function carregarEstado() {
     $('#sel-nicho').innerHTML = Object.entries(estado.nichos).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
     $('#sel-fonte').innerHTML = Object.entries(estado.fontes).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
   }
+}
+
+// ---------------------------------------------------------------- foco do dia
+// Estudo (MANUS.AI.WEBSITES.3D.md): "uma ideia curta no topo" e "uma ação principal por painel".
+// O topo do Painel diz o que importa AGORA e oferece um botão só.
+async function desenharFoco() {
+  const n = estado.funil?.mensagem || 0;
+  const vivos = Object.values(estado.agentes).flatMap((a) => (a.tarefas || []).map((t) => ({ nome: a.nome, cor: a.cor, texto: t.texto })));
+  const aoVivo = vivos.length
+    ? `<p class="ao-vivo"><span class="ponto vivo"></span>${vivos.slice(0, 2).map((v) => `<b style="color:${esc(v.cor)}">${esc(v.nome)}</b> ${esc(v.texto.charAt(0).toLowerCase() + v.texto.slice(1))}`).join(' · ')}</p>`
+    : `<p class="ao-vivo"><span class="ponto ${estado.pausado ? 'alerta' : 'ok'}"></span>${estado.pausado ? 'Agentes pausados' : 'Equipe em espera'}</p>`;
+  let html;
+  if (n) {
+    let topo = null;
+    try { topo = (await api('/api/leads?etapa=mensagem')).leads[0]; } catch {}
+    html = `<div class="foco-texto"><h2><b>${n}</b> ${n === 1 ? 'mensagem esperando' : 'mensagens esperando'} você</h2>
+      <p>${topo ? `A mais promissora agora: <strong>${esc(topo.nome)}</strong> · prioridade ${esc(topo.score)}${topo.situacao_rotulo ? ` · ${esc(topo.situacao_rotulo.toLowerCase())}` : ''}` : 'Revise e aprove para entrarem na fila de envio.'}</p>${aoVivo}</div>
+      <div class="foco-acao"><button class="btn primario magnetico" id="foco-comecar">Começar a aprovar</button><span class="sub">na gaveta: A aprova · D descarta · J pula</span></div>`;
+  } else if (vivos.length) {
+    html = `<div class="foco-texto"><h2>Os agentes estão trabalhando</h2><p>Nada para você aprovar ainda. As mensagens aparecem aqui assim que a Maia terminar.</p>${aoVivo}</div>`;
+  } else {
+    const total = Object.values(estado.funil || {}).reduce((a, b) => a + b, 0);
+    html = `<div class="foco-texto"><h2>${total ? 'Tudo aprovado por enquanto' : 'Comece pela primeira busca'}</h2>
+      <p>${total ? 'Quer mais leads? Peça uma varredura nova abaixo ou fale um comando.' : 'Diga uma cidade e um ramo, por exemplo "varre barbearias em Franca SP". O Atlas busca, audita e passa para a Nova.'}</p>${aoVivo}</div>
+      <div class="foco-acao"><button class="btn primario magnetico" id="foco-varrer">${total ? 'Nova varredura' : 'Fazer a primeira busca'}</button></div>`;
+  }
+  $('#foco').innerHTML = html;
+  $('#foco-comecar')?.addEventListener('click', async () => {
+    etapaAtual = 'mensagem'; soFraco = false; desenharAbas(); desenharFunil();
+    await carregarLeads();
+    const primeiro = idsNaTela()[0];
+    if (primeiro) abrirLead(primeiro);
+  });
+  $('#foco-varrer')?.addEventListener('click', () => { $('#comando').focus(); $('#comando').scrollIntoView({ block: 'center', behavior: 'smooth' }); });
+  ligarMagnetico();
+}
+
+// botão "magnético" (Manus: MagneticButton com limites e sem efeito no toque)
+function ligarMagnetico() {
+  if (!matchMedia('(pointer: fine)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  for (const b of document.querySelectorAll('.magnetico:not([data-mag])')) {
+    b.dataset.mag = '1';
+    b.addEventListener('pointermove', (e) => {
+      const r = b.getBoundingClientRect();
+      const dx = (e.clientX - r.left - r.width / 2) / r.width, dy = (e.clientY - r.top - r.height / 2) / r.height;
+      b.style.transform = `translate(${(dx * 6).toFixed(1)}px, ${(dy * 4).toFixed(1)}px)`;
+    });
+    b.addEventListener('pointerleave', () => { b.style.transform = ''; });
+  }
+}
+
+// números do funil contam até o valor novo (MetricStory: número grande com escala)
+const valoresAnteriores = new Map();
+function contar(el, de, ate) {
+  if (de === ate || matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = ate; return; }
+  const t0 = performance.now(), dur = 700;
+  const passo = (t) => { const k = Math.min(1, (t - t0) / dur), e = 1 - (1 - k) ** 3; el.textContent = Math.round(de + (ate - de) * e); if (k < 1) requestAnimationFrame(passo); };
+  requestAnimationFrame(passo);
 }
 
 // linha de saúde no cabeçalho: o que está ligado, sem pílulas coloridas competindo com o conteúdo
@@ -75,8 +134,10 @@ function desenharFunil() {
     const ant = i ? etapas[i - 1][0] : 0;
     const conv = i && ant ? `<span class="conv">${Math.round((100 * n) / ant)}%</span>` : '';
     const ativo = filtro.etapa === etapaAtual && Boolean(filtro.fraco) === soFraco;
-    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista"><b>${n}</b><span>${esc(rot)}</span>${conv}</button>`;
+    const escala = total ? Math.max(2, Math.round((100 * n) / total)) : 0;
+    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista"><b data-valor="${n}">${valoresAnteriores.get(i) ?? 0}</b><span>${esc(rot)}</span>${conv}<i class="escala" style="--p:${escala}%" aria-hidden="true"></i></button>`;
   }).join('');
+  $('#kpis').querySelectorAll('b[data-valor]').forEach((b, i) => { const ate = Number(b.dataset.valor); contar(b, valoresAnteriores.get(i) ?? 0, ate); valoresAnteriores.set(i, ate); });
 }
 
 function desenharAbas() {
@@ -391,6 +452,9 @@ async function salvarAjustes(ev) {
 }
 
 // ---------------------------------------------------------------- ciclo
+
+document.querySelector('#conteudo')?.classList.add('entrada');
+setTimeout(() => document.querySelector('#conteudo')?.classList.remove('entrada'), 1200);
 
 async function atualizarTudo() {
   await carregarEstado();

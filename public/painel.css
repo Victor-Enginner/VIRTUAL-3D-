@@ -240,3 +240,31 @@ button.etapa:first-child[aria-pressed="true"]::after { left: 0; }
 @keyframes brilho { from { opacity: .45; } to { opacity: 1; } }
 /* abas que não cabem: a borda some aos poucos, sinal de que dá para deslizar */
 .abas { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 36px; }
+
+/* ---------- foco do dia (uma ideia, uma ação) ---------- */
+.foco { margin: 0 var(--esp-8) var(--esp-5); display: flex; align-items: flex-end; justify-content: space-between; gap: var(--esp-5) var(--esp-8); flex-wrap: wrap; padding: var(--esp-6) 0 var(--esp-2); }
+.foco:empty { display: none; }
+.foco-texto { display: grid; gap: var(--esp-2); min-width: 0; flex: 1 1 420px; }
+.foco h2 { font-size: clamp(1.6rem, 1.1rem + 2vw, 2.6rem); font-weight: 700; letter-spacing: -0.035em; line-height: 1.05; }
+.foco h2 b { color: var(--acento-texto); font-variant-numeric: tabular-nums; }
+.foco p { margin: 0; color: var(--texto-2); font-size: var(--t-16); max-width: 62ch; }
+.foco p strong { color: var(--texto); font-weight: 600; }
+.foco .ao-vivo { display: flex; align-items: center; gap: var(--esp-2); font-size: var(--t-13); color: var(--texto-3); }
+.foco .ao-vivo b { font-weight: 600; }
+.foco-acao { display: grid; justify-items: end; gap: var(--esp-2); }
+.foco-acao .btn { min-height: 48px; padding: 0 var(--esp-6); font-size: var(--t-16); transition: transform 180ms var(--curva-saida), background var(--dur-rapida); }
+/* escala visual do funil (quanto cada etapa é do total) */
+.etapa .escala { display: block; height: 3px; margin-top: var(--esp-2); border-radius: 2px; background: linear-gradient(to right, var(--acento) var(--p), var(--linha-suave) var(--p)); opacity: .55; }
+.etapa[aria-pressed="true"] .escala { opacity: 1; }
+/* entrada orquestrada: um momento só, de cima para baixo; nada se move com movimento reduzido */
+@media (prefers-reduced-motion: no-preference) {
+  .entrada .foco, .entrada .comando, .entrada .funil, .entrada .grade { animation: subir 520ms var(--curva-saida) both; }
+  .entrada .comando { animation-delay: 70ms; } .entrada .funil { animation-delay: 140ms; } .entrada .grade { animation-delay: 210ms; }
+}
+@keyframes subir { from { opacity: 0; transform: translateY(10px); } }
+@media (max-width: 640px) {
+  .foco { margin: 0 var(--esp-4) var(--esp-4); padding-top: var(--esp-3); }
+  .foco-acao { justify-items: stretch; width: 100%; }
+  .foco-acao .btn { width: 100%; }
+  .foco-acao .sub { display: none; }
+}

@@ -109,3 +109,13 @@
   .faixa .btn { flex: none; min-height: 30px; padding: 0 var(--esp-3); font-size: var(--t-12); }
   .respostas .dica-resp { display: none; }
 }
+
+/* progresso da criação: 8 capítulos */
+.progresso-config { display: grid; gap: 6px; padding: var(--esp-3) var(--esp-8); border-bottom: 1px solid var(--linha-suave); }
+.progresso-config p { margin: 0; font-size: var(--t-13); color: var(--texto-2); display: flex; gap: var(--esp-2); align-items: baseline; flex-wrap: wrap; }
+.progresso-config b { color: var(--texto); font-weight: 600; }
+.progresso-config ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(8, 1fr); gap: 4px; }
+.progresso-config li { height: 4px; border-radius: 2px; background: var(--linha); transition: background var(--dur-base) var(--curva-saida); }
+.progresso-config li.feito { background: var(--acento); }
+.progresso-config li.atual { background: linear-gradient(90deg, var(--acento) 50%, var(--linha) 50%); }
+@media (max-width: 960px) { .progresso-config { padding: var(--esp-2) var(--esp-4); } }
