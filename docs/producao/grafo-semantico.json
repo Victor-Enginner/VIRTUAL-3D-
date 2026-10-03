@@ -59,6 +59,48 @@
       "arquivo": "public/entrar.html"
     },
     {
+      "id": "inicio_ui",
+      "rotulo": "Início (visão geral)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/inicio.*"
+    },
+    {
+      "id": "producao_ui",
+      "rotulo": "Produção (kanban)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/producao.*"
+    },
+    {
+      "id": "agentes_ui",
+      "rotulo": "Agentes (equipe)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/agentes.*"
+    },
+    {
+      "id": "nichos_ui",
+      "rotulo": "Nichos (universos)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/nichos.*"
+    },
+    {
+      "id": "engine_ui",
+      "rotulo": "Engine TOCOMAS",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/engine.*"
+    },
+    {
+      "id": "neural_ui",
+      "rotulo": "Rede neural viva",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/ui/neural.js"
+    },
+    {
       "id": "api",
       "rotulo": "API HTTP + SSE",
       "camada": "api",
@@ -308,6 +350,36 @@
       "de": "cartoes",
       "para": "api",
       "rel": "aprova/descarta com desfazer"
+    },
+    {
+      "de": "neural_ui",
+      "para": "api",
+      "rel": "pulsa com agentes trabalhando"
+    },
+    {
+      "de": "engine_ui",
+      "para": "api",
+      "rel": "lê (dados reais)"
+    },
+    {
+      "de": "nichos_ui",
+      "para": "api",
+      "rel": "lê (dados reais)"
+    },
+    {
+      "de": "agentes_ui",
+      "para": "api",
+      "rel": "lê (dados reais)"
+    },
+    {
+      "de": "producao_ui",
+      "para": "api",
+      "rel": "lê (dados reais)"
+    },
+    {
+      "de": "inicio_ui",
+      "para": "api",
+      "rel": "lê (dados reais)"
     },
     {
       "de": "painel",
@@ -591,7 +663,8 @@
       "titulo": "Painel de calibração na Base do Mestre",
       "porque": "você precisa ver quando a Nova pode decidir sozinha",
       "como": "gráfico de confiabilidade por nicho (previsto × real) e barra '12 de 30'",
-      "base": "/api/calibracao"
+      "base": "Engine › Calibração (feito 04/10)",
+      "status": "feito"
     },
     {
       "n": 4,

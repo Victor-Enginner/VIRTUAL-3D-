@@ -5,7 +5,7 @@
 // 2. sintaxe de todo JS do front e do back (node --check)
 // 3. contratos TOCOMAS carregam e são JSON válido
 // 4. cada página referencia só arquivos que existem
-// 5. o servidor sobe num banco vazio temporário e as rotas principais respondem
+// 5. o servidor sobe num banco vazio temporário e as rotas principais respondem (inclui as abas do Workspace)
 // 6. nada proibido no git: .env, data/, modelos -nc fora de public/assets
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -64,7 +64,8 @@ let subiu = false;
 for (let i = 0; i < 40 && !subiu; i++) { await esperar(250); subiu = /Prospector em/.test(log); }
 if (!subiu) falha(`servidor não subiu:\n${log.slice(-600)}`);
 else {
-  const rotas = ['/', '/sala.html', '/base.html', '/configurador.html', '/entrar.html', '/api/estado', '/api/leads', '/api/calibracao', '/api/habilidades', '/api/aprendizado', '/api/eventos', '/api/varreduras'];
+  const rotas = ['/', '/sala.html', '/base.html', '/configurador.html', '/entrar.html', '/inicio.html', '/producao.html', '/agentes.html', '/nichos.html', '/engine.html',
+    '/api/estado', '/api/leads', '/api/calibracao', '/api/habilidades', '/api/aprendizado', '/api/eventos', '/api/eventos?agente=nova', '/api/varreduras', '/api/grafo', '/api/nichos'];
   for (const r of rotas) {
     const res = await fetch(`http://127.0.0.1:${porta}${r}`).catch((e) => ({ status: e.message }));
     res.status === 200 ? ok(`GET ${r}`) : falha(`GET ${r} → ${res.status}`);

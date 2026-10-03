@@ -136,7 +136,7 @@ input[type=checkbox] { accent-color: var(--acento); width: 16px; height: 16px; }
 /* barra de navegação do celular */
 .nav-inferior { display: none; }
 @media (max-width: 640px) {
-  .nav-inferior { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-template-columns: repeat(4, 1fr);
+  .nav-inferior { position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; display: grid; grid-template-columns: repeat(5, 1fr);
     background: #000000f5; backdrop-filter: blur(10px); border-top: 1px solid #00edff30;
     padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); }
   .nav-inferior a { position: relative; display: grid; justify-items: center; gap: 2px; padding: 6px 0 4px; color: var(--texto-3); text-decoration: none; font-size: 11px; font-weight: 500; border-radius: var(--raio-controle); }
@@ -154,3 +154,18 @@ input[type=checkbox] { accent-color: var(--acento); width: 16px; height: 16px; }
 /* telas com compositor no rodapé (Configurador): o controle da rede sobe para não cobrir o "enviar" */
 body:has(.compositor) .neural-controle { bottom: 88px; }
 @media (max-width: 640px) { body:has(.compositor) .neural-controle { display: none; } }
+
+/* grupos da barra lateral (Workspace / Escritório), como o "WORKSPACE" do Órbita */
+.nav-grupo { margin: var(--esp-3) 0 var(--esp-1); padding: 0 var(--esp-3); font-size: 10px; font-weight: 550; letter-spacing: 1.2px; text-transform: uppercase; color: var(--texto-3); }
+.nav-grupo:first-child { margin-top: 0; }
+.nav-mais { display: none; }
+@media (max-width: 640px) {
+  .nav-inferior .nav-mais { position: relative; display: grid; justify-items: center; gap: 2px; padding: 6px 0 4px; background: none; border: 0; color: var(--texto-3); font: 500 11px var(--fonte); cursor: pointer; border-radius: var(--raio-controle); }
+  .nav-inferior .nav-mais svg { width: 22px; height: 22px; }
+  .nav-inferior .nav-mais[aria-current="page"] { color: var(--ciano); background: #00edff10; }
+}
+/* menu aberto no celular/tablet: fundo sólido (texto de trás não pode vazar) e o controle da rede some */
+@media (max-width: 960px) {
+  .lateral { background: #000; }
+  .app.menu-aberto ~ .neural-controle { display: none; }
+}

@@ -16,6 +16,8 @@ import { LIMITE_ANEXO, registrarRotasConfigurador } from './rotas-configurador.m
 import { relatorio as relatorioCalibracao } from './tocomas/calibracao.mjs';
 import { LIMITES as LIMITES_ZONA, resumoZonas } from './tocomas/zonas.mjs';
 import { lerCrenca, liberar, presos } from './tocomas/crenca.mjs';
+import { ARESTAS, NOS, REQUISITOS } from './tocomas/grafo.mjs';
+import { prontidao } from './tocomas/zonas.mjs';
 import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
 import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
@@ -178,7 +180,33 @@ rota('POST', '/api/envios/:id/cancelar', ({ params }) => {
   return { ok: true };
 });
 
-rota('GET', '/api/eventos', ({ url }) => ({ eventos: db.prepare('SELECT * FROM eventos WHERE id > ? ORDER BY id DESC LIMIT 120').all(Number(url.searchParams.get('desde')) || 0) }));
+// filtros opcionais: agente (aba Agentes) e lead; sem filtro, igual a antes
+rota('GET', '/api/eventos', ({ url }) => {
+  const where = ['id > ?'], args = [Number(url.searchParams.get('desde')) || 0];
+  const agente = url.searchParams.get('agente');
+  if (agente) { if (!AGENTES[agente]) throw new HttpError(400, 'agente desconhecido'); where.push('agente = ?'); args.push(agente); }
+  const lead = url.searchParams.get('lead');
+  if (lead) { where.push('lead_id = ?'); args.push(texto(lead, 40)); }
+  const limite = Math.min(300, Math.max(1, Number(url.searchParams.get('limite')) || 120));
+  return { eventos: db.prepare(`SELECT * FROM eventos WHERE ${where.join(' AND ')} ORDER BY id DESC LIMIT ${limite}`).all(...args) };
+});
+
+// grafo de tarefas (TOCOMAS): quem é dono de cada nó, ferramentas, arestas e o que cada nó exige
+rota('GET', '/api/grafo', () => ({ nos: NOS, arestas: ARESTAS, requisitos: REQUISITOS }));
+
+// cada nicho como um "universo" (aba Nichos): leads por etapa, varreduras e se a Nova já decide sozinha
+rota('GET', '/api/nichos', () => {
+  const porEtapa = db.prepare('SELECT nicho, etapa, COUNT(*) n FROM leads GROUP BY nicho, etapa').all();
+  const varreduras = db.prepare('SELECT id, cidade, uf, nicho, fonte, ativa, ultima_execucao FROM varreduras ORDER BY criado_em DESC').all();
+  const usados = new Set([...porEtapa.map((r) => r.nicho), ...varreduras.map((v) => v.nicho)]);
+  return {
+    nichos: Object.entries(NICHOS).map(([id, n]) => {
+      const etapas = Object.fromEntries(porEtapa.filter((r) => r.nicho === id).map((r) => [r.etapa, r.n]));
+      return { id, rotulo: n.rotulo, usado: usados.has(id), total: Object.values(etapas).reduce((a, b) => a + b, 0), etapas,
+        varreduras: varreduras.filter((v) => v.nicho === id), calibracao: prontidao(db, id) };
+    }),
+  };
+});
 
 rota('POST', '/api/agentes/pausar', () => { orq.pausar(true); registrar(db, 'alva', 'pausa', 'Agentes pausados pelo operador'); return { ok: true }; });
 rota('POST', '/api/agentes/retomar', () => { orq.pausar(false); registrar(db, 'alva', 'retomada', 'Agentes retomados pelo operador'); return { ok: true }; });

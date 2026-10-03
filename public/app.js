@@ -375,7 +375,7 @@ document.addEventListener('keydown', (ev) => {
   if (alvo && $(alvo) && !$(alvo).disabled) { ev.preventDefault(); $(alvo).click(); }
 });
 
-function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; }
+function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; if (location.hash.startsWith('#lead=')) history.replaceState(null, '', location.pathname); }
 
 // ---------------------------------------------------------------- lateral
 
@@ -539,7 +539,18 @@ $('#linhas').addEventListener('keydown', (ev) => { const tr = ev.target.closest(
 
 montarShell('painel');
 prepararVoz();
-atualizarTudo().then(carregarFeed).then(ligarEventos).then(() => { if (location.hash === '#ajustes') abrirAjustes(); });
+// links das abas do Workspace: /#lead=ID abre a gaveta, /?cartoes=1 abre a fila em cartões, /#varredura leva ao formulário
+function seguirLink() {
+  if (location.hash === '#ajustes') abrirAjustes();
+  else if (location.hash.startsWith('#lead=')) abrirLead(decodeURIComponent(location.hash.slice(6))).catch(() => avisar('Lead não encontrado'));
+  else if (location.hash === '#varredura') { const f = $('#form-varredura'); f?.scrollIntoView({ block: 'center' }); f?.querySelector('input, select')?.focus(); }
+  if (new URLSearchParams(location.search).get('cartoes') === '1') {
+    history.replaceState(null, '', location.pathname + location.hash);
+    abrirCartoes({ motivos: MOTIVOS, avisar, aoFechar: atualizarTudo });
+  }
+}
+addEventListener('hashchange', seguirLink);
+atualizarTudo().then(carregarFeed).then(ligarEventos).then(seguirLink);
 setInterval(() => carregarEstado().catch(() => {}), 5000);
 
 // ---------------------------------------------------------------- WhatsApp (OpenWA)
