@@ -91,3 +91,21 @@
 .bv-acoes { display: flex; align-items: center; gap: var(--esp-3); flex-wrap: wrap; margin-top: var(--esp-2); }
 .bv-acoes .btn { min-height: 44px; padding: 0 var(--esp-5); font-size: var(--t-14); }
 @media (max-width: 640px) { .etapas-config { grid-template-columns: 1fr; } .boas-vindas h2 { font-size: var(--t-24); } }
+
+/* respostas rápidas presas acima da caixa de texto */
+.respostas { display: flex; gap: var(--esp-2); align-items: center; padding: var(--esp-3) var(--esp-8) 0; overflow-x: auto; scrollbar-width: none; border-top: 1px solid var(--linha-suave); }
+.respostas .opcao { flex: none; }
+.respostas .dica-resp { flex: none; font-size: var(--t-12); color: var(--texto-3); margin-right: var(--esp-1); }
+.respostas + .compositor { border-top: 0; }
+@media (max-width: 960px) { .respostas { padding: var(--esp-3) var(--esp-4) 0; } }
+/* "digitando…" */
+.msg.digitando .bolha { display: inline-flex; gap: 5px; padding: var(--esp-3) var(--esp-4); }
+.msg.digitando .bolha i { width: 7px; height: 7px; border-radius: 50%; background: var(--texto-3); animation: pulinho 1s var(--curva-saida) infinite; }
+.msg.digitando .bolha i:nth-child(2) { animation-delay: .15s; } .msg.digitando .bolha i:nth-child(3) { animation-delay: .3s; }
+@keyframes pulinho { 0%, 60%, 100% { transform: none; opacity: .5; } 30% { transform: translateY(-4px); opacity: 1; } }
+@media (max-width: 640px) {
+  .faixa { flex-wrap: nowrap; gap: var(--esp-2); padding: var(--esp-2) var(--esp-4); }
+  .faixa span { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: var(--t-12); }
+  .faixa .btn { flex: none; min-height: 30px; padding: 0 var(--esp-3); font-size: var(--t-12); }
+  .respostas .dica-resp { display: none; }
+}

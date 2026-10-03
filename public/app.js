@@ -21,6 +21,7 @@ const ETAPAS = [
 ];
 let estado = null;
 let etapaAtual = 'mensagem';
+let soFraco = false; // filtro do funil: só quem tem site fraco ou nenhum
 let leadAberto = null;
 
 // ---------------------------------------------------------------- estado geral
@@ -52,6 +53,11 @@ function desenharSaude() {
 }
 
 // funil com números reais do banco e a conversão entre etapas
+// linhas-fantasma enquanto a lista chega (mesma altura das reais: a página não pula)
+function esqueletoLinhas(n = 6) {
+  return Array.from({ length: n }, () => `<tr class="esqueleto" aria-hidden="true"><td><i style="width:62%"></i><i style="width:38%"></i></td><td><i style="width:70px"></i></td><td><i style="width:48px"></i></td><td><i style="width:110px"></i></td><td><i style="width:40px"></i></td></tr>`).join('');
+}
+
 function desenharFunil() {
   const f = estado.funil, s = estado.situacoes;
   const soma = (...ks) => ks.reduce((a, k) => a + (f[k] || 0), 0);
@@ -60,14 +66,16 @@ function desenharFunil() {
   const prontas = soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'sem_resposta', 'nao_contatar');
   const enviados = soma('enviado', 'respondeu', 'sem_resposta', 'nao_contatar');
   const responderam = soma('respondeu');
+  // cada número é também um filtro da lista (toque para ver só esses leads)
   const etapas = [
-    [total, 'encontrados'], [oportunidade, 'com site fraco ou sem site'], [prontas, 'mensagens escritas'],
-    [enviados, 'enviados'], [responderam, 'responderam'],
+    [total, 'encontrados', { etapa: '' }], [oportunidade, 'com site fraco ou sem site', { etapa: '', fraco: true }], [prontas, 'mensagens escritas', { etapa: 'mensagem' }],
+    [enviados, 'enviados', { etapa: 'enviado' }], [responderam, 'responderam', { etapa: 'respondeu' }],
   ];
-  $('#kpis').innerHTML = etapas.map(([n, rot], i) => {
+  $('#kpis').innerHTML = etapas.map(([n, rot, filtro], i) => {
     const ant = i ? etapas[i - 1][0] : 0;
     const conv = i && ant ? `<span class="conv">${Math.round((100 * n) / ant)}%</span>` : '';
-    return `<div class="etapa ${i === 4 && n ? 'destaque' : ''}"><b>${n}</b><span>${esc(rot)}</span>${conv}</div>`;
+    const ativo = filtro.etapa === etapaAtual && Boolean(filtro.fraco) === soFraco;
+    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista"><b>${n}</b><span>${esc(rot)}</span>${conv}</button>`;
   }).join('');
 }
 
@@ -85,7 +93,8 @@ const NOME_AGENTE = { atlas: 'o Atlas', nova: 'a Nova', maia: 'a Maia', leo: 'o 
 
 async function carregarLeads() {
   const q = $('#busca').value.trim();
-  const { leads } = await api(`/api/leads?etapa=${encodeURIComponent(etapaAtual)}&q=${encodeURIComponent(q)}`);
+  if (!$('#linhas').children.length) $('#linhas').innerHTML = esqueletoLinhas(); // primeira carga: esqueleto, não tela vazia
+  const { leads } = await api(`/api/leads?etapa=${encodeURIComponent(etapaAtual)}&q=${encodeURIComponent(q)}${soFraco ? '&fraco=1' : ''}`);
   $('#linhas').innerHTML = leads.map((l) => `<tr data-id="${esc(l.id)}" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}" tabindex="0" title="Com ${esc(NOME_AGENTE[DONO_DA_ETAPA[l.etapa]] || '—')} agora">
     <td><div class="nome">${esc(l.nome)}</div><div class="sub">${esc(l.categoria || '')} · <span class="sem-quebra">${esc(l.cidade)}-${esc(l.uf)}</span></div></td>
     <td>${l.situacao_site ? `<span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span>` : '<span class="sub">auditando…</span>'}</td>
@@ -405,9 +414,18 @@ function ligarEventos() {
 $('#abas').addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-etapa]');
   if (!b) return;
-  etapaAtual = b.dataset.etapa;
-  desenharAbas();
+  etapaAtual = b.dataset.etapa; soFraco = false;
+  desenharAbas(); desenharFunil();
   carregarLeads();
+});
+$('#kpis').addEventListener('click', (ev) => {
+  const b = ev.target.closest('[data-funil]');
+  if (!b) return;
+  const f = JSON.parse(b.dataset.funil);
+  etapaAtual = f.etapa; soFraco = Boolean(f.fraco);
+  desenharAbas(); desenharFunil();
+  carregarLeads();
+  document.querySelector('.leads').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
 });
 $('#busca').addEventListener('input', () => { clearTimeout(window.__busca); window.__busca = setTimeout(carregarLeads, 250); });
 $('#linhas').addEventListener('click', (ev) => { const tr = ev.target.closest('tr[data-id]'); if (tr) abrirLead(tr.dataset.id); });

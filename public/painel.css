@@ -227,3 +227,16 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
 #gaveta-conteudo { flex: 1; display: flex; flex-direction: column; gap: var(--esp-5); }
 #gaveta-conteudo .g-detalhe + .g-detalhe { margin-top: calc(var(--esp-5) * -1 + var(--esp-1)); }
 .g-acoes { margin-top: auto; }
+
+/* funil clicável */
+button.etapa { font: inherit; color: inherit; text-align: left; background: transparent; border: 0; cursor: pointer; border-radius: var(--raio-controle); transition: background var(--dur-rapida); }
+button.etapa:hover { background: var(--superficie); }
+button.etapa[aria-pressed="true"] b { color: var(--acento-texto); }
+button.etapa[aria-pressed="true"] span:not(.conv) { color: var(--texto); }
+button.etapa[aria-pressed="true"]::after { content: ""; position: absolute; left: var(--esp-5); right: var(--esp-5); bottom: -1px; height: 2px; background: var(--acento); }
+button.etapa:first-child[aria-pressed="true"]::after { left: 0; }
+/* esqueleto de carregamento */
+.tabela tr.esqueleto td i { display: block; height: 10px; border-radius: 5px; background: var(--superficie-3); margin: 4px 0; animation: brilho 1.2s ease-in-out infinite alternate; }
+@keyframes brilho { from { opacity: .45; } to { opacity: 1; } }
+/* abas que não cabem: a borda some aos poucos, sinal de que dá para deslizar */
+.abas { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: 36px; }

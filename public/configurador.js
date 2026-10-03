@@ -119,6 +119,7 @@ function desenharChat() {
       ${document.querySelector('#lista .item') ? '<span class="sub">ou continue um da lista ao lado</span>' : ''}</div>
     </section>`;
     chat.querySelector('[data-comecar]')?.addEventListener('click', novo);
+    $('#respostas').hidden = true;
     $('#faixa').hidden = true;
     return;
   }
@@ -127,11 +128,14 @@ function desenharChat() {
   let html = mensagens.map(bolha).join('');
   const ultima = mensagens.at(-1);
   if (agente.etapa === 'revisao' || agente.status === 'ativo') html += fichaHtml();
+  // respostas rápidas ficam presas acima da caixa de texto (não somem rolando a conversa)
+  const resp = $('#respostas');
   if (agente.status === 'em_criacao' && ultima?.papel === 'sistema' && ultima.opcoes) {
     const { lista: ops, multipla } = ultima.opcoes;
-    html += `<div class="opcoes">${ops.map((o) => `<button class="opcao" data-opcao="${esc(o)}" aria-pressed="${selecionadas.has(o)}">${esc(o)}</button>`).join('')}
-      ${multipla ? `<button class="opcao confirmar" data-confirmar ${selecionadas.size ? '' : 'disabled'}>Confirmar (${selecionadas.size})</button>` : ''}</div>`;
-  }
+    resp.innerHTML = `${multipla ? '<span class="dica-resp">Escolha uma ou mais e confirme</span>' : ''}${ops.map((o) => `<button class="opcao" data-opcao="${esc(o)}" aria-pressed="${selecionadas.has(o)}">${esc(o)}</button>`).join('')}
+      ${multipla ? `<button class="opcao confirmar" data-confirmar ${selecionadas.size ? '' : 'disabled'}>Confirmar (${selecionadas.size})</button>` : ''}`;
+    resp.hidden = false;
+  } else { resp.hidden = true; resp.innerHTML = ''; }
   chat.innerHTML = html;
   chat.scrollTop = chat.scrollHeight;
 }
@@ -139,6 +143,13 @@ function desenharChat() {
 async function enviar(texto) {
   if (!atual || !texto.trim()) return;
   $('#btn-enviar').disabled = true;
+  // eco imediato da sua resposta + "digitando…" enquanto o servidor responde
+  dados.mensagens.push({ papel: 'operador', texto, ts: new Date().toISOString() });
+  desenharChat();
+  $('#respostas').hidden = true;
+  $('#chat').insertAdjacentHTML('beforeend', `<div class="msg agente digitando" style="--cor-ag:${esc(dados.agente.cor)}"><span class="quem" aria-hidden="true">${ICONE_SISTEMA}</span><div class="bolha" aria-label="escrevendo"><i></i><i></i><i></i></div></div>`);
+  $('#chat').scrollTop = $('#chat').scrollHeight;
+  $('#texto').value = '';
   try {
     await api(`/api/config-agentes/${encodeURIComponent(atual)}/mensagem`, { texto });
     $('#texto').value = '';
@@ -196,7 +207,7 @@ function prepararVoz() {
 
 // ---------------------------------------------------------------- eventos
 $('#compositor').addEventListener('submit', (ev) => { ev.preventDefault(); enviar($('#texto').value); });
-$('#chat').addEventListener('click', (ev) => {
+$('#respostas').addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-opcao], [data-confirmar]');
   if (!b) return;
   const multipla = dados.mensagens.at(-1)?.opcoes?.multipla;

@@ -69,6 +69,7 @@ rota('GET', '/api/leads', ({ url }) => {
   const where = [], args = [];
   if (etapa) { where.push('etapa = ?'); args.push(etapa); }
   if (q) { where.push('(nome LIKE ? OR cidade LIKE ? OR categoria LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
+  if (url.searchParams.get('fraco') === '1') where.push("situacao_site IS NOT NULL AND situacao_site != 'site_proprio'");
   const sql = `SELECT * FROM leads ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY score IS NULL, score DESC, atualizado_em DESC LIMIT 300`;
   return { leads: db.prepare(sql).all(...args).map(leadPublico) };
 });

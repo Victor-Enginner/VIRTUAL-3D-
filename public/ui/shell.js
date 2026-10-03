@@ -31,6 +31,16 @@ export function montarShell(ativa, { extra = false } = {}) {
     <div class="equipe" id="shell-equipe" aria-live="polite"></div>
     <div class="rodape-lateral"><div><span id="shell-operador">Operador</span><small>dono da conta</small></div>
       <a class="btn icone fantasma" href="/#ajustes" title="Ajustes" aria-label="Ajustes">${ICONES.ajustes}</a></div>`;
+  // celular: as 4 telas numa barra embaixo, ao alcance do polegar (o menu lateral fica para a equipe)
+  if (!document.querySelector('.nav-inferior')) {
+    const curto = { painel: 'Painel', sala: 'Sala', configurador: 'Agentes', base: 'Base' };
+    const nav = document.createElement('nav');
+    nav.className = 'nav-inferior';
+    nav.setAttribute('aria-label', 'Seções');
+    nav.innerHTML = PAGINAS.map(([id, href]) => `<a href="${href}" ${id === ativa ? 'aria-current="page"' : ''}>${ICONES[id]}<span>${curto[id]}</span>${id === 'painel' ? '<b class="selo-cont" id="nav-aprovar" hidden></b>' : ''}</a>`).join('');
+    document.body.append(nav);
+    document.body.classList.add('com-nav-inferior');
+  }
   document.querySelectorAll('[data-abrir-menu]').forEach((b) => b.addEventListener('click', () => document.querySelector('.app').classList.toggle('menu-aberto')));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.app').classList.remove('menu-aberto'); });
   document.querySelector('.app').addEventListener('click', (e) => { if (e.target.classList.contains('app')) e.target.classList.remove('menu-aberto'); });
@@ -49,6 +59,8 @@ export function atualizarShell(estado) {
   }
   const ap = document.querySelector('#shell-aprovar');
   if (ap) ap.textContent = estado.funil?.mensagem ? `${estado.funil.mensagem} p/ aprovar` : '';
+  const na = document.querySelector('#nav-aprovar');
+  if (na) { na.textContent = estado.funil?.mensagem > 99 ? '99+' : estado.funil?.mensagem || ''; na.hidden = !estado.funil?.mensagem; }
   const op = document.querySelector('#shell-operador');
   if (op) op.textContent = estado.ajustes?.remetente_nome || 'Operador';
   const membro = (a, href) => {
