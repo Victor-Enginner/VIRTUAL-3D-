@@ -155,70 +155,133 @@ function blocoAuditoria(l) {
 // crença do lead (TOCOMAS): cada fato com fonte e validade, o que falta, e se saiu da fila
 const ROTULO_FATO = { telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
 const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta' };
-function blocoCrenca(c) {
-  if (!c || !c.fatos.length) return '';
-  const valor = (v) => (Array.isArray(v) ? (v.length ? v.join(', ') : 'nenhum') : typeof v === 'number' && v < 1 && v > 0 ? `${Math.round(v * 100)}%` : String(v));
-  const preso = c.progresso.preso ? `<p class="aviso">Fora da fila: ${esc(c.progresso.motivo || '')}. "Reprocessar" tenta de novo.</p>` : '';
-  return `<section class="bloco"><h3>O que os agentes sabem <span class="meta">· versão ${c.versao}</span></h3>${preso}
-    <ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valor(f.valor))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
-    ${c.pendencias.length ? `<p>Pendências: ${c.pendencias.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}</section>`;
-}
 
 // mesmos motivos de src/tocomas/habilidades.mjs (a API recusa qualquer outro)
 const MOTIVOS = { nicho: 'Ramo que não atendo', regiao: 'Fora da minha região', site_bom: 'Já tem site bom', grande: 'Negócio grande demais', mensagem: 'Mensagem ruim', outro: 'Outro motivo' };
+
+// rótulos em português claro (a gaveta não mostra nome de coluna nem código interno)
+const ROTULO_ETAPA = { descoberto: 'Na auditoria do Atlas', auditado: 'Com a Nova para decidir', qualificado: 'Com a Maia para escrever', mensagem: 'Esperando sua aprovação',
+  sem_contato: 'Sem telefone', aprovado: 'Na fila de envio', enviado: 'Enviado, esperando resposta', respondeu: 'Respondeu', sem_resposta: 'Sem resposta em 72 h', descartado: 'Descartado', nao_contatar: 'Pediu para não receber' };
+function valorFato(f, l) {
+  if (f.chave === 'telefone') return l.telefone_fmt || f.valor;
+  if (f.chave === 'situacao_site') return estado?.situacoes_rotulos?.[f.valor] || f.valor;
+  if (f.chave === 'angulo') return estado?.abordagens?.[f.valor] || f.valor;
+  if (f.chave === 'rating') return `${String(f.valor).replace('.', ',')} ★`;
+  if (f.chave === 'ativo') return `${Math.round(f.valor * 100)}%`;
+  if (Array.isArray(f.valor)) return f.valor.length ? f.valor.join(', ') : 'nenhum';
+  return String(f.valor);
+}
+function blocoCrencaGaveta(c, l) {
+  if (!c || !c.fatos.length) return '<p class="sub">Os agentes ainda não registraram fatos sobre este lead.</p>';
+  const preso = c.progresso.preso ? `<p class="aviso">Fora da fila: ${esc(c.progresso.motivo || '')}. "Refazer auditoria" tenta de novo.</p>` : '';
+  return `${preso}<ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valorFato(f, l))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
+    ${c.pendencias.length ? `<p class="sub">Pendências: ${c.pendencias.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}`;
+}
+
+// aviso curto no canto (o que acabou de acontecer)
+function avisar(texto) {
+  let t = $('#toast');
+  if (!t) { t = document.createElement('div'); t.id = 'toast'; t.className = 'toast'; t.setAttribute('role', 'status'); document.body.append(t); }
+  t.textContent = texto; t.classList.add('visivel');
+  clearTimeout(avisar.timer); avisar.timer = setTimeout(() => t.classList.remove('visivel'), 2600);
+}
+
+// a ordem da tabela é a fila de trabalho: depois de decidir, a gaveta vai para o próximo
+const idsNaTela = () => [...document.querySelectorAll('#linhas tr[data-id]')].map((tr) => tr.dataset.id);
+function vizinho(id, passo) {
+  const ids = idsNaTela(); const i = ids.indexOf(id);
+  return i < 0 ? null : ids[i + passo] || null;
+}
 
 async function abrirLead(id) {
   leadAberto = id;
   const { lead: l, eventos, envios, crenca } = await api(`/api/leads/${encodeURIComponent(id)}`);
   const podeAprovar = l.telefone && l.mensagem && ['mensagem', 'qualificado'].includes(l.etapa);
   const naFila = envios.find((e) => e.status === 'aprovado');
-  const origem = { modelo: 'escrita pelo modelo local e conferida', modelo_recusado: 'texto fixo (o texto do modelo não passou na checagem)', operador: 'editada por você' }[l.mensagem_origem] || '';
+  const podeDescartar = !['descartado', 'nao_contatar'].includes(l.etapa);
+  const origem = { modelo: 'escrita pela Maia e conferida', modelo_recusado: 'texto pronto da Maia', operador: 'editada por você' }[l.mensagem_origem] || '';
+  const ids = idsNaTela(), pos = ids.indexOf(id);
+  const google = l.rating ? `${String(l.rating).replace('.', ',')} ★${l.avaliacoes != null ? ` · ${l.avaliacoes} avaliações` : ''}` : null;
   $('#gaveta-conteudo').innerHTML = `
-    <div class="g-titulo"><h1 id="g-nome">${esc(l.nome)}</h1>
-      <p>${esc(l.categoria || '')} · ${esc(l.endereco || `${l.cidade}-${l.uf}`)}</p></div>
-    <dl class="fatos">
-      <div><dt>Telefone</dt><dd>${l.telefone ? `${esc(l.telefone_fmt)} (${esc(l.telefone_tipo)})` : 'não encontrado'}</dd></div>
-      <div><dt>Google</dt><dd>${l.rating ? `${esc(l.rating)} ★ · ${esc(l.avaliacoes ?? '?')} avaliações` : '—'}</dd></div>
-      <div><dt>Situação do site</dt><dd>${l.situacao_site ? `<span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span>` : '—'}</dd></div>
-      <div><dt>Etapa</dt><dd>${esc(l.etapa)}</dd></div>
-      <div><dt>Fonte</dt><dd>${/^https:\/\//.test(l.maps_url || '') ? `<a href="${esc(l.maps_url)}" target="_blank" rel="noopener noreferrer">${esc(l.fonte)}</a>` : esc(l.fonte)}</dd></div>
-      <div><dt>Prioridade</dt><dd>${l.score ?? '—'}</dd></div>
-    </dl>
-    ${blocoCrenca(crenca)}
-    <section class="bloco"><h3>O que o Atlas mediu</h3>${blocoAuditoria(l)}</section>
-    <section class="bloco"><h3>O que a Nova decidiu (probabilidades)</h3>${blocoDecisao(l.decisao)}</section>
-    <section class="bloco"><h3>Mensagem da Maia ${origem ? `<span class="meta">· ${esc(origem)}</span>` : ''}</h3>
-      ${l.mensagem ? `<textarea id="g-msg">${esc(l.mensagem)}</textarea>` : '<p>Sem mensagem ainda.</p>'}
+    <header class="g-titulo" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}">
+      <p class="g-etapa">${esc(ROTULO_ETAPA[l.etapa] || l.etapa)}${pos >= 0 ? ` · ${pos + 1} de ${ids.length}` : ''}</p>
+      <h1 id="g-nome">${esc(l.nome)}</h1>
+      <p>${esc(l.categoria || '')} · <span class="sem-quebra">${esc(l.cidade)}-${esc(l.uf)}</span></p>
+      <ul class="g-resumo">
+        ${l.situacao_site ? `<li><span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span></li>` : ''}
+        ${l.score != null ? `<li>prioridade <b>${esc(l.score)}</b></li>` : ''}
+        <li>${l.telefone ? `<span class="tel">${esc(l.telefone_fmt)}</span> ${esc(l.telefone_tipo || '')}` : 'sem telefone'}</li>
+        ${google ? `<li>${esc(google)}</li>` : ''}
+        ${/^https:\/\//.test(l.maps_url || '') ? `<li><a href="${esc(l.maps_url)}" target="_blank" rel="noopener noreferrer">ver no Maps</a></li>` : ''}
+      </ul>
+    </header>
+
+    <section class="g-mensagem" aria-labelledby="t-msg">
+      <h2 id="t-msg">Mensagem${origem ? ` <span class="meta">${esc(origem)}</span>` : ''}</h2>
+      ${l.mensagem ? `<div class="balao-wa"><textarea id="g-msg" aria-label="Texto da mensagem (pode editar antes de aprovar)">${esc(l.mensagem)}</textarea>
+        <div class="balao-rodape"><span id="g-contagem">${l.mensagem.length} caracteres</span><button class="btn fantasma" id="g-salvar" hidden>Salvar edição</button></div></div>`
+        : '<p class="sub">A Maia ainda não escreveu a mensagem deste lead.</p>'}
       <p class="erro-msg" id="g-erro"></p>
-      <div class="botoes">
-        ${l.mensagem ? '<button class="btn" id="g-salvar">Salvar texto</button>' : ''}
-        ${podeAprovar ? '<button class="btn ok" id="g-aprovar">Aprovar para envio</button>' : ''}
-        ${l.wa_link && l.mensagem ? `<a class="btn" id="g-wa" href="${esc(l.wa_link)}" target="_blank" rel="noopener noreferrer">Abrir no WhatsApp</a>` : ''}
-        ${naFila ? '<button class="btn" id="g-manual">Já enviei à mão</button>' : ''}
-        <button class="btn" id="g-reprocessar">Refazer auditoria</button>
-        ${!['descartado', 'nao_contatar'].includes(l.etapa) ? '<button class="btn perigo" id="g-descartar" aria-expanded="false" aria-controls="g-motivos">Descartar</button>' : ''}
-      </div>
       <div class="motivos" id="g-motivos" hidden>
-        <p>Por quê? Um toque. Motivos repetidos viram proposta de regra na Base do Mestre.</p>
+        <p>Por que descartar? Um toque. Motivos repetidos viram proposta de regra na Base do Mestre.</p>
         <div>${Object.entries(MOTIVOS).map(([k, v]) => `<button class="btn" data-motivo="${k}">${esc(v)}</button>`).join('')}</div>
       </div>
     </section>
-    <section class="bloco"><h3>Histórico</h3><ol class="feed">${eventos.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>—</span></li>'}</ol></section>`;
+
+    <details class="g-detalhe"><summary>O que os agentes sabem <span class="meta">versão ${crenca?.versao ?? 0}</span></summary>${blocoCrencaGaveta(crenca, l)}</details>
+    <details class="g-detalhe"><summary>O que o Atlas mediu no site</summary>${blocoAuditoria(l)}</details>
+    <details class="g-detalhe"><summary>Como a Nova decidiu</summary>${blocoDecisao(l.decisao)}</details>
+    <details class="g-detalhe"><summary>Histórico <span class="meta">${eventos.length}</span></summary><ol class="feed">${eventos.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>—</span></li>'}</ol></details>
+    <p class="g-mais"><button class="btn fantasma" id="g-reprocessar">Refazer auditoria</button>${naFila ? '<button class="btn fantasma" id="g-manual">Já enviei à mão</button>' : ''}</p>
+
+    <footer class="g-acoes">
+      <div class="g-nav">
+        <button class="btn icone" id="g-ant" aria-label="Lead anterior (K)" ${vizinho(id, -1) ? '' : 'disabled'}><svg class="ic" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg></button>
+        <button class="btn icone" id="g-prox" aria-label="Próximo lead (J)" ${vizinho(id, 1) ? '' : 'disabled'}><svg class="ic" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg></button>
+      </div>
+      ${podeDescartar ? '<button class="btn perigo" id="g-descartar" aria-expanded="false" aria-controls="g-motivos" title="Atalho: D">Descartar</button>' : ''}
+      ${l.wa_link && l.mensagem ? `<a class="btn" id="g-wa" href="${esc(l.wa_link)}" target="_blank" rel="noopener noreferrer">WhatsApp</a>` : ''}
+      ${podeAprovar ? '<button class="btn primario" id="g-aprovar" title="Atalho: A">Aprovar envio</button>' : ''}
+    </footer>`;
   $('#gaveta').hidden = false;
-  const acao = async (fn) => { try { await fn(); await atualizarTudo(); await abrirLead(id); } catch (e) { $('#g-erro').textContent = e.message; } };
-  $('#g-salvar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/mensagem`, { texto: $('#g-msg').value })));
-  $('#g-aprovar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/aprovar`, { texto: $('#g-msg').value })));
-  $('#g-manual')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/enviado-manual`, {})));
-  $('#g-reprocessar')?.addEventListener('click', () => acao(() => api(`/api/leads/${id}/reprocessar`, {})));
+
+  // depois de decidir: atualiza a lista e já abre o próximo da fila (ou fecha, se acabou)
+  const decidir = async (fn, aviso) => {
+    const proximo = vizinho(id, 1) || vizinho(id, -1);
+    try { await fn(); } catch (e) { $('#g-erro').textContent = e.message; return; }
+    avisar(aviso);
+    await atualizarTudo();
+    const ainda = idsNaTela();
+    const alvoId = ainda.includes(proximo) ? proximo : ainda.includes(id) ? id : ainda[0];
+    if (alvoId) abrirLead(alvoId); else fecharGaveta();
+  };
+  const ficar = async (fn, aviso) => { try { await fn(); avisar(aviso); await atualizarTudo(); await abrirLead(id); } catch (e) { $('#g-erro').textContent = e.message; } };
+  const msg = $('#g-msg');
+  msg?.addEventListener('input', () => { $('#g-contagem').textContent = `${msg.value.length} caracteres`; $('#g-salvar').hidden = msg.value === l.mensagem; });
+  $('#g-salvar')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/mensagem`, { texto: msg.value }), 'Edição salva'));
+  $('#g-aprovar')?.addEventListener('click', () => decidir(() => api(`/api/leads/${id}/aprovar`, { texto: msg.value }), `${l.nome}: aprovado para envio`));
+  $('#g-manual')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/enviado-manual`, {}), 'Marcado como enviado'));
+  $('#g-reprocessar')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/reprocessar`, {}), 'Auditoria refeita: o lead voltou para o Atlas'));
   $('#g-descartar')?.addEventListener('click', (ev) => {
     const m = $('#g-motivos'); m.hidden = !m.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!m.hidden));
-    if (!m.hidden) m.querySelector('button').focus();
+    if (!m.hidden) { m.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); m.querySelector('button').focus(); }
   });
   $('#g-motivos')?.addEventListener('click', (ev) => {
     const b = ev.target.closest('[data-motivo]');
-    if (b) acao(() => api(`/api/leads/${id}/descartar`, { motivo: b.dataset.motivo }));
+    if (b) decidir(() => api(`/api/leads/${id}/descartar`, { motivo: b.dataset.motivo }), `${l.nome}: descartado (${MOTIVOS[b.dataset.motivo].toLowerCase()})`);
   });
+  $('#g-ant')?.addEventListener('click', () => { const v = vizinho(id, -1); if (v) abrirLead(v); });
+  $('#g-prox')?.addEventListener('click', () => { const v = vizinho(id, 1); if (v) abrirLead(v); });
+  $('.gaveta-corpo').scrollTop = 0;
 }
+
+// atalhos com a gaveta aberta (fora de campo de texto): A aprova, D descarta, J/K próximo/anterior
+document.addEventListener('keydown', (ev) => {
+  if ($('#gaveta').hidden || ev.ctrlKey || ev.metaKey || ev.altKey || /^(TEXTAREA|INPUT|SELECT)$/.test(document.activeElement?.tagName)) return;
+  const k = ev.key.toLowerCase();
+  const alvo = { a: '#g-aprovar', d: '#g-descartar', j: '#g-prox', k: '#g-ant' }[k];
+  if (alvo && $(alvo) && !$(alvo).disabled) { ev.preventDefault(); $(alvo).click(); }
+});
 
 function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; }
 

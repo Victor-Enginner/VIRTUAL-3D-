@@ -182,3 +182,48 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
   .tabela tbody tr td:nth-child(3) .prio { grid-auto-flow: column; align-items: center; gap: var(--esp-2); }
   .tabela tbody tr td:nth-child(3) .barra { width: 56px; }
 }
+
+/* ---------- gaveta: decidir primeiro, detalhes depois ---------- */
+.gaveta-corpo { padding-bottom: 0; gap: var(--esp-5); }
+.g-titulo { display: grid; gap: var(--esp-2); }
+.g-titulo .g-etapa { margin: 0; font-size: var(--t-12); font-weight: 600; color: var(--cor-ag, var(--texto-3)); letter-spacing: .01em; }
+.g-titulo h1 { font-size: var(--t-28); line-height: 1.1; }
+.g-resumo { list-style: none; margin: var(--esp-1) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--esp-2); }
+.g-resumo li { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 var(--esp-3); border: 1px solid var(--linha); border-radius: var(--raio-pilula); font-size: var(--t-13); color: var(--texto-2); }
+.g-resumo b { color: var(--texto); font-variant-numeric: tabular-nums; }
+.g-resumo .tel { font-family: var(--fonte-mono); color: var(--texto); }
+.g-mensagem { display: grid; gap: var(--esp-3); }
+.g-mensagem h2 { font-size: var(--t-16); display: flex; align-items: baseline; gap: var(--esp-2); flex-wrap: wrap; }
+.g-mensagem h2 .meta { font-family: var(--fonte); font-weight: 400; }
+/* balão no jeito do WhatsApp: é assim que o lead vai ler */
+.balao-wa { background: #1f3a2c; border: 1px solid #2b4d3b; border-radius: var(--raio-bloco) 4px var(--raio-bloco) var(--raio-bloco); padding: var(--esp-3) var(--esp-4) var(--esp-2); }
+.balao-wa textarea { width: 100%; min-height: 150px; field-sizing: content; max-height: 360px; background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 0 !important; color: #eef6f0; font-size: var(--t-14); line-height: 1.55; resize: vertical; }
+.balao-rodape { display: flex; align-items: center; justify-content: space-between; gap: var(--esp-2); font-size: var(--t-12); color: #9cc2ab; min-height: 28px; }
+.balao-rodape .btn { min-height: 28px; color: #d8efe0; }
+.g-detalhe { border-top: 1px solid var(--linha-suave); padding-top: var(--esp-3); }
+.g-detalhe summary { cursor: pointer; list-style: none; display: flex; align-items: center; gap: var(--esp-2); font-weight: 600; font-size: var(--t-14); min-height: 32px; color: var(--texto-2); }
+.g-detalhe summary::-webkit-details-marker { display: none; }
+.g-detalhe summary::before { content: ""; width: 7px; height: 7px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor; transform: rotate(-45deg); transition: transform var(--dur-rapida) var(--curva-saida); margin-right: 4px; }
+.g-detalhe[open] summary::before { transform: rotate(45deg); }
+.g-detalhe[open] summary { color: var(--texto); margin-bottom: var(--esp-3); }
+.g-detalhe summary:hover { color: var(--texto); }
+.g-mais { display: flex; gap: var(--esp-2); margin: 0; }
+/* barra de decisão: sempre à mão, no rodapé da gaveta */
+.g-acoes { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: var(--esp-2); margin: 0 calc(var(--esp-6) * -1); padding: var(--esp-3) var(--esp-6) var(--esp-4); background: color-mix(in oklab, var(--superficie) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--linha); }
+.g-acoes .g-nav { display: flex; gap: var(--esp-1); margin-right: auto; }
+.g-acoes #g-aprovar { min-height: 42px; padding: 0 var(--esp-5); font-size: var(--t-14); }
+/* aviso rápido */
+.toast { position: fixed; left: 50%; bottom: var(--esp-6); z-index: 60; transform: translate(-50%, 12px); opacity: 0; pointer-events: none; background: var(--elevado); color: var(--texto); border: 1px solid var(--linha); border-radius: var(--raio-pilula); padding: var(--esp-2) var(--esp-4); font-size: var(--t-13); box-shadow: var(--sombra-elevada); transition: opacity var(--dur-base) var(--curva-saida), transform var(--dur-base) var(--curva-saida); max-width: calc(100% - 32px); }
+.toast.visivel { opacity: 1; transform: translate(-50%, 0); }
+@media (max-width: 640px) {
+  .g-acoes { margin: 0 calc(var(--esp-4) * -1); padding: var(--esp-3) var(--esp-4) calc(var(--esp-3) + env(safe-area-inset-bottom)); }
+  .g-acoes .g-nav { display: none; }
+  .g-acoes #g-aprovar { flex: 1; }
+  .g-titulo h1 { font-size: var(--t-24); }
+  .toast { bottom: 88px; }
+}
+/* conteúdo da gaveta em coluna: espaço regular entre blocos e a barra de decisão sempre no rodapé */
+.gaveta-corpo { display: flex; flex-direction: column; }
+#gaveta-conteudo { flex: 1; display: flex; flex-direction: column; gap: var(--esp-5); }
+#gaveta-conteudo .g-detalhe + .g-detalhe { margin-top: calc(var(--esp-5) * -1 + var(--esp-1)); }
+.g-acoes { margin-top: auto; }
