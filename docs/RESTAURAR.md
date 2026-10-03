@@ -45,5 +45,9 @@ Túnel temporário: baixar `cloudflared-windows-amd64.exe` (github.com/cloudflar
 `.ferramentas/` e rodar `cloudflared tunnel --url http://127.0.0.1:4300`. Definitivo: Tailscale.
 
 ## Modelos 3D com restrição
-Repositório **privado** por causa deles: `*-nc.glb` (licença não comercial) e `cadeira-branca.glb` (Sketchfab
-Standard, não pode ser redistribuída). Não tornar o repositório público sem tirá-los antes.
+Desde 04/10/2026 o repositório é **público** (o Render da demonstração lê dele). Por isso:
+- `cadeira-branca.glb` (Sketchfab Standard, não pode ficar baixável) foi **removida** e trocada pela `cadeira-anos60` (CC-BY);
+  ela ainda existe no **histórico** do git — para sumir de vez, reescrever o histórico ou voltar o repo a privado.
+- `*-nc.glb` (CC-BY-NC / NC-SA) podem ser compartilhados **sem fins comerciais e com crédito** (`/creditos.html`).
+  Nunca usar em material de cliente.
+- Nunca versionar `data/`, `.env` ou senhas (o `.gitignore` e a trava `npm run verificar` conferem).
