@@ -1,0 +1,9 @@
+# texto sempre LF no repositório (sem avisos de CRLF; o gancho sh precisa de LF)
+* text=auto eol=lf
+scripts/hooks/* text eol=lf
+*.pdf binary
+*.glb binary
+*.png binary
+*.jpg binary
+*.ktx2 binary
+*.bin binary
