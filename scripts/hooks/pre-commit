@@ -1,0 +1,7 @@
+#!/bin/sh
+# Trava: nenhum commit entra se a verificação falhar (scripts/verificar.mjs).
+# Ativado por: git config core.hooksPath scripts/hooks  (ver docs/ESTADOS.md)
+# Commit só de documentação passa direto.
+if git diff --cached --name-only | grep -qv '^docs/'; then
+  node scripts/verificar.mjs || { echo "Commit bloqueado: a verificação falhou. Corrija e tente de novo."; exit 1; }
+fi

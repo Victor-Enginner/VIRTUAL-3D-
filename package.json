@@ -8,6 +8,8 @@
   "scripts": {
     "start": "node src/server.mjs",
     "test": "node --test",
-    "calibracao": "node scripts/calibracao.mjs"
+    "calibracao": "node scripts/calibracao.mjs",
+    "verificar": "node scripts/verificar.mjs",
+    "estado": "node scripts/estado.mjs"
   }
 }
