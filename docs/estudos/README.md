@@ -21,6 +21,7 @@ resumo é afirmado. Números de terceiros que não conferimos aparecem como **n�
 | 08 | [08-fora-do-escopo.md](08-fora-do-escopo.md) | Pain Axis, Routing Entropy, DRelay, NeuronEye, SCORAS, World Models, QTT, 2609.31917 | 1–2 págs. | alertas e descarte justificado |
 | 09 | [09-novos-aplicaveis.md](09-novos-aplicaveis.md) | 2610.02001 Mingbird · 2609.33401 System One · 2609.31937 V-model | completo | backlog (§ 11) |
 | 10 | [10-jev-e-showcase.md](10-jev-e-showcase.md) | Jev, Awesome Jev, JEV Showcase (locais) | completo | `src/decide/` e gateway futuro |
+| 11 | [11-movimento-e-cognicao.md](11-movimento-e-cognicao.md) | Multidão por posição (1802.02673), força social, F-formation, Generative Agents, BTs | método do 1802.02673; resumos | `public/sala/multidao.js`, `vagas.js` |
 | 20 | [20-radar-arxiv-2026-10.md](20-radar-arxiv-2026-10.md) | 50 papers por tema (busca de 03/10/2026) | resumo | leitura futura |
 | 90 | [90-backlog-de-engenharia.md](90-backlog-de-engenharia.md) | o que muda no código por causa disso | — | próximo trabalho |
 

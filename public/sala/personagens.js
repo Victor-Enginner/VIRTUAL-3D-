@@ -140,6 +140,9 @@ export function criarPersonagem(base, cor) {
     if (ligado && !a.isRunning()) a.reset().setEffectiveWeight(0.8).fadeIn(0.4).play();
     if (!ligado && a.isRunning()) a.fadeOut(0.4);
   }
+  // passo da animação acompanha a velocidade real (sem pé deslizando nem "correria")
+  const V_CLIPE = 1.0; // m/s em que o ciclo de caminhada do modelo parece natural
+  function ritmoPasso(v) { if (acoes.walk) acoes.walk.timeScale = Math.min(1.25, Math.max(0.55, v / V_CLIPE)); }
   tocar('idle', 0);
-  return { grupo, raiz, mixer, tocar, gesto, cabeca: osso(raiz, 'Head') };
+  return { grupo, raiz, mixer, tocar, gesto, ritmoPasso, cabeca: osso(raiz, 'Head') };
 }

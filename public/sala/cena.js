@@ -2,6 +2,7 @@
 // O kit é modelado em escala ~1:2 (porta = 1,01); ESCALA_KIT = 2 deixa tudo em metros reais.
 // Cada modelo é "aterrado" pela caixa delimitadora (ideia do 3D-World-Creator: min.y vira 0).
 import * as THREE from 'three';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { criarPainelLed } from './led.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloquear, buscarCaminho, criarGrade } from './caminhos.js';
@@ -213,9 +214,14 @@ export function criarEscritorio(cena, cores) {
   // ---------------- lounge (frente, centro) ----------------
   porModelo('tapete', -1, 5.5, 0, { obstaculo: false });
   por('sideTable', -1, 2.6, 0);
-  por('televisionModern', -1, 2.55, 0, { y: 0.76, obstaculo: false });
+  const tvLounge = por('televisionModern', -1, 2.55, 0, { y: 0.76, obstaculo: false }); // mesma TV ao vivo (sala/tv.js)
   porModelo('xbox', -0.2, 2.6, 0, { y: 0.76, obstaculo: false });
-  for (const lado of [-1, 1]) porModelo('caixa-pedestal', -1 + lado * 1.35, 2.75, 0, { aoCarregar: (n) => metade(n, lado) }); // o modelo é um par
+  // soundbar preta e baixa no lugar das caixas de pedestal (pediu: as caixas destoavam da sala)
+  const soundbar = new THREE.Mesh(new RoundedBoxGeometry(0.95, 0.07, 0.1, 3, 0.03), new THREE.MeshStandardMaterial({ color: 0x0b0c0f, roughness: 0.55, metalness: 0.2 }));
+  soundbar.position.set(-1, 0.8, 2.78);
+  const telaSom = new THREE.Mesh(new THREE.PlaneGeometry(0.88, 0.045), new THREE.MeshStandardMaterial({ color: 0x1a1c22, roughness: 0.9 }));
+  telaSom.position.set(-1, 0.8, 2.832);
+  cena.add(soundbar, telaSom);
   porModelo('mesa-principal', -1, 5.3, Math.PI / 2);
   porModelo('caixa-jbl', -1.55, 2.62, 0.5, { y: 0.76, obstaculo: false });
   por('loungeSofa', -2.1, 7.2, Math.PI);
@@ -316,7 +322,7 @@ export function criarEscritorio(cena, cores) {
     g.position.y = Math.abs(Math.sin(robo.passo)) * 0.025; // passada das pernas
   }
 
-  return { grade, postos, pontos, janelas, adicionarPosto, atualizar, painel: painelLed, tv: tvReuniao, vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
+  return { grade, postos, pontos, janelas, adicionarPosto, atualizar, painel: painelLed, tv: tvReuniao, tvs: [tvReuniao, tvLounge], robo: () => (robo.grupo ? { x: robo.grupo.position.x, z: robo.grupo.position.z } : null), vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
 }
 
 // piso de tacos: tábuas com tons levemente diferentes e juntas escuras, desenhado no canvas

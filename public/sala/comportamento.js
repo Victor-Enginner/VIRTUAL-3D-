@@ -34,3 +34,24 @@ export function sortearPonto(id, aleatorio = Math.random) {
   const p = PERSONALIDADE[id]?.pontos || ['copa', 'janela', 'lounge', 'biblioteca']; // agentes criados no Configurador
   return p[Math.floor(aleatorio() * p.length)];
 }
+
+// Escolha da pausa por UTILIDADE (padrão de IA de jogos): cada área ganha uma nota e a maior vence.
+// Gosto pessoal (personalidade) + gente conhecida lá (quem é sociável vai para a roda) − repetir o
+// mesmo lugar − pouca vaga. Área sem lugar livre nunca é escolhida (ninguém empilha).
+const SOCIAVEIS = new Set(['copa', 'lounge']);
+export function escolherArea(id, { livres, presentes, ultima }, aleatorio = Math.random) {
+  const gosto = PERSONALIDADE[id]?.pontos || ['copa', 'janela', 'lounge', 'biblioteca'];
+  const areas = ['copa', 'janela', 'biblioteca', 'lounge'];
+  let melhor = null, nota = -Infinity;
+  for (const area of areas) {
+    const vagas = livres(area);
+    if (!vagas) continue;
+    let n = gosto.filter((g) => g === area).length;                 // quantas vezes aparece no "jeito" dele
+    if (SOCIAVEIS.has(area) && presentes(area)) n += 0.8;            // tem alguém lá: dá vontade de conversar
+    if (area === ultima) n -= 1.5;                                   // acabou de vir de lá
+    if (vagas === 1) n -= 0.3;                                       // última vaga: quase cheio
+    n += aleatorio() * 0.6;                                          // um pouco de imprevisível
+    if (n > nota) { nota = n; melhor = area; }
+  }
+  return melhor;
+}

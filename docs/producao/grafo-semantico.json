@@ -115,6 +115,14 @@
       "arquivo": "public/sala/tv.js"
     },
     {
+      "id": "multidao",
+      "rotulo": "Multidão + vagas (movimento)",
+      "camada": "frontend",
+      "status": "pronto",
+      "arquivo": "public/sala/multidao.js, vagas.js",
+      "paper": "1802.02673"
+    },
+    {
       "id": "api",
       "rotulo": "API HTTP + SSE",
       "camada": "api",
@@ -371,6 +379,11 @@
       "de": "cartoes",
       "para": "api",
       "rel": "aprova/descarta com desfazer"
+    },
+    {
+      "de": "multidao",
+      "para": "sala3d",
+      "rel": "move os agentes"
     },
     {
       "de": "telao_led",

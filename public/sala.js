@@ -7,7 +7,9 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { criarEscritorio } from './sala/cena.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
 import { buscarCaminho } from './sala/caminhos.js';
-import { proximoEstado, sortearPonto, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS } from './sala/comportamento.js';
+import { proximoEstado, sortearPonto, escolherArea, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS } from './sala/comportamento.js';
+import { criarMultidao, entrar, seguir, fixar, passo, velocidade } from './sala/multidao.js';
+import { criarVagas, reservar, liberarVaga, livresEm, roda, grupos, quemFala } from './sala/vagas.js';
 import { criarTela, desenharTela } from './sala/telas.js';
 import { desenharPainelLed, animarPainelLed, letreiroLed } from './sala/led.js';
 import { montarTV } from './sala/tv.js';
@@ -78,6 +80,17 @@ const LUZ_NOITE = new THREE.Color(0xffd9a8), LUZ_DIA = new THREE.Color(0xffffff)
 
 const CORES = escuro ? { piso: 0x8a6446, parede: 0xd8d2c6 } : { piso: 0xb5865c, parede: 0xe9e3d8 }; // mesma cor dos segmentos de janela do kit
 const escritorio = criarEscritorio(cena, CORES);
+const multidao = criarMultidao(escritorio.grade);
+let vagas = null;
+escritorio.pronto.then(() => {
+  const P = escritorio.pontos, G = escritorio.grade;
+  vagas = criarVagas({
+    // copa: lugares no balcão (fazendo café) + uma roda de conversa no meio da copa
+    copa: [...P.copa, ...roda(G, 9.6, -0.4, 4)],
+    lounge: [...roda(G, -1, 4.0, 4, 0.85)],
+    janela: P.janela, biblioteca: P.biblioteca, sofa: P.sofa, tv: P.tv,
+  });
+});
 
 // ------------------------------------------------------------ ciclo dia/noite pelo relógio real
 const CEU_DIA = new THREE.Color(escuro ? 0x1b2333 : 0xdfe9f2), CEU_NOITE = new THREE.Color(0x070a14);
@@ -130,7 +143,10 @@ function criarAgente(id, info) {
   const a = {
     id, info, p, el, estado: 'na_mesa', destino: 'mesa', ponto: assento, caminho: null, sentado: false, alturaY: 0,
     ultimaAtividade: Date.now(), pontoDePausa: sortearPonto(id), trocaPontoEm: 0, ritmo: PERSONALIDADE[id]?.ritmo || 1,
+    emCaminho: false,
   };
+  // ritmo pessoal pequeno (0,9–1,1): ninguém "corre", mas cada um tem seu passo
+  entrar(multidao, id, assento.x, assento.z, { ritmo: 0.9 + 0.2 * Math.min(1, Math.max(0, (a.ritmo - 0.9) / 0.3)) });
   sentar(a, false);
   agentes[id] = a;
 }
@@ -143,29 +159,45 @@ function bonecoReserva(cor) {
   const cabeca = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 12), new THREE.MeshStandardMaterial({ color: 0xe7c9a6 }));
   cabeca.position.y = 1.6;
   grupo.add(corpo, cabeca);
-  return { grupo, mixer: null, tocar() {}, gesto() {}, cabeca };
+  return { grupo, mixer: null, tocar() {}, gesto() {}, ritmoPasso() {}, cabeca };
 }
 
 function sentar(a, digitando) {
   a.sentado = true;
+  fixar(multidao, a.id, true, a.ponto?.x, a.ponto?.z); // sentado vira obstáculo fixo
   a.alturaY = offsetSentado;
   a.p.tocar(digitando ? 'digitando' : 'sentado');
 }
-function levantar(a) { a.sentado = false; a.alturaY = 0; a.p.tocar('idle'); }
+function levantar(a) { a.sentado = false; a.alturaY = 0; fixar(multidao, a.id, false); a.p.tocar('idle'); }
 
 // escolhe o ponto exato para o destino (cada agente pega um lugar diferente no mesmo ambiente)
+// escolhe o ponto exato com RESERVA (vagas.js): um agente por lugar, id estável — ninguém empilha
 function pontoDoDestino(a) {
-  if (a.destino === 'mesa') return { ...escritorio.postos[a.id].assento, senta: true };
-  const lista = escritorio.pontos[a.destino] || escritorio.pontos.copa;
-  const ocupados = new Set(Object.values(agentes).filter((o) => o !== a && o.destino === a.destino).map((o) => o.ponto));
-  return lista.find((p) => !ocupados.has(p)) || lista[AGENTES.indexOf(a.id) % lista.length];
+  if (a.destino === 'mesa' || !vagas) { liberarVaga(vagas || { lugares: new Map() }, a.id); return { ...escritorio.postos[a.id].assento, senta: true }; }
+  const lugar = reservar(vagas, a.id, a.destino);
+  if (lugar) return lugar;
+  // área cheia: a utilidade escolhe outra com vaga; sem nenhuma, volta para a mesa
+  const outra = escolherArea(a.id, ocupacaoPara(a), Math.random);
+  const l2 = outra && reservar(vagas, a.id, outra);
+  if (l2) { a.destino = outra; a.pontoDePausa = outra; return l2; }
+  a.destino = 'mesa';
+  return { ...escritorio.postos[a.id].assento, senta: true };
 }
+const ocupacaoPara = (a) => ({
+  livres: (area) => livresEm(vagas, area).length,
+  presentes: (area) => [...vagas.lugares.values()].filter((l) => l.area === area && l.dono && l.dono !== a.id).length,
+  ultima: a.ultimaArea || null,
+});
 
 function irPara(a, ponto) {
   a.ponto = ponto;
   if (a.sentado) levantar(a);
-  const pos = a.p.grupo.position;
-  a.caminho = buscarCaminho(escritorio.grade, [pos.x, pos.z], [ponto.x, ponto.z]) || [[ponto.x, ponto.z]];
+  const m = multidao.agentes.get(a.id);
+  // movimento reduzido: sem caminhada animada, ele aparece no lugar
+  if (semMovimento) { fixar(multidao, a.id, false, ponto.x, ponto.z); a.emCaminho = false; chegar(a); return; }
+  const caminho = buscarCaminho(escritorio.grade, [m.x, m.z], [ponto.x, ponto.z]) || [[ponto.x, ponto.z]];
+  seguir(multidao, a.id, caminho);
+  a.emCaminho = true;
   a.p.tocar('walk');
 }
 
@@ -179,8 +211,9 @@ function atualizarAgente(a, dt, agoraMs) {
     apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa,
   }, agoraMs);
   // na pausa, de tempos em tempos troca de lugar (copa → janela → biblioteca), no ritmo do agente
-  if (dec.estado === 'pausa' && agoraMs > a.trocaPontoEm && !a.caminho) {
-    a.pontoDePausa = sortearPonto(a.id);
+  if (dec.estado === 'pausa' && agoraMs > a.trocaPontoEm && !a.emCaminho && vagas) {
+    a.ultimaArea = a.destino !== 'mesa' ? a.destino : a.ultimaArea;
+    a.pontoDePausa = escolherArea(a.id, ocupacaoPara(a)) || 'copa';
     a.trocaPontoEm = agoraMs + (TEMPO_NO_PONTO_MS[0] + Math.random() * (TEMPO_NO_PONTO_MS[1] - TEMPO_NO_PONTO_MS[0])) / a.ritmo;
     dec.destino = a.pontoDePausa;
   }
@@ -189,19 +222,15 @@ function atualizarAgente(a, dt, agoraMs) {
   if (mudouDestino) { a.destino = dec.destino; irPara(a, pontoDoDestino(a)); }
 
   const g = a.p.grupo;
-  if (a.caminho) {
-    const [tx, tz] = a.caminho[0];
-    const dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz);
-    const passo = 1.25 * a.ritmo * dt;
-    if (dist <= passo) {
-      g.position.x = tx; g.position.z = tz;
-      a.caminho.shift();
-      if (!a.caminho.length) chegar(a);
-    } else {
-      g.position.x += (dx / dist) * passo; g.position.z += (dz / dist) * passo;
-      giroAlvo.setFromAxisAngle(eixoY, Math.atan2(dx, dz));
-      g.quaternion.slerp(giroAlvo, Math.min(1, dt * 8));
-    }
+  const m = multidao.agentes.get(a.id);
+  if (m && !a.sentado) { g.position.x = m.x; g.position.z = m.z; } // a posição vem da multidão (multidao.js)
+  const v = m ? velocidade(m) : 0;
+  if (a.emCaminho && m?.chegou) { a.emCaminho = false; chegar(a); }
+  if (a.emCaminho || v > 0.12) {
+    // vira para onde anda e o passo da animação acompanha a velocidade real
+    if (v > 0.05) { giroAlvo.setFromAxisAngle(eixoY, Math.atan2(m.vx, m.vz)); g.quaternion.slerp(giroAlvo, Math.min(1, dt * 7)); }
+    a.p.tocar(v > 0.08 ? 'walk' : 'idle');
+    a.p.ritmoPasso(v);
   } else if (a.ponto) {
     giroAlvo.setFromAxisAngle(eixoY, a.ponto.rot);
     g.quaternion.slerp(giroAlvo, Math.min(1, dt * 5));
@@ -213,6 +242,7 @@ function atualizarAgente(a, dt, agoraMs) {
 
 function chegar(a) {
   a.caminho = null;
+  a.emCaminho = false;
   const ponto = a.ponto;
   const g = a.p.grupo;
   if (ponto.senta) {
@@ -222,25 +252,21 @@ function chegar(a) {
   g.rotation.y = ponto.rot ?? g.rotation.y;
 }
 
-// conversas: dois agentes em pausa a menos de 2,2 m se viram um para o outro e gesticulam
+// conversas = rodas (F-formation, arXiv 1907.10384): quem chegou num lugar da mesma roda está no
+// mesmo grupo, já virado para o centro pelo próprio lugar. Turno de fala ~2 s: um fala, os outros escutam.
 function atualizarConversas() {
-  const emPe = Object.values(agentes).filter((a) => a.estado === 'pausa' && !a.caminho);
   for (const a of Object.values(agentes)) a.conversando = false;
-  for (let i = 0; i < emPe.length; i++) for (let j = i + 1; j < emPe.length; j++) {
-    const A = emPe[i], B = emPe[j];
-    const d = A.p.grupo.position.distanceTo(B.p.grupo.position);
-    if (d < 2.2) {
-      A.conversando = B.conversando = true;
-      A.ponto = { ...A.ponto, rot: Math.atan2(B.p.grupo.position.x - A.p.grupo.position.x, B.p.grupo.position.z - A.p.grupo.position.z) };
-      B.ponto = { ...B.ponto, rot: Math.atan2(A.p.grupo.position.x - B.p.grupo.position.x, A.p.grupo.position.z - B.p.grupo.position.z) };
-    }
+  const agora = Date.now();
+  const falando = new Set();
+  if (vagas) for (const membros of grupos(vagas, (id) => agentes[id] && !agentes[id].emCaminho && agentes[id].estado !== 'trabalhando')) {
+    for (const id of membros) agentes[id].conversando = true;
+    falando.add(quemFala(membros, agora + membros.length * 700));
   }
   for (const a of Object.values(agentes)) {
     if (a.conversando) a.estado = 'conversando';
-    // um concorda, o outro balança a cabeça, alternando: parece conversa, não coreografia
-    const t = Math.floor(performance.now() / 2600 + AGENTES.indexOf(a.id)) % 2;
-    a.p.gesto('agree', (a.conversando && t === 0) || a.comemorarAte > Date.now());
-    a.p.gesto('headShake', a.conversando && t === 1 && a.id !== 'alva');
+    const fala = falando.has(a.id);
+    a.p.gesto('headShake', a.conversando && fala && a.id !== 'alva'); // quem fala mexe a cabeça
+    a.p.gesto('agree', (a.conversando && !fala) || a.comemorarAte > Date.now()); // quem escuta concorda
   }
 }
 
@@ -597,7 +623,8 @@ const relogio = new THREE.Clock();
 let ultimoConversa = 0;
 renderer.setAnimationLoop(() => {
   const dt = Math.min(relogio.getDelta(), 0.1), t = relogio.elapsedTime, agora = Date.now();
-  for (const a of Object.values(agentes)) atualizarAgente(a, semMovimento ? dt * 4 : dt, agora);
+  passo(multidao, dt); // todos se movem juntos: desvio e contato resolvidos de uma vez
+  for (const a of Object.values(agentes)) atualizarAgente(a, dt, agora);
   if (t - ultimoConversa > 0.5) { atualizarConversas(); atualizarRotulos(); ultimoConversa = t; }
   atualizarPostos(t);
   som.digitacao(Object.values(agentes).filter((a) => a.estado === 'trabalhando' && a.sentado).length, performance.now());
@@ -606,6 +633,8 @@ renderer.setAnimationLoop(() => {
   animarVoo(dt);
   medirQualidade(performance.now());
   escritorio.atualizar?.(semMovimento ? 0 : dt, t);
+  const robo = escritorio.robo?.();
+  if (robo) { if (!multidao.agentes.has('robo')) entrar(multidao, 'robo', robo.x, robo.z); fixar(multidao, 'robo', true, robo.x, robo.z); }
   animarPainelLed(escritorio.painel, dt, t, semMovimento);
   controles.update();
   renderer.render(cena, camera);
@@ -614,7 +643,7 @@ renderer.setAnimationLoop(() => {
 
 // ------------------------------------------------------------ TV ao vivo (sala de reunião)
 const painelTv = $('#tv-painel');
-const tv = montarTV({ grupoTv: escritorio.tv, aoMudar: desenharTv });
+const tv = montarTV({ grupos: escritorio.tvs, aoMudar: desenharTv });
 function desenharTv(s = tv.estado()) {
   $('#btn-tv').textContent = s.ligada ? 'TV ligada' : 'TV';
   $('#btn-tv').classList.toggle('ativo', s.ligada);
@@ -650,7 +679,7 @@ painelTv.addEventListener('submit', async (ev) => {
 
 // ------------------------------------------------------------ início
 montarShell('sala', { fundoNeural: false }); // a cena 3D já é o fundo
-window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar, tv }; // inspeção pelo console do navegador
+window.__sala = { THREE, cena, camera, controles, agentes, escritorio, renderer, comemorar, irParaVista, voar, tv, multidao, get vagas() { return vagas; } }; // inspeção pelo console do navegador
 const carregando = $('#carregando');
 try {
   base = await carregarBase((f) => { carregando.textContent = `Carregando personagens… ${Math.min(100, Math.round(f * 100))}%`; /* o total pode vir do tamanho comprimido */ });
