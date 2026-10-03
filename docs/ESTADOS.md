@@ -47,3 +47,4 @@ git checkout main
 | `producao-2026-10-03-3` | 4c54660 | 2026-10-03 | 77 | data/estados/producao-2026-10-03-3.db | Visual Órbita: preto + neon, rede neural viva, fonte nativa; cartões de aprovação |
 | `producao-2026-10-03-4` | 28d3044 | 2026-10-03 | 77 | data/estados/producao-2026-10-03-4.db | Workspace Órbita: Início, Produção, Agentes, Nichos, Engine |
 | `producao-2026-10-03-5` | 9096527 | 2026-10-03 | 82 | data/estados/producao-2026-10-03-5.db | B16, linha do tempo, telão LED real, TV ao vivo 3D |
+| `producao-2026-10-03-6` | 19e1cb2 | 2026-10-03 | 92 | data/estados/producao-2026-10-03-6.db | Movimento de multidão, rodas de conversa, TV nas duas telas |
