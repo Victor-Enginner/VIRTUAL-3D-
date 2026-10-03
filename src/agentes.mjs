@@ -26,8 +26,8 @@ import { CONFIG } from './config.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR, saudeOpenwa } from './envio/openwa.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
-import { exigirHandoff, visao } from './tocomas/grafo.mjs';
-import { estaPreso, fatosDaFonte, fecharCiclo, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
+import { conferirHandoff, exigirHandoff, visao } from './tocomas/grafo.mjs';
+import { estaPreso, fatosDaFonte, fecharCiclo, lerCrenca, limparBloqueio, marcarBloqueio, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
 import { aplicar as aplicarHabilidades } from './tocomas/habilidades.mjs';
@@ -40,9 +40,22 @@ export const AGENTES = {
   leo: { nome: 'Leo', papel: 'Operações', funcao: 'Envia no ritmo seguro e trata respostas e opt-out', cor: '#16a34a' },
 };
 
-// passar trabalho adiante: só pelas arestas do grafo de tarefas
-function passar(db, de, para, ref) {
+// passar trabalho adiante: só pelas arestas do grafo de tarefas e só se o próximo nó tem os fatos
+// de que precisa (portão de handoff). Recusado, vira pendência na crença em vez de job que vai falhar.
+export function passar(db, de, para, ref) {
   exigirHandoff(de, para);
+  const lead = db.prepare('SELECT nome, etapa FROM leads WHERE id = ?').get(ref);
+  if (lead) {
+    const falta = conferirHandoff(lerCrenca(db, ref, lead.etapa), para);
+    if (falta.length) {
+      if (marcarBloqueio(db, ref, para, falta)) {
+        const lista = falta.map((f) => `${f.chave}${f.tipo === 'conflito' ? ' (fontes discordam)' : ''}`).join(', ');
+        registrar(db, 'alva', 'handoff_bloqueado', `${lead.nome}: não passei para "${para}" — falta ${lista}`, { lead_id: ref, dados: { de, para, falta } });
+      }
+      return null;
+    }
+    limparBloqueio(db, ref);
+  }
   return enfileirar(db, para, ref);
 }
 
@@ -481,7 +494,11 @@ export function abrirExpediente(db) {
   // leads que ficaram pela metade em uma execução anterior voltam para a etapa certa
   // (o Controle pode reabrir qualquer nó; leads presos ficam de fora até alguém reprocessar)
   for (const [etapa, job] of [['descoberto', 'auditar'], ['auditado', 'qualificar'], ['qualificado', 'redigir']]) {
-    for (const l of db.prepare('SELECT id FROM leads WHERE etapa = ?').all(etapa)) if (!estaPreso(db, l.id)) passar(db, 'controle', job, l.id);
+    for (const l of db.prepare('SELECT * FROM leads WHERE etapa = ?').all(etapa)) {
+      if (estaPreso(db, l.id)) continue;
+      semearDoLead(db, l); // lead de antes da crença: o portão precisa dos fatos que a linha já tem
+      passar(db, 'controle', job, l.id);
+    }
   }
   const b = briefing(db);
   registrar(db, 'alva', 'briefing', `Expediente aberto: ${vencidas.length} varredura(s) reaberta(s) · ${b.para_aprovar} mensagem(ns) esperando sua aprovação · ${b.enviados_hoje}/${b.limite} envios hoje`, { dados: b });

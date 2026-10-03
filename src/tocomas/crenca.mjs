@@ -18,16 +18,16 @@ const vencido = (f, quando) => f.valido_ate && f.valido_ate < quando;
 function ler(db, leadId) {
   const r = db.prepare('SELECT * FROM crencas WHERE lead_id = ?').get(leadId);
   return r
-    ? { ...r, fatos: parse(r.fatos, []), conflitos: parse(r.conflitos, []), preso: Boolean(r.preso) }
-    : { lead_id: leadId, versao: 0, fatos: [], conflitos: [], ciclos_sem_novidade: 0, preso: false, motivo: null };
+    ? { ...r, fatos: parse(r.fatos, []), conflitos: parse(r.conflitos, []), preso: Boolean(r.preso), bloqueio: parse(r.bloqueio) }
+    : { lead_id: leadId, versao: 0, fatos: [], conflitos: [], ciclos_sem_novidade: 0, preso: false, motivo: null, bloqueio: null };
 }
 
 function salvar(db, c) {
-  db.prepare(`INSERT INTO crencas (lead_id, versao, fatos, conflitos, ciclos_sem_novidade, preso, motivo, atualizado_em)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(lead_id) DO UPDATE SET versao = excluded.versao, fatos = excluded.fatos,
+  db.prepare(`INSERT INTO crencas (lead_id, versao, fatos, conflitos, ciclos_sem_novidade, preso, motivo, bloqueio, atualizado_em)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(lead_id) DO UPDATE SET versao = excluded.versao, fatos = excluded.fatos,
     conflitos = excluded.conflitos, ciclos_sem_novidade = excluded.ciclos_sem_novidade, preso = excluded.preso,
-    motivo = excluded.motivo, atualizado_em = excluded.atualizado_em`)
-    .run(c.lead_id, c.versao, json(c.fatos), json(c.conflitos), c.ciclos_sem_novidade, c.preso ? 1 : 0, c.motivo, agora());
+    motivo = excluded.motivo, bloqueio = excluded.bloqueio, atualizado_em = excluded.atualizado_em`)
+    .run(c.lead_id, c.versao, json(c.fatos), json(c.conflitos), c.ciclos_sem_novidade, c.preso ? 1 : 0, c.motivo, c.bloqueio ? json(c.bloqueio) : null, agora());
 }
 
 // Registra fatos novos. Valor nulo não é fato (vira pendência). Mesmo valor só renova a data;
@@ -72,6 +72,7 @@ export function pendencias(c, etapa, quando = agora()) {
   for (const k of ['telefone', 'situacao_site']) if (!valido(k)) p.push({ chave: k, tipo: 'falta_dado' });
   for (const f of c.fatos) if (vencido(f, quando) && !p.some((x) => x.chave === f.chave)) p.push({ chave: f.chave, tipo: 'falta_dado' });
   for (const k of c.conflitos) p.push({ chave: k, tipo: 'conflito' });
+  if (c.bloqueio) p.push({ chave: c.bloqueio.para, tipo: 'handoff_bloqueado', falta: c.bloqueio.falta.map((f) => f.chave) });
   if (etapa === 'mensagem') p.push({ chave: 'aprovacao', tipo: 'aguardando_humano' });
   if (etapa === 'enviado') p.push({ chave: 'resposta', tipo: 'aguardando_resposta' });
   return p;
@@ -103,9 +104,25 @@ export function fecharCiclo(db, leadId, versaoAntes, etapa = null) {
   return { preso: c.preso, ciclos: c.ciclos_sem_novidade, motivo: c.motivo };
 }
 
+// guarda o handoff que o portão recusou; devolve true se é um bloqueio novo (para não repetir aviso)
+export function marcarBloqueio(db, leadId, para, falta) {
+  const c = ler(db, leadId);
+  const novo = !c.bloqueio || c.bloqueio.para !== para || !igual(c.bloqueio.falta, falta);
+  c.bloqueio = { para, falta, em: agora() };
+  salvar(db, c);
+  return novo;
+}
+
+export function limparBloqueio(db, leadId) {
+  const c = ler(db, leadId);
+  if (!c.bloqueio) return;
+  c.bloqueio = null;
+  salvar(db, c);
+}
+
 export function liberar(db, leadId) {
   const c = ler(db, leadId);
-  Object.assign(c, { preso: false, motivo: null, ciclos_sem_novidade: 0 });
+  Object.assign(c, { preso: false, motivo: null, ciclos_sem_novidade: 0, bloqueio: null });
   salvar(db, c);
 }
 

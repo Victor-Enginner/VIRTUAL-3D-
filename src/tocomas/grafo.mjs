@@ -36,6 +36,26 @@ export function exigirHandoff(deJob, paraJob) {
   return { de, para };
 }
 
+// Portão de handoff (TOCOMAS, arXiv 2609.37953 — sem ele, VHS −40,85): antes de passar o lead,
+// confere na crença se o próximo nó tem o que precisa para trabalhar. É regra, custo zero (V-model,
+// arXiv 2609.31937: 8 de 9 correções vieram de portões determinísticos).
+export const REQUISITOS = {
+  T3_qualificar: ['situacao_site'],
+  T4_redigir: ['telefone', 'situacao_site', 'angulo'],
+};
+
+// recebe a crença (contrato "crenca") e devolve o que falta; vazio = pode passar
+export function conferirHandoff(crenca, paraJob) {
+  const precisa = REQUISITOS[noDoJob(paraJob)] || [];
+  const falta = [];
+  for (const chave of precisa) {
+    const p = crenca.pendencias.find((x) => x.chave === chave && (x.tipo === 'falta_dado' || x.tipo === 'conflito'));
+    if (p) falta.push({ chave, tipo: p.tipo });
+    else if (!crenca.fatos.some((f) => f.chave === chave)) falta.push({ chave, tipo: 'falta_dado' });
+  }
+  return falta;
+}
+
 // Fronteira de memória por domínio: o que cada um enxerga do lead.
 // A Escrita (Maia) recebe só os sinais de atraso, nunca o HTML/tecnologias medidos pela Coleta.
 const CAMPOS_ESCRITA = ['id', 'nome', 'categoria', 'nicho', 'cidade', 'uf', 'telefone', 'situacao_site', 'rating', 'avaliacoes', 'decisao', 'etapa'];

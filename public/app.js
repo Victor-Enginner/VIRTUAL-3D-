@@ -224,7 +224,7 @@ function blocoAuditoria(l) {
 
 // crença do lead (TOCOMAS): cada fato com fonte e validade, o que falta, e se saiu da fila
 const ROTULO_FATO = { telefone: 'Telefone', site: 'Site', rating: 'Nota', avaliacoes: 'Avaliações', situacao_site: 'Situação do site', sinais_atraso: 'Sinais de atraso', nivel_oportunidade: 'Oportunidade (0–4)', ativo: 'Ativo (prob.)', angulo: 'Ângulo' };
-const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta' };
+const ROTULO_PEND = { falta_dado: 'falta', conflito: 'fontes discordam', aguardando_humano: 'esperando você', aguardando_resposta: 'esperando resposta', handoff_bloqueado: 'parado no portão' };
 
 // mesmos motivos de src/tocomas/habilidades.mjs (a API recusa qualquer outro)
 const MOTIVOS = { nicho: 'Ramo que não atendo', regiao: 'Fora da minha região', site_bom: 'Já tem site bom', grande: 'Negócio grande demais', mensagem: 'Mensagem ruim', outro: 'Outro motivo' };
@@ -244,8 +244,11 @@ function valorFato(f, l) {
 function blocoCrencaGaveta(c, l) {
   if (!c || !c.fatos.length) return '<p class="sub">Os agentes ainda não registraram fatos sobre este lead.</p>';
   const preso = c.progresso.preso ? `<p class="aviso">Fora da fila: ${esc(c.progresso.motivo || '')}. "Refazer auditoria" tenta de novo.</p>` : '';
-  return `${preso}<ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valorFato(f, l))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
-    ${c.pendencias.length ? `<p class="sub">Pendências: ${c.pendencias.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}`;
+  const bloq = c.pendencias.find((p) => p.tipo === 'handoff_bloqueado');
+  const portao = bloq ? `<p class="aviso">Parado antes de "${esc(bloq.chave)}": falta ${esc((bloq.falta || []).map((k) => ROTULO_FATO[k] || k).join(', '))}. "Refazer auditoria" busca de novo.</p>` : '';
+  const pend = c.pendencias.filter((p) => p.tipo !== 'handoff_bloqueado');
+  return `${preso}${portao}<ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valorFato(f, l))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
+    ${pend.length ? `<p class="sub">Pendências: ${pend.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}`;
 }
 
 // aviso curto no canto (o que acabou de acontecer)

@@ -170,8 +170,15 @@
                   "falta_dado",
                   "conflito",
                   "aguardando_humano",
-                  "aguardando_resposta"
+                  "aguardando_resposta",
+                  "handoff_bloqueado"
                 ]
+              },
+              "falta": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
               }
             }
           }

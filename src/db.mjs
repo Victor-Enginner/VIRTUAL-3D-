@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS crencas (
   ciclos_sem_novidade INTEGER NOT NULL DEFAULT 0,
   preso INTEGER NOT NULL DEFAULT 0,
   motivo TEXT,
+  bloqueio TEXT, -- último handoff recusado pelo portão: {para, falta, em}
   atualizado_em TEXT NOT NULL
 );
 
@@ -152,6 +153,8 @@ export function abrirBanco(dataDir) {
   }
   const db = new DatabaseSync(file);
   db.exec(SCHEMA);
+  // colunas novas em bancos antigos
+  try { db.exec('ALTER TABLE crencas ADD COLUMN bloqueio TEXT'); } catch { /* já existe */ }
   // jobs que estavam rodando quando o processo caiu voltam para a fila
   db.prepare("UPDATE jobs SET status = 'pendente' WHERE status = 'rodando'").run();
   return db;
