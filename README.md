@@ -6,6 +6,17 @@ com um escritório 3D onde a equipe aparece trabalhando de verdade.
 
 Zero dependência npm: Node 22.5+ (`node:sqlite`, `node:http`). Python + Playwright só para a fonte Google Maps.
 
+## Instalar em outro computador (pendrive, Drive, VPS)
+
+```bash
+npm run empacotar                 # gera data/pacotes/prospector-AAAA-MM-DD.zip (só código e assets, nunca .env/banco/chaves)
+npm run empacotar -- --com-banco  # inclui o banco criptografado (AES-256-GCM, senha na hora)
+```
+No computador novo: descompactar e dar duplo clique em `instalacao.bat` (confere Node, Python/Playwright, Ollama,
+modelos e disco; cria o `.env`; pergunta antes de instalar qualquer coisa; sobe o servidor e abre a Sala 3D).
+Só conferir: `instalacao.bat /checar` ou `npm run instalar -- --checar`. Banco com versão: `src/migracoes.mjs`
+(backup automático em `data/backups/` antes de migrar um banco com dados).
+
 ## Rodar
 
 ```bash
