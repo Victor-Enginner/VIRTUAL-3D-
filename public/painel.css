@@ -395,3 +395,9 @@ button.etapa[aria-pressed="true"] .escala { background: linear-gradient(to right
 .tempo-item.resposta .tempo-msg { color: var(--texto); }
 .tempo-item.portao .tempo-no { color: var(--violeta); border-color: var(--violeta); }
 .tempo-item.sair .tempo-no { color: var(--perigo); border-color: var(--perigo); }
+
+/* cadeia de causa (B5) */
+.causa { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--esp-2); }
+.causa li { padding-left: var(--esp-3); border-left: 2px solid var(--linha); }
+.causa .seta { display: block; font-size: var(--t-12, 12px); opacity: .7; }
+.causa small { display: block; opacity: .75; }

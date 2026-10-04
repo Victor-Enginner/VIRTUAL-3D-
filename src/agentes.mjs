@@ -287,7 +287,7 @@ async function qualificar(db, job, ctx) {
   }
   db.prepare('UPDATE leads SET decisao = ?, score = ?, motivo = ?, etapa = ?, atualizado_em = ? WHERE id = ?')
     .run(json(decisao), score, motivo, etapa, agora(), lead.id);
-  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms${hab.aplicadas.length ? ` · ${hab.aplicadas.length} regra(s) aprendida(s)` : ''}`, { lead_id: lead.id });
+  registrar(db, 'nova', 'decisao', `${lead.nome}: prioridade ${score} · ângulo "${abordagem.choice}"${r.backend === 'regra_sem_modelo' ? ' (sem modelo)' : abordagem.origem === 'regra' ? ' (único válido)' : ` (${Math.round(abordagem.confidence * 100)}%)`} · ${r.latency_ms} ms${hab.aplicadas.length ? ` · ${hab.aplicadas.length} regra(s) aprendida(s)` : ''}`, { lead_id: lead.id, dados: { angulo: abordagem.choice, confianca: abordagem.confidence, de: abordagem.origem === 'regra' ? 'regra' : 'modelo', modelo: r.model ?? null, prioridade: score } });
   registrarFatos(db, lead.id, [
     { chave: 'nivel_oportunidade', valor: nivel, fonte: 'regra' },
     ...(ativo.origem === 'sem_modelo' ? [] : [{ chave: 'ativo', valor: ativo.noul, fonte: 'modelo', confianca: ativo.confidence }]),
@@ -414,7 +414,7 @@ async function redigir(db, job, ctx) {
     registrar(db, 'maia', 'aviso', `${lead.nome}: usei o texto fixo (${e.message.slice(0, 140)})`, { lead_id: lead.id });
   }
   db.prepare("UPDATE leads SET mensagem = ?, mensagem_origem = ?, etapa = 'mensagem', atualizado_em = ? WHERE id = ?").run(texto, origem, agora(), lead.id);
-  registrar(db, 'maia', 'mensagem', `Mensagem pronta para ${lead.nome} (${origem === 'modelo' ? 'escrita pelo modelo' : 'modelo fixo'})`, { lead_id: lead.id });
+  registrar(db, 'maia', 'mensagem', `Mensagem pronta para ${lead.nome} (${origem === 'modelo' ? 'escrita pelo modelo' : 'modelo fixo'})`, { lead_id: lead.id, dados: { angulo, observacao: observacao(lead, angulo), texto_de: origem } });
   if (!ajustes.envio.exigir_aprovacao) {
     try { aprovarEnvio(db, lead.id, texto, 'auto'); } catch (e) { registrar(db, 'leo', 'aviso', `${lead.nome}: não entrou na fila (${e.message})`, { lead_id: lead.id }); }
   }

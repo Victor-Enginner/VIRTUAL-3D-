@@ -13,6 +13,10 @@ export const MIGRACOES = [
   { v: 1, nome: 'base: tabelas do SCHEMA (criadas com IF NOT EXISTS)', up() {} },
   { v: 2, nome: 'crencas: bloqueio, historico, diagnostico (B7)', up(db) { for (const c of ['bloqueio', 'historico', 'diagnostico']) adicionarColuna(db, 'crencas', c, 'TEXT'); } },
   { v: 3, nome: 'negocios: ciclo de resultado (fechado/perdido à mão); a tabela vem do SCHEMA', up() {} },
+  { v: 4, nome: 'eventos.causa_id: cadeia de causa (B5)', up(db) {
+    adicionarColuna(db, 'eventos', 'causa_id', 'INTEGER');
+    db.exec('CREATE INDEX IF NOT EXISTS eventos_lead ON eventos(lead_id, id); CREATE INDEX IF NOT EXISTS eventos_causa ON eventos(causa_id)');
+  } },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

@@ -278,6 +278,19 @@ const MARCO_TIPO = { aprovado: 'voce', descartado: 'voce', enviado: 'envio', res
 const ROTULO_TIPO = { auditoria: 'auditou o site', decisao: 'decidiu', mensagem: 'escreveu a mensagem', aprovado: 'você aprovou', descartado: 'você descartou', enviado: 'enviou',
   resposta: 'o negócio respondeu', opt_out: 'pediu para sair', handoff_bloqueado: 'parou no portão', preso: 'tirou da fila', aprendizado: 'aprendeu', habilidade_aplicada: 'aplicou uma regra sua',
   zona_baixa: 'descartou sozinha', aviso: 'aviso', erro: 'erro', reavaliacao: 'reavaliou' };
+// Cadeia de causa (B5): cada passo aponta para o que o causou. Tudo vem de fatos gravados, nada de modelo.
+const NOME_CURTO = { atlas: 'Atlas', nova: 'Nova', maia: 'Maia', leo: 'Leo', alva: 'Alva' };
+function detalheDaCausa(p) {
+  const d = p.dados || {};
+  if (p.tipo === 'decisao' && d.angulo) return `ângulo ${d.angulo}${d.confianca != null && d.de === 'modelo' ? ` (${Math.round(d.confianca * 100)}%)` : ' (único válido, por regra)'}`;
+  if (p.tipo === 'mensagem' && d.observacao) return `escrita a partir do fato: «${d.observacao}»`;
+  return '';
+}
+function blocoCausa(causa) {
+  if (!causa.length) return '<p class="sub">Ainda não há uma cadeia de causa para este lead (ela começa na próxima auditoria).</p>';
+  return `<ol class="causa">${causa.map((p, i) => `<li>${i ? '<span class="seta" aria-hidden="true">↳ por causa disso:</span> ' : ''}<b>${esc(NOME_CURTO[p.agente] || p.agente)}</b> ${esc(p.msg)}${detalheDaCausa(p) ? `<small>${esc(detalheDaCausa(p))}</small>` : ''}</li>`).join('')}</ol>`;
+}
+
 function linhaDoTempo(l, eventos, envios) {
   const itens = [{ ts: l.criado_em, agente: 'atlas', tipo: 'achado', msg: `Encontrado no ${l.fonte === 'osm' ? 'OpenStreetMap' : 'Google Maps'} em ${l.cidade}-${l.uf}` }]
     .concat(eventos.map((e) => ({ ts: e.ts, agente: e.agente, tipo: e.tipo, msg: e.msg })));
@@ -314,7 +327,7 @@ function vizinho(id, passo) {
 
 async function abrirLead(id) {
   leadAberto = id;
-  const { lead: l, eventos, envios, crenca } = await api(`/api/leads/${encodeURIComponent(id)}`);
+  const { lead: l, eventos, envios, crenca, causa = [] } = await api(`/api/leads/${encodeURIComponent(id)}`);
   const podeAprovar = l.telefone && l.mensagem && ['mensagem', 'qualificado'].includes(l.etapa);
   const naFila = envios.find((e) => e.status === 'aprovado');
   const podeDescartar = !['descartado', 'nao_contatar'].includes(l.etapa);
@@ -358,6 +371,7 @@ async function abrirLead(id) {
     <details class="g-detalhe"><summary>O que os agentes sabem <span class="meta">versão ${crenca?.versao ?? 0}</span></summary>${blocoCrencaGaveta(crenca, l)}</details>
     <details class="g-detalhe"><summary>O que o Atlas mediu no site</summary>${blocoAuditoria(l)}</details>
     <details class="g-detalhe"><summary>Como a Nova decidiu</summary>${blocoDecisao(l.decisao)}</details>
+    <details class="g-detalhe"><summary>Por que isso aconteceu <span class="meta">${causa.length} passo(s)</span></summary>${blocoCausa(causa)}</details>
     <details class="g-detalhe" open><summary>Linha do tempo <span class="meta">${eventos.length + 1} passo(s)</span></summary>${linhaDoTempo(l, eventos, envios)}</details>
     <p class="g-mais"><button class="btn fantasma" id="g-reprocessar">Refazer auditoria</button>${naFila ? '<button class="btn fantasma" id="g-manual">Já enviei à mão</button>' : ''}</p>
 

@@ -1,3 +1,4 @@
+import { cadeia, TIPOS_DA_CADEIA } from './tocomas/causa.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -87,7 +88,8 @@ rota('GET', '/api/leads/:id', ({ params }) => {
   if (!l) throw new HttpError(404, 'lead não encontrado');
   const eventos = db.prepare('SELECT * FROM eventos WHERE lead_id = ? ORDER BY id DESC LIMIT 50').all(l.id);
   const envios = db.prepare('SELECT * FROM envios WHERE lead_id = ? ORDER BY id DESC').all(l.id);
-  return { lead: leadPublico(l), eventos, envios, crenca: lerCrenca(db, l.id, l.etapa) };
+  const doCaminho = db.prepare(`SELECT * FROM eventos WHERE lead_id = ? AND tipo IN (${TIPOS_DA_CADEIA.map(() => '?').join(',')}) ORDER BY id`).all(l.id, ...TIPOS_DA_CADEIA);
+  return { lead: leadPublico(l), eventos, envios, crenca: lerCrenca(db, l.id, l.etapa), causa: cadeia(doCaminho) };
 });
 
 rota('POST', '/api/leads/:id/mensagem', async ({ params, body }) => {
