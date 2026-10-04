@@ -62,7 +62,7 @@ $('#corpo').addEventListener('click', async (ev) => {
 function contagem(no, d) {
   const f = d.estado.funil || {};
   return { T1_varrer: d.varreduras.filter((v) => v.ativa).length, T2_auditar: f.descoberto || 0, T3_qualificar: f.auditado || 0, T4_redigir: f.qualificado || 0,
-    T5_aprovar: f.mensagem || 0, T6_despachar: f.aprovado || 0, T7_acompanhar: (f.enviado || 0) + (f.respondeu || 0), T8_aprender: d.aprendizado.aprovacao.exemplos }[no];
+    T5_aprovar: f.mensagem || 0, T6_despachar: f.aprovado || 0, T7_acompanhar: (f.enviado || 0) + (f.respondeu || 0) + (f.fechado || 0) + (f.perdido || 0), T8_aprender: d.aprendizado.aprovacao.exemplos }[no];
 }
 const ROT_CONT = { T1_varrer: 'varreduras ativas', T8_aprender: 'decisões suas' };
 

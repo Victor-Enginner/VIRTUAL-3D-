@@ -18,7 +18,7 @@ async function api(caminho, corpo) {
 
 const ETAPAS = [
   ['mensagem', 'Para aprovar'], ['qualificado', 'Qualificados'], ['aprovado', 'Na fila'], ['enviado', 'Enviados'],
-  ['respondeu', 'Responderam'], ['sem_resposta', 'Sem resposta'], ['sem_contato', 'Sem telefone'], ['descartado', 'Descartados'], ['', 'Todos'],
+  ['respondeu', 'Responderam'], ['fechado', 'Fechados'], ['perdido', 'Não fecharam'], ['sem_resposta', 'Sem resposta'], ['sem_contato', 'Sem telefone'], ['descartado', 'Descartados'], ['', 'Todos'],
 ];
 let estado = null;
 let etapaAtual = 'mensagem';
@@ -125,9 +125,9 @@ function desenharFunil() {
   const soma = (...ks) => ks.reduce((a, k) => a + (f[k] || 0), 0);
   const total = Object.values(f).reduce((a, b) => a + b, 0);
   const oportunidade = Object.entries(s).filter(([k]) => k !== 'site_proprio').reduce((a, [, n]) => a + n, 0);
-  const prontas = soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'sem_resposta', 'nao_contatar');
-  const enviados = soma('enviado', 'respondeu', 'sem_resposta', 'nao_contatar');
-  const responderam = soma('respondeu');
+  const prontas = soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'fechado', 'perdido', 'sem_resposta', 'nao_contatar');
+  const enviados = soma('enviado', 'respondeu', 'fechado', 'perdido', 'sem_resposta', 'nao_contatar');
+  const responderam = soma('respondeu', 'fechado', 'perdido');
   // cada número é também um filtro da lista (toque para ver só esses leads)
   const etapas = [
     [total, 'encontrados', { etapa: '' }], [oportunidade, 'com site fraco ou sem site', { etapa: '', fraco: true }], [prontas, 'mensagens escritas', { etapa: 'mensagem' }],
@@ -152,7 +152,7 @@ function desenharAbas() {
 // ---------------------------------------------------------------- leads
 
 // quem está com o lead agora (a faixa colorida da linha, mesma cor do agente na Sala 3D)
-const DONO_DA_ETAPA = { descoberto: 'atlas', auditado: 'nova', qualificado: 'maia', mensagem: 'operador', sem_contato: 'operador', aprovado: 'leo', enviado: 'leo', respondeu: 'leo', sem_resposta: 'leo' };
+const DONO_DA_ETAPA = { descoberto: 'atlas', auditado: 'nova', qualificado: 'maia', mensagem: 'operador', sem_contato: 'operador', aprovado: 'leo', enviado: 'leo', respondeu: 'leo', fechado: 'operador', perdido: 'operador', sem_resposta: 'leo' };
 const NOME_AGENTE = { atlas: 'o Atlas', nova: 'a Nova', maia: 'a Maia', leo: 'o Leo', operador: 'você' };
 
 async function carregarLeads() {
@@ -249,7 +249,7 @@ const MOTIVOS = { nicho: 'Ramo que não atendo', regiao: 'Fora da minha região'
 
 // rótulos em português claro (a gaveta não mostra nome de coluna nem código interno)
 const ROTULO_ETAPA = { descoberto: 'Na auditoria do Atlas', auditado: 'Com a Nova para decidir', qualificado: 'Com a Maia para escrever', mensagem: 'Esperando sua aprovação',
-  sem_contato: 'Sem telefone', aprovado: 'Na fila de envio', enviado: 'Enviado, esperando resposta', respondeu: 'Respondeu', sem_resposta: 'Sem resposta em 72 h', descartado: 'Descartado', nao_contatar: 'Pediu para não receber' };
+  sem_contato: 'Sem telefone', aprovado: 'Na fila de envio', enviado: 'Enviado, esperando resposta', respondeu: 'Respondeu', fechado: 'Negócio fechado', perdido: 'Conversou e não fechou', sem_resposta: 'Sem resposta em 72 h', descartado: 'Descartado', nao_contatar: 'Pediu para não receber' };
 function valorFato(f, l) {
   if (f.chave === 'telefone') return l.telefone_fmt || f.valor;
   if (f.chave === 'situacao_site') return estado?.situacoes_rotulos?.[f.valor] || f.valor;
@@ -340,6 +340,14 @@ async function abrirLead(id) {
       ${l.mensagem ? `<div class="balao-wa"><textarea id="g-msg" aria-label="Texto da mensagem (pode editar antes de aprovar)">${esc(l.mensagem)}</textarea>
         <div class="balao-rodape"><span id="g-contagem">${l.mensagem.length} caracteres</span><button class="btn fantasma" id="g-salvar" hidden>Salvar edição</button></div></div>`
         : '<p class="sub">A Maia ainda não escreveu a mensagem deste lead.</p>'}
+      ${['enviado', 'sem_resposta', 'respondeu'].includes(l.etapa) ? `<div class="g-resultado">
+        <p class="sub">Como foi a conversa no WhatsApp? Um toque ensina o sistema.</p>
+        <div class="g-resultado-botoes">
+          ${l.etapa !== 'respondeu' ? '<button class="btn" id="g-respondeu">Respondeu</button>' : ''}
+          <span class="g-valor"><input id="g-valor" type="number" min="0" step="50" inputmode="decimal" placeholder="Valor em R$" aria-label="Valor fechado em reais"><button class="btn primario" id="g-fechou">Fechou</button></span>
+          <button class="btn fantasma" id="g-perdeu">Não fechou</button>
+          <button class="btn perigo" id="g-sair">Pediu para sair</button>
+        </div></div>` : ''}
       <p class="erro-msg" id="g-erro"></p>
       <div class="motivos" id="g-motivos" hidden>
         <p>Por que descartar? Um toque. Motivos repetidos viram proposta de regra na Base do Mestre.</p>
@@ -380,6 +388,14 @@ async function abrirLead(id) {
   $('#g-salvar')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/mensagem`, { texto: msg.value }), 'Edição salva'));
   $('#g-aprovar')?.addEventListener('click', () => decidir(() => api(`/api/leads/${id}/aprovar`, { texto: msg.value }), `${l.nome}: aprovado para envio`));
   $('#g-manual')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/enviado-manual`, {}), 'Marcado como enviado'));
+  $('#g-respondeu')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/respondeu`, {}), `${l.nome}: respondeu`));
+  $('#g-sair')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/respondeu`, { sair: true }), `${l.nome}: não quer receber mensagens`));
+  $('#g-perdeu')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/perdeu`, {}), `${l.nome}: conversa encerrada sem fechar`));
+  $('#g-fechou')?.addEventListener('click', () => {
+    const v = Number(String($('#g-valor').value).replace(',', '.'));
+    if (!Number.isFinite(v) || $('#g-valor').value === '') { $('#g-erro').textContent = 'Digite o valor fechado em reais (pode ser 0).'; $('#g-valor').focus(); return; }
+    ficar(() => api(`/api/leads/${id}/fechou`, { valor: v }), `${l.nome}: fechado por R$ ${v.toLocaleString('pt-BR')}`);
+  });
   $('#g-reprocessar')?.addEventListener('click', () => ficar(() => api(`/api/leads/${id}/reprocessar`, {}), 'Auditoria refeita: o lead voltou para o Atlas'));
   $('#g-descartar')?.addEventListener('click', (ev) => {
     const m = $('#g-motivos'); m.hidden = !m.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!m.hidden));

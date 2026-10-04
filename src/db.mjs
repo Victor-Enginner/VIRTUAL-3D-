@@ -119,6 +119,14 @@ CREATE TABLE IF NOT EXISTS crencas (
   atualizado_em TEXT NOT NULL
 );
 
+-- negócio fechado à mão (o ciclo de resultado): um por lead, com o valor que você informou
+CREATE TABLE IF NOT EXISTS negocios (
+  lead_id TEXT PRIMARY KEY REFERENCES leads(id),
+  valor REAL NOT NULL,
+  servico TEXT,
+  fechado_em TEXT NOT NULL
+);
+
 -- previsão que existia quando cada rótulo seu chegou (antes de aprender com ele): base da calibração (B10)
 CREATE TABLE IF NOT EXISTS previsoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

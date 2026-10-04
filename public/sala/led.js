@@ -92,8 +92,8 @@ function desenhar(p) {
   const soma = (...k) => k.reduce((a, x) => a + (f[x] || 0), 0);
   const total = Object.values(f).reduce((a, b) => a + b, 0);
   const fraco = Object.entries(s).filter(([k]) => k !== 'site_proprio').reduce((a, [, n]) => a + n, 0);
-  const nums = [[total, 'LEADS', '#f4f4f5'], [fraco, 'FRACOS', '#f4f4f5'], [soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'sem_resposta'), 'MSGS', '#c9a2ff'],
-    [soma('enviado', 'respondeu', 'sem_resposta'), 'ENVIOS', '#00edff'], [f.respondeu || 0, 'RESP.', '#b7ff00']];
+  const nums = [[total, 'LEADS', '#f4f4f5'], [fraco, 'FRACOS', '#f4f4f5'], [soma('mensagem', 'aprovado', 'enviado', 'respondeu', 'fechado', 'perdido', 'sem_resposta'), 'MSGS', '#c9a2ff'],
+    [soma('enviado', 'respondeu', 'fechado', 'perdido', 'sem_resposta'), 'ENVIOS', '#00edff'], [soma('respondeu', 'fechado', 'perdido'), 'RESP.', '#b7ff00']];
   const trab = Object.values(e.agentes || {}).filter((a) => a.status === 'trabalhando');
   // topo: título em ciano e o estado da equipe à direita (pisca "AO VIVO" quando alguém trabalha)
   escrever(g, 'FUNIL DE PROSPECCAO', 3, 2, '#00b8c8');

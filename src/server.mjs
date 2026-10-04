@@ -7,7 +7,7 @@ import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjuste
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
-import { AGENTES, ROTULO_ABORDAGEM, reavaliarBloqueados, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio } from './agentes.mjs';
+import { AGENTES, ROTULO_ABORDAGEM, reavaliarBloqueados, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio, marcarRespondeu, fecharNegocio, marcarPerdido } from './agentes.mjs';
 import { interpretar } from './comando.mjs';
 import { saudeOllama } from './llm.mjs';
 import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSessao, lerMensagemRecebida, qrSessao, saudeOpenwa, sessaoId, temChave } from './envio/openwa.mjs';
@@ -140,6 +140,12 @@ rota('POST', '/api/leads/:id/enviado-manual', ({ params }) => {
   registrar(db, 'leo', 'enviado', `${l.nome}: marcado como enviado à mão (wa.me)`, { lead_id: l.id });
   return { ok: true };
 });
+
+// ciclo de resultado: o que acontece depois que você manda a mensagem à mão
+const comStatus = (fn) => { try { return fn(); } catch (e) { throw new HttpError(e.status || 409, e.message); } };
+rota('POST', '/api/leads/:id/respondeu', ({ params, body }) => comStatus(() => { marcarRespondeu(db, params.id, { sair: Boolean(body.sair) }); return { ok: true }; }));
+rota('POST', '/api/leads/:id/fechou', ({ params, body }) => comStatus(() => { const r = fecharNegocio(db, params.id, { valor: body.valor, servico: body.servico }); return { ok: true, valor: r.valor }; }));
+rota('POST', '/api/leads/:id/perdeu', ({ params, body }) => comStatus(() => { marcarPerdido(db, params.id, { motivo: body.motivo }); return { ok: true }; }));
 
 rota('POST', '/api/leads/:id/reprocessar', ({ params }) => {
   const l = db.prepare('SELECT id FROM leads WHERE id = ?').get(params.id);

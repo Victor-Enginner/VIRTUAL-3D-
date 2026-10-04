@@ -207,6 +207,11 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
 .g-detalhe[open] summary::before { transform: rotate(45deg); }
 .g-detalhe[open] summary { color: var(--texto); margin-bottom: var(--esp-3); }
 .g-detalhe summary:hover { color: var(--texto); }
+.g-resultado { display: grid; gap: var(--esp-2); padding: var(--esp-3) var(--esp-4); border: 1px solid var(--linha); border-radius: var(--raio-md, 12px); }
+.g-resultado p { margin: 0; }
+.g-resultado-botoes { display: flex; flex-wrap: wrap; gap: var(--esp-2); align-items: center; }
+.g-valor { display: inline-flex; gap: var(--esp-1); }
+.g-valor input { width: 9.5rem; min-height: 40px; padding: 0 var(--esp-3); border-radius: var(--raio-sm, 10px); border: 1px solid var(--linha); background: transparent; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 .g-mais { display: flex; gap: var(--esp-2); margin: 0; }
 /* barra de decisão: sempre à mão, no rodapé da gaveta */
 .g-acoes { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: var(--esp-2); margin: 0 calc(var(--esp-6) * -1); padding: var(--esp-3) var(--esp-6) var(--esp-4); background: color-mix(in oklab, var(--superficie) 92%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--linha); }

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { CONFIG } from '../src/config.mjs';
 import { intencaoPorRegra, interpretar } from '../src/comando.mjs';
 
 const casos = [
@@ -26,7 +27,11 @@ test('com a regra não precisa de modelo nem de rede', async () => {
   assert.equal(r.cidade, 'Franca'); assert.equal(r.uf, 'SP'); assert.equal(r.nicho, 'barbearia');
 });
 
-test('frase ambígua com o Ollama desligado vira "não entendi", não erro', async () => {
-  const r = await interpretar('qual a capital da França');
-  assert.equal(r.intencao, 'outro'); assert.equal(r.confianca, 0);
+test('frase ambígua com o Ollama fora do ar vira "não entendi", não erro', async () => {
+  const antes = CONFIG.ollamaUrl;
+  CONFIG.ollamaUrl = 'http://127.0.0.1:9'; // porta morta: o teste não depende de o Ollama estar ligado ou não
+  try {
+    const r = await interpretar('qual a capital da França');
+    assert.equal(r.intencao, 'outro'); assert.equal(r.confianca, 0);
+  } finally { CONFIG.ollamaUrl = antes; }
 });

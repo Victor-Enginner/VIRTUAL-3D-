@@ -480,16 +480,60 @@ export function receberMensagem(db, { telefone, texto, deMim }) {
   const candidatos = [telefone, telefone.length === 12 ? `${telefone.slice(0, 4)}9${telefone.slice(4)}` : null].filter(Boolean);
   const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
   if (!lead) return null;
-  const sair = PEDIU_PARA_SAIR.test(texto);
+  registrarReacao(db, lead, { texto, sair: PEDIU_PARA_SAIR.test(texto), origem: 'whatsapp' });
+  return lead.id;
+}
+
+// Reação do lead ao envio, venha do webhook ou dos botões do Painel (você conversa na mão).
+// Aprende só com a primeira reação (as mensagens seguintes da conversa não são novos exemplos).
+export function registrarReacao(db, lead, { texto = '', sair = false, origem = 'whatsapp' }) {
   db.prepare('UPDATE leads SET etapa = ?, atualizado_em = ? WHERE id = ?').run(sair ? 'nao_contatar' : 'respondeu', agora(), lead.id);
   if (sair) db.prepare("UPDATE envios SET status = 'cancelado' WHERE lead_id = ? AND status = 'aprovado'").run(lead.id);
-  registrar(db, 'leo', sair ? 'opt_out' : 'resposta', sair ? `${lead.nome} pediu para não receber mais mensagens` : `${lead.nome} respondeu: "${texto.slice(0, 120)}"`, { lead_id: lead.id });
-  // aprende só com a primeira reação ao envio (as mensagens seguintes da conversa não são novos exemplos)
+  const quem = origem === 'manual' ? ' (você marcou)' : '';
+  registrar(db, 'leo', sair ? 'opt_out' : 'resposta', sair ? `${lead.nome} pediu para não receber mais mensagens${quem}` : `${lead.nome} respondeu${quem}${texto ? `: "${texto.slice(0, 120)}"` : ''}`, { lead_id: lead.id });
   if (lead.decisao && ['enviado', 'sem_resposta'].includes(lead.etapa)) {
     const a = aprender(db, 'resposta', lead, sair ? 0 : 1, sair ? 1.5 : 1);
     registrar(db, 'nova', 'aprendizado', `Aprendi com a ${sair ? 'recusa' : 'resposta'} de ${lead.nome} (previa ${Math.round(a.p_antes * 100)}% · ${a.n} exemplos)`, { lead_id: lead.id });
   }
-  return lead.id;
+}
+
+const ETAPAS_DE_CONVERSA = ['enviado', 'sem_resposta', 'respondeu'];
+function leadEmConversa(db, id) {
+  const lead = db.prepare('SELECT * FROM leads WHERE id = ?').get(id);
+  if (!lead) throw Object.assign(new Error('lead não encontrado'), { status: 404 });
+  if (!ETAPAS_DE_CONVERSA.includes(lead.etapa)) throw Object.assign(new Error(`só vale depois do envio (este lead está em "${lead.etapa}"): marque "Já enviei à mão" primeiro`), { status: 409 });
+  return lead;
+}
+
+// "Respondeu" (ou "pediu para sair"): você viu a resposta no WhatsApp e avisa o sistema.
+export function marcarRespondeu(db, id, { sair = false } = {}) {
+  const lead = leadEmConversa(db, id);
+  if (lead.etapa === 'respondeu' && !sair) return lead;
+  registrarReacao(db, lead, { sair, origem: 'manual' });
+  return lead;
+}
+
+// "Fechou por R$ X": o único dado que o sistema não consegue ver sozinho.
+export function fecharNegocio(db, id, { valor, servico = null }) {
+  const v = Number(valor);
+  if (!Number.isFinite(v) || v < 0 || v > 10_000_000) throw Object.assign(new Error('valor inválido (use um número em reais, de 0 a 10 milhões)'), { status: 400 });
+  const lead = leadEmConversa(db, id);
+  if (lead.etapa !== 'respondeu') registrarReacao(db, lead, { origem: 'manual' }); // fechar implica que respondeu
+  const svc = servico ? String(servico).slice(0, 120) : null;
+  db.prepare("INSERT INTO negocios (lead_id, valor, servico, fechado_em) VALUES (?, ?, ?, ?) ON CONFLICT(lead_id) DO UPDATE SET valor = excluded.valor, servico = excluded.servico")
+    .run(lead.id, v, svc, agora());
+  db.prepare("UPDATE leads SET etapa = 'fechado', atualizado_em = ? WHERE id = ?").run(agora(), lead.id);
+  registrar(db, 'leo', 'fechado', `${lead.nome}: FECHADO por R$ ${v.toLocaleString('pt-BR')}${svc ? ` (${svc})` : ''}`, { lead_id: lead.id, dados: { valor: v, servico: svc } });
+  return { lead, valor: v };
+}
+
+// "Não fechou": a conversa acabou sem negócio. Conta como resposta, mas não como venda.
+export function marcarPerdido(db, id, { motivo = null } = {}) {
+  const lead = leadEmConversa(db, id);
+  if (lead.etapa !== 'respondeu') registrarReacao(db, lead, { origem: 'manual' });
+  db.prepare("UPDATE leads SET etapa = 'perdido', atualizado_em = ? WHERE id = ?").run(agora(), lead.id);
+  registrar(db, 'leo', 'perdido', `${lead.nome}: conversa encerrada sem fechar${motivo ? ` (${String(motivo).slice(0, 80)})` : ''}`, { lead_id: lead.id });
+  return lead;
 }
 
 // ------------------------------------------------------------------ Alva
@@ -532,7 +576,9 @@ export function briefing(db) {
   return {
     leads: db.prepare('SELECT COUNT(*) n FROM leads').get().n,
     para_aprovar: c('mensagem'),
-    responderam: c('respondeu'),
+    responderam: c('respondeu') + c('fechado') + c('perdido'),
+    fechados: c('fechado'),
+    receita: db.prepare('SELECT COALESCE(SUM(valor), 0) v FROM negocios').get().v,
     enviados_hoje: s.enviados_hoje,
     limite: s.limite,
     na_fila: s.na_fila,

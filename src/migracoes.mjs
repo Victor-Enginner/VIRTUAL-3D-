@@ -12,6 +12,7 @@ export const adicionarColuna = (db, tabela, col, tipo) => { if (!temColuna(db, t
 export const MIGRACOES = [
   { v: 1, nome: 'base: tabelas do SCHEMA (criadas com IF NOT EXISTS)', up() {} },
   { v: 2, nome: 'crencas: bloqueio, historico, diagnostico (B7)', up(db) { for (const c of ['bloqueio', 'historico', 'diagnostico']) adicionarColuna(db, 'crencas', c, 'TEXT'); } },
+  { v: 3, nome: 'negocios: ciclo de resultado (fechado/perdido à mão); a tabela vem do SCHEMA', up() {} },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

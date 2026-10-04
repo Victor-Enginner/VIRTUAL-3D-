@@ -24,7 +24,7 @@ export function orcamento(db) {
 
 // chance de resposta com prior de Laplace: começa em 50% e aprende com os envios reais
 export function taxaResposta(db) {
-  const r = db.prepare(`SELECT SUM(etapa = 'respondeu') resp, SUM(etapa IN ('enviado', 'sem_resposta', 'respondeu', 'nao_contatar')) env FROM leads`).get();
+  const r = db.prepare(`SELECT SUM(etapa IN ('respondeu', 'fechado', 'perdido')) resp, SUM(etapa IN ('enviado', 'sem_resposta', 'respondeu', 'fechado', 'perdido', 'nao_contatar')) env FROM leads`).get();
   return ((r.resp || 0) + 1) / ((r.env || 0) + 2);
 }
 

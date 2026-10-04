@@ -22,8 +22,9 @@ export const ETAPAS = [
   ['aprovado', 'Na fila', 'leo', 'O Leo envia no ritmo seguro'],
   ['enviado', 'Enviados', 'leo', 'Esperando resposta'],
   ['respondeu', 'Responderam', 'leo', 'Conversa aberta'],
+  ['fechado', 'Fechados', 'operador', 'Negócio fechado'],
 ];
-export const ETAPAS_FORA = [['sem_contato', 'Sem telefone'], ['sem_resposta', 'Sem resposta'], ['descartado', 'Descartados'], ['nao_contatar', 'Pediram para sair']];
+export const ETAPAS_FORA = [['sem_contato', 'Sem telefone'], ['sem_resposta', 'Sem resposta'], ['descartado', 'Descartados'], ['perdido', 'Não fecharam'], ['nao_contatar', 'Pediram para sair']];
 
 export const vazio = (titulo, texto, acao = '') => `<div class="o-vazio"><strong>${esc(titulo)}</strong><p>${esc(texto)}</p>${acao}</div>`;
 
