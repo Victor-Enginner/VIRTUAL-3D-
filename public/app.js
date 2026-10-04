@@ -1,5 +1,6 @@
 // Painel do Prospector. Tudo que vem da API pode conter texto de terceiros (fichas do Maps,
 // títulos de sites), então todo valor passa por esc() antes de entrar no HTML.
+import { falar } from './ui/audio.js';
 import { montarShell, atualizarShell } from './ui/shell.js';
 import { abrirCartoes } from './cartoes.js';
 
@@ -475,12 +476,25 @@ async function executarComando(texto) {
   $('#resposta-comando').textContent = 'Pensando…';
   try {
     const r = await api('/api/comando', { texto });
+    falar(r.resposta, { origem: 'resposta' }); // só fala se você ligou "ler as respostas" em Voz e conforto
     $('#resposta-comando').textContent = `${r.resposta}  (intenção "${r.comando.intencao}" ${pct(r.comando.confianca)} · ${r.comando.latency_ms} ms)`;
     await atualizarTudo();
   } catch (e) { $('#resposta-comando').textContent = `Erro: ${e.message}`; }
 }
 
+// Texto do resumo montado por regra, com os números reais do briefing: a Alva nunca improvisa a frase.
+function textoDoResumo() {
+  const b = estado?.briefing;
+  if (!b) return 'Ainda estou carregando os números.';
+  const partes = [`${b.leads} leads`, `${b.para_aprovar} mensagens esperando sua aprovação`];
+  if (b.responderam) partes.push(`${b.responderam} ${b.responderam === 1 ? 'respondeu' : 'responderam'}`);
+  if (b.fechados) partes.push(`${b.fechados} ${b.fechados === 1 ? 'negócio fechado' : 'negócios fechados'}`);
+  partes.push(`${b.enviados_hoje} de ${b.limite} envios hoje`);
+  return `Resumo: ${partes.join(', ')}.`;
+}
+
 function prepararVoz() {
+  $('#ouvir-resumo')?.addEventListener('click', () => falar(textoDoResumo(), { origem: 'clique' }));
   const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
   const mic = $('#mic');
   if (!Rec) { mic.title = 'Este navegador não tem reconhecimento de voz (use Chrome ou Edge) — digite o comando'; mic.disabled = true; return; }

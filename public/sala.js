@@ -1,6 +1,7 @@
 // Sala 3D: escritório vivo. O estado vem de /api/estado e /api/stream (o mesmo do painel);
 // cada agente decide onde estar pela máquina de estados (sala/comportamento.js), anda pela
 // grade com A* (sala/caminhos.js) e mostra no monitor o que está fazendo de verdade.
+import { modoCalmo, movimentoReduzido, registrarFonte } from './ui/audio.js';
 import * as THREE from 'three';
 import { MapControls } from 'three/addons/controls/MapControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
@@ -20,7 +21,7 @@ import { montarShell, atualizarShell } from './ui/shell.js';
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-const semMovimento = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const semMovimento = movimentoReduzido(); // sistema pede menos movimento OU modo calmo ligado
 const escuro = matchMedia('(prefers-color-scheme: dark)').matches;
 const AGENTES = ['alva', 'atlas', 'nova', 'maia', 'leo'];
 
@@ -540,6 +541,8 @@ const som = (() => {
     n.connect(f).connect(g).connect(ctx.destination); n.start();
   };
   return {
+    estaLigado: () => ligado,
+    desligar() { if (ligado) { ligado = false; ctx?.suspend(); } },
     alternar() {
       ligado = !ligado;
       if (ligado && !ctx) ctx = new AudioContext();
@@ -560,7 +563,10 @@ const som = (() => {
     },
   };
 })();
-$('#btn-som').addEventListener('click', (ev) => { const on = som.alternar(); ev.currentTarget.textContent = on ? 'Som ligado' : 'Som desligado'; ev.currentTarget.setAttribute('aria-pressed', String(on)); });
+const pintarSom = (on) => { const b = $('#btn-som'); b.textContent = on ? 'Som ligado' : 'Som desligado'; b.setAttribute('aria-pressed', String(on)); };
+$('#btn-som').addEventListener('click', () => pintarSom(som.alternar()));
+if (modoCalmo()) { const b = $('#btn-som'); b.disabled = true; b.textContent = 'Som desligado (modo calmo)'; b.title = 'O modo calmo mantém o som da sala desligado. Mude em Voz e conforto.'; }
+registrarFonte('som da sala', { tocando: () => som.estaLigado(), pausar: () => { som.desligar(); pintarSom(false); }, retomar: () => pintarSom(som.alternar()) });
 
 // ------------------------------------------------------------ ficha do agente
 let fichaAberta = null;
@@ -766,6 +772,7 @@ renderer.setAnimationLoop(() => {
 // ------------------------------------------------------------ TV ao vivo (sala de reunião)
 const painelTv = $('#tv-painel');
 const tv = montarTV({ grupos: escritorio.tvs, aoMudar: desenharTv });
+registrarFonte('TV', { tocando: () => tv.estado().ligada && tv.estado().som, pausar: () => tv.som(), retomar: () => { if (!tv.estado().som) tv.som(); } });
 function desenharTv(s = tv.estado()) {
   $('#btn-tv').textContent = s.ligada ? 'TV ligada' : 'TV';
   $('#btn-tv').classList.toggle('ativo', s.ligada);

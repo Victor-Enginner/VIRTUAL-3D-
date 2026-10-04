@@ -118,6 +118,11 @@ input[type=checkbox] { accent-color: var(--acento); width: 16px; height: 16px; }
   *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
 }
 
+/* modo calmo (ui/audio.js): nada se mexe sozinho */
+[data-calmo="1"] *, [data-calmo="1"] *::before, [data-calmo="1"] *::after {
+  animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; scroll-behavior: auto !important;
+}
+
 /* celular: título em cima, ações numa linha só embaixo (rola de lado se faltar espaço) */
 @media (max-width: 640px) {
   .cabecalho { align-items: flex-start; gap: var(--esp-2) var(--esp-3); padding: var(--esp-3) var(--esp-4); }

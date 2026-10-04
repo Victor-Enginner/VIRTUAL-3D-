@@ -71,7 +71,7 @@ export function montarNeural() {
   let trabalhando = 0, quadro = 0, ultimo = -Infinity, tempo = 0, L = 0, A = 0, rede;
   const camada = document.createElement('canvas');
   const tinta = camada.getContext('2d');
-  const anima = () => ligado && !reduzido.matches && !document.hidden && trabalhando > 0;
+  const anima = () => ligado && !reduzido.matches && !document.documentElement.dataset.calmo && !document.hidden && trabalhando > 0;
   const caminho = (c, a) => { const p = rede.nos[a.a], q = rede.nos[a.b]; c.beginPath(); c.moveTo(p.x, p.y); c.quadraticCurveTo(a.cx, a.cy, q.x, q.y); };
 
   // dendritos estáticos numa camada em cache: por quadro é só um blit + poucos impulsos
