@@ -1,6 +1,7 @@
 // Início — a "Visão geral" do Órbita com os dados reais do Prospector (nada simulado).
 import { montarShell, atualizarShell, ICONES, ic } from './ui/shell.js';
 import { api, esc, dois, quando, aCada, vazio } from './ui/util.js';
+import { montarGlobo } from './ui/globo.js';
 
 const SETA = ic('<path d="M5 12h14M13 6l6 6-6 6"/>');
 const DIAGONAL = ic('<path d="M7 17L17 7M8 7h9v9"/>');
@@ -13,7 +14,7 @@ const pagina = $('#pagina');
 
 pagina.innerHTML = `
   <section class="o-hero" aria-labelledby="t-hero">
-    <div class="o-orb" aria-hidden="true"><span></span></div>
+    <div class="o-globo" id="globo" aria-hidden="true"></div>
     <p class="eyebrow">SEU ESCRITÓRIO. SUA PROSPECÇÃO.</p>
     <h1 id="t-hero">O que vamos prospectar hoje?</h1>
     <p class="o-sub">Do primeiro achado no Maps à resposta no WhatsApp: a equipe trabalha, você decide.</p>
@@ -47,6 +48,7 @@ pagina.innerHTML = `
     </section>
   </div>`;
 pagina.removeAttribute('aria-busy');
+const globo = montarGlobo($('#globo'), { lado: 280 }); // pulsa como coração só quando os agentes estão trabalhando
 
 $('#f-comando').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -74,6 +76,7 @@ async function atualizar() {
   atualizarShell(estado);
   const ags = Object.entries(estado.agentes);
   const trabalhando = ags.filter(([, a]) => a.status === 'trabalhando').length;
+  globo.fluxo(estado.pausado ? 0 : Math.min(1, trabalhando / 3)); // 3 agentes ou mais trabalhando = pulso pleno
   const noFluxo = NO_FLUXO.reduce((s, e) => s + (estado.funil?.[e] || 0), 0);
   const ativas = varreduras.filter((v) => v.ativa).length;
   const n = estado.funil?.mensagem || 0;

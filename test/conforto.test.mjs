@@ -52,3 +52,10 @@ test('a página de conforto existe e a de voz foi embora', () => {
   assert.ok(fs.existsSync(path.join(PUBLIC, 'conforto.html')) && fs.existsSync(path.join(PUBLIC, 'conforto.js')));
   assert.ok(!fs.existsSync(path.join(PUBLIC, 'voz.html')) && !fs.existsSync(path.join(PUBLIC, 'voz.js')) && !fs.existsSync(path.join(PUBLIC, 'ui/audio.js')));
 });
+
+test('toda página do menu tem ícone (senão aparece "undefined" na barra lateral)', async () => {
+  const shell = fonte(path.join(PUBLIC, 'ui/shell.js'));
+  const ids = [...shell.matchAll(/^\s*\['(\w+)', '\/[^']*', '[^']*', '(?:workspace|escritorio)'\]/gm)].map((m) => m[1]);
+  assert.ok(ids.length >= 10, `${ids.length} páginas no menu`);
+  for (const id of ids) assert.match(shell, new RegExp(String.raw`^\s+${id}: ic\(`, 'm'), `falta ícone para \"${id}\"`);
+});
