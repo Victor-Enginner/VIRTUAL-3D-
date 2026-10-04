@@ -6,6 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { CONFIG, ROOT } from './config.mjs';
 import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
+import { resumoRejeicoes } from './rejeicoes.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
@@ -135,6 +136,7 @@ rota('POST', '/api/leads/:id/descartar', ({ params, body }) => {
   return { ok: true };
 });
 
+rota('GET', '/api/rejeicoes', () => resumoRejeicoes(db));
 rota('GET', '/api/aprendizado', () => ({ cabecas: resumoAprendizado(db) }));
 rota('GET', '/api/calibracao', () => relatorioCalibracao(db));
 rota('GET', '/api/habilidades', () => ({ habilidades: listarHabilidades(db), motivos: MOTIVOS }));

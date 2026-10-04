@@ -13,6 +13,7 @@
 // cada lead tem uma crença com fatos datados, cada job declara as ferramentas que vai usar, e um
 // controlador segura a escrita/varredura quando o estoque passa do que o teto de envios dá conta.
 
+import { registrarRejeicoes } from './rejeicoes.mjs';
 import crypto from 'node:crypto';
 import { agora, concluirJob, enfileirar, falharJob, json, lerAjustes, lerFlag, parse, pegarJob, salvarFlag } from './db.mjs';
 import { registrar } from './eventos.mjs';
@@ -399,11 +400,17 @@ async function redigir(db, job, ctx) {
   let texto, origem;
   try {
     ctx.usar?.('gerar_texto');
-    const bruto = await gerarTexto(promptMaia(lead, ajustes, angulo));
+    let bruto;
+    try { bruto = await gerarTexto(promptMaia(lead, ajustes, angulo)); }
+    catch (e) { registrarRejeicoes(db, lead, 'maia_modelo', [e.message.slice(0, 100)]); throw e; } // sem modelo / modelo fora do ar
     ctx.usar?.('checar_contradicao');
     const v = validarMensagem(bruto, ajustes);
-    const problemas = [...v.problemas, ...contradicoes(v.texto, lead, ajustes)];
-    if (!carregaObservacao(v.texto, angulo)) problemas.push('não traz a observação concreta');
+    const contra = contradicoes(v.texto, lead, ajustes);
+    const semObs = carregaObservacao(v.texto, angulo) ? [] : ['não traz a observação concreta'];
+    registrarRejeicoes(db, lead, 'maia_validacao', v.problemas);
+    registrarRejeicoes(db, lead, 'maia_contradicao', contra);
+    registrarRejeicoes(db, lead, 'maia_observacao', semObs);
+    const problemas = [...v.problemas, ...contra, ...semObs];
     if (problemas.length) throw new Error(`texto do modelo recusado: ${problemas.join(', ')}`);
     const port = ajustes.remetente_portfolio && !v.texto.includes(ajustes.remetente_portfolio)
       ? v.texto.replace(/\n\nSe não quiser/, `\nMeus trabalhos: ${ajustes.remetente_portfolio}\n\nSe não quiser`) : v.texto;

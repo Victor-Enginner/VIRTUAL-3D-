@@ -138,6 +138,18 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- por que a Maia (ou outro componente) recusou um texto: uma linha por causa (B13, 2609.31937)
+CREATE TABLE IF NOT EXISTS rejeicoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id TEXT,
+  componente TEXT NOT NULL,   -- maia_modelo | maia_validacao | maia_contradicao | maia_observacao
+  causa TEXT NOT NULL,        -- código curto estável (ex.: longa_demais)
+  detalhe TEXT,
+  nicho TEXT,
+  em TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rejeicoes_causa ON rejeicoes(componente, causa);
+
 -- previsão que existia quando cada rótulo seu chegou (antes de aprender com ele): base da calibração (B10)
 CREATE TABLE IF NOT EXISTS previsoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

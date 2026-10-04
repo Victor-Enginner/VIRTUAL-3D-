@@ -165,6 +165,12 @@
       <small>${h.evidencias.length} descarte(s) seu(s) como evidência${h.aplicada ? ` · aplicada ${h.aplicada}×` : ''}</small>
       <div>${(BOTOES[h.estado] || []).map(([a, r, c]) => `<button class="btn ${c}" data-regra="${esc(h.id)}" data-acao="${a}">${r}</button>`).join('')}</div></li>`).join('')}</ul>`;
   }
+  // B13: por que o texto da Maia foi recusado e caiu no modelo fixo (componente + causa, mais frequentes primeiro)
+  const COMPONENTE = { maia_modelo: 'modelo', maia_validacao: 'regra de texto', maia_contradicao: 'contradição com os fatos', maia_observacao: 'observação concreta' };
+  function recusas(r) {
+    if (!r?.causas?.length) return '';
+    return `<h3>Por que a Maia foi recusada</h3><p><small>${r.textos_recusados} de ${r.textos_escritos} texto(s) tiveram ao menos uma recusa.</small></p><ul class="regras">${r.causas.slice(0, 6).map((c) => `<li><p><b>${c.n}×</b> ${esc(c.exemplo)} <small>(${esc(COMPONENTE[c.componente] || c.componente)})</small></p></li>`).join('')}</ul>`;
+  }
   let cartaoAberto = false; // no celular o cartão começa compacto para não cobrir o 3D
   document.querySelector('#resumo').addEventListener('click', (ev) => {
     if (!ev.target.closest('.alternar')) return;
@@ -180,7 +186,7 @@
   });
 
   async function resumo() {
-    const [estado, { cabecas }, { habilidades }] = await Promise.all(['/api/estado', '/api/aprendizado', '/api/habilidades'].map((u) => fetch(u).then((x) => x.json())));
+    const [estado, { cabecas }, { habilidades }, rejeicoes] = await Promise.all(['/api/estado', '/api/aprendizado', '/api/habilidades', '/api/rejeicoes'].map((u) => fetch(u).then((x) => x.json())));
     atualizarShell(estado);
     const n = estado.funil?.mensagem || 0, b = estado.briefing || {};
     if (n !== pendentes) { pendentes = n; atualizarMestre(); }
@@ -190,6 +196,7 @@
       ${tocomas(estado.tocomas, estado.nichos)}
       ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}
       ${regras(habilidades)}
+      ${recusas(rejeicoes)}
       <button class="btn fantasma alternar" aria-expanded="${cartaoAberto}">${cartaoAberto ? 'Menos detalhes' : 'Detalhes e regras'}</button>`;
     document.querySelector('#resumo').classList.toggle('aberto', cartaoAberto);
   }
