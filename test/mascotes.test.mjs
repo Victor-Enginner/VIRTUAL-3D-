@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AGENTES, BORDAS, CFG, motivoDeNaoAparecer, olhar, planejarVisita, proximaAusencia } from '../public/ui/mascotes-logica.js';
-import { preferencias } from '../public/ui/audio.js';
+import { preferencias } from '../public/ui/conforto.js';
 
 const PUBLIC = path.resolve(import.meta.dirname, '..', 'public');
 const fonte = (f) => fs.readFileSync(path.join(PUBLIC, f), 'utf8');
@@ -48,10 +48,10 @@ test('não repete o mesmo mascote na visita seguinte', () => {
   for (let i = 0; i < 500; i++) { const v = planejarVisita(r, ultimos); assert.ok(!v.agentes.some((a) => ultimos.includes(a)), `${v.agentes} após ${ultimos}`); ultimos = v.agentes; }
 });
 
-test('qualquer pedido de calma vence: desligado, modo calmo, reduzir movimento, aba escondida, Alva falando', () => {
-  const livre = { ligado: true, calmo: false, reduzido: false, abaOculta: false, falando: false };
+test('qualquer pedido de calma vence: desligado, modo calmo, reduzir movimento, aba escondida', () => {
+  const livre = { ligado: true, calmo: false, reduzido: false, abaOculta: false };
   assert.equal(motivoDeNaoAparecer(livre), null);
-  for (const [k, v] of [['ligado', false], ['calmo', true], ['reduzido', true], ['abaOculta', true], ['falando', true]]) {
+  for (const [k, v] of [['ligado', false], ['calmo', true], ['reduzido', true], ['abaOculta', true]]) {
     assert.ok(motivoDeNaoAparecer({ ...livre, [k]: v }), `${k} deveria bloquear`);
   }
 });
@@ -78,4 +78,15 @@ test('mascotes vêm desligados e as travas de conforto estão no código', () =>
   assert.match(fonte('ui/shell.js'), /\['sala', 'base'\]\.includes\(ativa\)\) iniciarMascotes/, 'fora da Sala 3D e da Base');
   const tam = Number(m.match(/const TAM = (\d+)/)[1]);
   assert.ok(tam <= 72, `tamanho ${tam}px`);
+});
+
+test('cada agente tem sua criatura e seus olhos no código', () => {
+  const m = fonte('ui/mascotes.js');
+  for (const [id, criatura] of [['alva', 'Daemon'], ['atlas', 'Wumpus'], ['nova', 'Grue'], ['maia', 'Fantasma'], ['leo', 'Verme']]) {
+    assert.ok(m.includes(`${id}(g) {`), `forma de ${id}`);
+    assert.ok(m.includes(`${id}: [[`), `olhos de ${id}`);
+    assert.ok(m.includes(criatura), `${criatura} citado`);
+  }
+  assert.doesNotMatch(m, /fofo|peludo|hsl\(/i, 'sem o visual antigo (pelo, rosa pastel)');
+  assert.doesNotMatch(m, /legenda-voz|falando/, 'sem nada de voz');
 });

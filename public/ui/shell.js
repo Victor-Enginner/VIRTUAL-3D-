@@ -1,5 +1,5 @@
 // Barra lateral única das três telas. Mostra a equipe com o status REAL de /api/estado.
-import './audio.js'; // aplica o modo calmo (data-calmo) em toda página, antes de qualquer animação
+import './conforto.js'; // aplica o modo calmo (data-calmo) em toda página, antes de qualquer animação
 import { iniciarMascotes } from './mascotes.js'; // desligados por padrão; ver docs/ACESSIBILIDADE.md
 import { montarNeural } from './neural.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -34,7 +34,7 @@ const PAGINAS = [
   ['sala', '/sala.html', 'Sala 3D', 'escritorio'],
   ['base', '/base.html', 'Base do Mestre', 'escritorio'],
   ['configurador', '/configurador.html', 'Configurador', 'escritorio'],
-  ['voz', '/voz.html', 'Voz e conforto', 'workspace'],
+  ['conforto', '/conforto.html', 'Conforto', 'workspace'],
 ];
 const GRUPOS = { workspace: 'Workspace', escritorio: 'Escritório' };
 // celular: 4 destinos + "Mais" (abre a barra lateral com o resto)

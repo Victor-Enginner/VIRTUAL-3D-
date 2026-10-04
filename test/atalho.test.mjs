@@ -10,7 +10,7 @@ const ler = (f) => fs.readFileSync(path.join(RAIZ, f), 'utf8');
 test('o ícone é um .ico de verdade, com os tamanhos que o Windows usa, e tem o PNG ao lado', () => {
   const ico = fs.readFileSync(path.join(RAIZ, 'public/icone/prospector.ico'));
   assert.deepEqual([ico.readUInt16LE(0), ico.readUInt16LE(2)], [0, 1], 'cabeçalho ICO');
-  assert.ok(ico.readUInt16LE(4) >= 4, 'vários tamanhos');
+  assert.ok(ico.readUInt16LE(4) >= 7, 'um quadro por tamanho (16 a 256), com versão grossa para os pequenos');
   assert.ok(fs.statSync(path.join(RAIZ, 'public/icone/prospector.png')).size > 5_000);
 });
 

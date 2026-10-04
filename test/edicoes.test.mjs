@@ -4,7 +4,6 @@ import assert from 'node:assert/strict';
 import { abrirBanco } from '../src/db.mjs';
 import { aprovarEnvio } from '../src/agentes.mjs';
 import { contarEdicoes, registrarEdicao } from '../src/tocomas/edicoes.mjs';
-import { escolherVoz } from '../public/ui/audio.js';
 
 function banco(mensagem = 'Olá, vi seu negócio em Franca.') {
   const db = abrirBanco(':memory:');
@@ -52,15 +51,4 @@ test('editar ao aprovar também guarda o original; aprovar sem mexer não guarda
   const db2 = banco();
   aprovarEnvio(db2, 'L1', null);
   assert.equal(contarEdicoes(db2), 0);
-});
-
-test('voz: se a escolhida não existe neste navegador, cai na melhor natural e avisa; senão respeita', () => {
-  const v = (name) => ({ name, lang: 'pt-BR' });
-  const edge = [v('Microsoft Antônio Online (Natural) - Portuguese (Brazil)'), v('Microsoft Thalita Online (Natural) - Portuguese (Brazil)'), v('Microsoft Daniel - Portuguese (Brazil)')];
-  assert.equal(escolherVoz(edge, 'Microsoft Thalita Online (Natural) - Portuguese (Brazil)').trocou, false);
-  const chrome = [v('Google português do Brasil'), v('Microsoft Daniel - Portuguese (Brazil)'), v('Microsoft Maria - Portuguese (Brazil)')];
-  const r = escolherVoz(chrome, 'Microsoft Thalita Online (Natural) - Portuguese (Brazil)');
-  assert.deepEqual([r.trocou, r.voz.name], [true, 'Microsoft Maria - Portuguese (Brazil)']);
-  assert.equal(escolherVoz(edge, null).voz.name.includes('Thalita'), true, 'sem escolha, prefere a natural feminina conhecida');
-  assert.equal(escolherVoz([], 'x').voz, null);
 });

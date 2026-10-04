@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#000000">
-<title>Voz e conforto · Prospector</title>
-<meta name="description" content="Escolha a voz da Alva de ouvido e ligue o modo calmo: sem som automático, sem animação decorativa.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%23b7ff00'/%3E%3Cpath d='M10 23V9h6.5a4.5 4.5 0 010 9H10' fill='none' stroke='%23111900' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E">
+<title>Conforto · Prospector</title>
+<meta name="description" content="Modo calmo e mascotes: sem som automático, sem animação decorativa, tudo começa desligado.">
+<link rel="icon" type="image/png" href="/icone/prospector.png">
 <link rel="stylesheet" href="/ui/base.css">
 <link rel="stylesheet" href="/ui/orbita.css">
 <!-- prévia do link (WhatsApp, Instagram, LinkedIn, X): imagem em public/og.jpg, fonte em docs/producao/og/ -->
@@ -14,7 +14,7 @@
 <meta property="og:site_name" content="Prospector">
 <meta property="og:title" content="Prospector · Escritório Virtual 3D">
 <meta property="og:description" content="Sua equipe de agentes de IA prospectando sozinha: acham empresas, auditam o site e escrevem a abordagem — num escritório 3D que você assiste trabalhar.">
-<meta property="og:url" content="https://escritoriovirtual3d.netlify.app/voz.html">
+<meta property="og:url" content="https://escritoriovirtual3d.netlify.app/conforto.html">
 <meta property="og:image" content="https://escritoriovirtual3d.netlify.app/og.jpg">
 <meta property="og:image:secure_url" content="https://escritoriovirtual3d.netlify.app/og.jpg">
 <meta property="og:image:type" content="image/jpeg">
@@ -31,19 +31,6 @@
   .voz-bloco h2 { margin: 0; font-size: var(--t-18, 18px); }
   .voz-bloco p, .voz-bloco ul { margin: 0; }
   .voz-bloco ul { padding-left: 1.2em; display: grid; gap: 4px; }
-  .voz-lista { display: grid; gap: var(--esp-1); }
-  .voz-linha { display: flex; gap: var(--esp-3); align-items: center; justify-content: space-between; padding: var(--esp-2) var(--esp-3); border: 1px solid transparent; border-radius: 12px; }
-  .voz-linha:hover { background: color-mix(in oklab, currentColor 5%, transparent); }
-  .voz-linha .nome { display: flex; align-items: center; gap: var(--esp-3); flex: 1; min-width: 0; cursor: pointer; }
-  .voz-linha .nome > span { display: grid; gap: 2px; min-width: 0; }
-  .voz-linha small { opacity: .7; }
-  /* a regra global de campos (base.css) dá largura total e 40px a todo input: aqui rádio e slider voltam ao tamanho normal */
-  .voz-bloco input[type=radio] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--acento); }
-  .voz-bloco input[type=range] { padding: 0; min-height: 32px; background: transparent; border: 0; box-shadow: none; accent-color: var(--acento); }
-  .voz-controle { display: grid; grid-template-columns: 9rem 1fr 3.5rem; gap: var(--esp-3); align-items: center; }
-  .voz-controle input[type=range] { width: 100%; min-height: 32px; }
-  .voz-escolhida { border-color: var(--acento); background: color-mix(in oklab, var(--acento) 9%, transparent); }
-  @media (max-width: 520px) { .voz-controle { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -53,12 +40,12 @@
   <main class="principal" id="conteudo" tabindex="-1">
     <header class="cabecalho">
       <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
-      <div class="titulo"><p class="trilha">Workspace <span aria-hidden="true">›</span> <b>Voz e conforto</b></p></div>
+      <div class="titulo"><p class="trilha">Workspace <span aria-hidden="true">›</span> <b>Conforto</b></p></div>
       <div class="acoes" id="acoes"></div>
     </header>
     <div class="pagina" id="pagina" aria-busy="true"></div>
   </main>
 </div>
-<script type="module" src="/voz.js"></script>
+<script type="module" src="/conforto.js"></script>
 </body>
 </html>

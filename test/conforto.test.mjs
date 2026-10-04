@@ -1,30 +1,21 @@
 // Conforto sensorial (docs/ACESSIBILIDADE.md): travas para a interface não virar uma bagunça de sons e movimentos.
+// Os agentes NÃO falam. O Victor fala com eles (microfone), eles respondem em texto.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { falar, parar, preferencias, recortar, salvar } from '../public/ui/audio.js';
+import { movimentoReduzido, preferencias, salvar } from '../public/ui/conforto.js';
 
 const PUBLIC = path.resolve(import.meta.dirname, '..', 'public');
 const arquivos = (ext) => fs.readdirSync(PUBLIC, { recursive: true }).filter((f) => ext.some((e) => f.endsWith(e)) && !f.includes('assets')).map((f) => path.join(PUBLIC, f));
 const fonte = (f) => fs.readFileSync(f, 'utf8');
 const rel = (f) => path.relative(PUBLIC, f).split(path.sep).join('/');
 
-test('só ui/audio.js sabe falar (speechSynthesis)', () => {
+test('ninguém fala: nenhum arquivo do front usa voz sintetizada (só o microfone, que é entrada)', () => {
   for (const f of arquivos(['.js', '.html'])) {
-    if (rel(f) === 'ui/audio.js') continue;
-    assert.doesNotMatch(fonte(f), /speechSynthesis\.speak|new SpeechSynthesisUtterance/, `${rel(f)} fala por conta própria`);
+    assert.doesNotMatch(fonte(f), /speechSynthesis|SpeechSynthesisUtterance|\.speak\(/, `${rel(f)} faz algo falar`);
   }
-});
-
-test('todo falar() fora do módulo diz de onde veio o pedido (clique ou resposta)', () => {
-  for (const f of arquivos(['.js'])) {
-    if (['ui/audio.js'].includes(rel(f))) continue;
-    for (const [linha] of fonte(f).matchAll(/\bfalar\([^\n]*\)/g)) {
-      if (/function falar|import/.test(linha)) continue;
-      assert.match(linha, /origem:\s*'(clique|resposta)'/, `${rel(f)}: ${linha}`);
-    }
-  }
+  assert.match(fonte(path.join(PUBLIC, 'app.js')), /SpeechRecognition/, 'o comando de voz (microfone) continua');
 });
 
 test('nada toca sozinho: sem autoplay e AudioContext só na Sala, atrás do botão de som', () => {
@@ -37,41 +28,27 @@ test('nada toca sozinho: sem autoplay e AudioContext só na Sala, atrás do bot�
   assert.match(fonte(path.join(PUBLIC, 'sala/tv.js')), /video\.muted = true/, 'a TV começa sem som');
 });
 
-test('a voz só sai por pedido: origem ausente ou inventada é recusada', async () => {
-  for (const origem of [undefined, 'auto', 'evento', 'sala', 'briefing']) {
-    const r = await falar('Bom dia', { origem });
-    assert.equal(r.falou, false); assert.match(r.motivo, /só fala quando você pede/);
-  }
+test('preferências: tudo começa desligado, e chaves antigas (voz) são ignoradas', () => {
+  assert.deepEqual(preferencias(), { calmo: false, mascotes: false, mascotesApesarDoSistema: false });
+  salvar({ voz: 'qualquer', respostas: true, velocidade: 2 });
+  assert.deepEqual(Object.keys(preferencias()).sort(), ['calmo', 'mascotes', 'mascotesApesarDoSistema']);
 });
 
-test('resposta falada fica desligada por padrão e some no modo calmo', async () => {
-  assert.equal(preferencias().respostas, false);
-  assert.equal((await falar('ok', { origem: 'resposta' })).falou, false);
-  salvar({ respostas: true, calmo: true });
-  assert.match((await falar('ok', { origem: 'resposta' })).motivo, /desligadas/);
-  salvar({ respostas: false, calmo: false });
+test('o modo calmo liga o movimento reduzido e desliga ao sair', () => {
+  assert.equal(movimentoReduzido(), false);
+  salvar({ calmo: true });
+  assert.equal(movimentoReduzido(), true);
+  salvar({ calmo: false });
+  assert.equal(movimentoReduzido(), false);
 });
 
-test('falas são curtas, sem ocupar a tela nem o ouvido', () => {
-  const longo = 'Esta é uma frase de teste. '.repeat(40);
-  const r = recortar(longo);
-  assert.ok(r.length <= 300, `${r.length}`);
-  assert.match(r, /[.…]$/);
-  assert.equal(recortar('  curta  '), 'curta');
-  assert.equal(recortar(''), '');
-});
-
-test('velocidade e volume ficam dentro de limites confortáveis', () => {
-  salvar({ velocidade: 9, volume: 5 });
-  assert.deepEqual([preferencias().velocidade, preferencias().volume], [1.3, 1]);
-  salvar({ velocidade: 0.1, volume: -2 });
-  assert.deepEqual([preferencias().velocidade, preferencias().volume], [0.6, 0]);
-  salvar({ velocidade: 0.95, volume: 0.9 });
-  parar();
-});
-
-test('o modo calmo vale em todas as páginas (CSS + shell)', () => {
+test('o modo calmo vale em todas as páginas (CSS + shell + fundo neural)', () => {
   assert.match(fonte(path.join(PUBLIC, 'ui/base.css')), /\[data-calmo="1"\][^{]*\{[^}]*animation-duration:\s*1ms/);
-  assert.match(fonte(path.join(PUBLIC, 'ui/shell.js')), /import '\.\/audio\.js'/);
+  assert.match(fonte(path.join(PUBLIC, 'ui/shell.js')), /import '\.\/conforto\.js'/);
   assert.match(fonte(path.join(PUBLIC, 'ui/neural.js')), /dataset\.calmo/);
+});
+
+test('a página de conforto existe e a de voz foi embora', () => {
+  assert.ok(fs.existsSync(path.join(PUBLIC, 'conforto.html')) && fs.existsSync(path.join(PUBLIC, 'conforto.js')));
+  assert.ok(!fs.existsSync(path.join(PUBLIC, 'voz.html')) && !fs.existsSync(path.join(PUBLIC, 'voz.js')) && !fs.existsSync(path.join(PUBLIC, 'ui/audio.js')));
 });

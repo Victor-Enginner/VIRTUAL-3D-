@@ -1,63 +1,79 @@
-// Mascotes peludinhos: os cinco agentes visitam a tela de vez em quando, olham para você, às vezes brincam entre si
-// e somem "como mágica". Ficam MAIS AUSENTES que presentes (2 a 6 min fora, 10 a 24 s na tela), são pequenos (64 px),
+// Mascotes: criaturas da história da computação, em neon. Cada agente é uma:
+//   Alva = Daemon (o processo de fundo) · Atlas = Wumpus (Hunt the Wumpus, 1973) · Nova = Grue (Zork, 1977)
+//   Maia = Fantasma (ghostwriter) · Leo = Verme (worm, o que leva a mensagem)
+// Visitam a tela de vez em quando, olham para você (os olhos vermelhos seguem o cursor), às vezes brincam em dupla e
+// somem "como mágica". Ficam MAIS AUSENTES que presentes (2 a 6 min fora, 10 a 24 s na tela), são pequenos (64 px),
 // ficam nas bordas, não tocam som e nunca bloqueiam um clique (pointer-events: none).
-// Desligados por padrão: ligar em "Voz e conforto". Somem no modo calmo, em "reduzir movimento", quando a Alva fala
-// e quando a aba fica escondida. Não aparecem na Sala 3D (ela já tem seus próprios agentes).
-// O pelo é desenhado uma vez num canvas (semente fixa por agente); depois só se mexe o elemento, o que é barato.
-import { preferencias } from './audio.js';
+// Desligados por padrão: ligar em "Conforto". Somem no modo calmo, em "reduzir movimento" e quando a aba fica escondida. Não aparecem na Sala 3D (ela já tem seus próprios agentes).
+// Cada criatura é desenhada uma vez num canvas (traço neon com brilho); depois só se mexe o elemento, o que é barato.
+import { preferencias } from './conforto.js';
 import { AGENTES, motivoDeNaoAparecer, olhar, planejarVisita, proximaAusencia } from './mascotes-logica.js';
 
-const COR = { alva: '#d9468f', atlas: '#0e9fb8', nova: '#3b5bdb', maia: '#7c3aed', leo: '#16a34a' };
 const TAM = 64;
+// cor de cada agente em neon (a mesma identidade do menu, mais viva) e onde ficam os olhos vermelhos [x%, y%, tamanho%]
+const NEON = { alva: '#ff3d9a', atlas: '#00edff', nova: '#6f8bff', maia: '#b366ff', leo: '#39ff6a' };
+const OLHOS = {
+  alva: [[34, 49, 11], [57, 49, 11]],
+  atlas: [[33, 37, 11], [57, 37, 11]],
+  nova: [[42, 46, 16]],
+  maia: [[34, 41, 11], [57, 41, 11]],
+  leo: [[66, 41, 10], [78, 41, 10]],
+};
 
-// ---------------------------------------------------------------- desenho
-function semente(a) { return () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
-function hsl(hex) {
-  const n = parseInt(hex.slice(1), 16), r = (n >> 16) / 255, g = ((n >> 8) & 255) / 255, b = (n & 255) / 255;
-  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, d = mx - mn;
-  const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1));
-  const h = d === 0 ? 0 : mx === r ? ((g - b) / d + (g < b ? 6 : 0)) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  return [Math.round(h * 60), Math.round(s * 100), Math.round(l * 100)];
-}
+// formas em uma grade de 128x128; espelhar = copiar o lado esquerdo para o direito
+const esp = (pts) => pts.map(([x, y]) => [128 - x, y]);
+function linha(g, pts, fechar = false) { g.moveTo(...pts[0]); for (const p of pts.slice(1)) g.lineTo(...p); if (fechar) g.closePath(); }
+const FORMAS = {
+  alva(g) { // Daemon: cabeça de escudo, chifres curvos, presas, trilhas de circuito
+    g.beginPath(); linha(g, [[64, 30], [40, 40], [32, 66], [38, 92], [52, 108], [64, 114], [76, 108], [90, 92], [96, 66], [88, 40]], true);
+    for (const m of [false, true]) {
+      const X = (x) => (m ? 128 - x : x);
+      g.moveTo(X(42), 40); g.bezierCurveTo(X(26), 38, X(16), 24, X(24), 8); g.bezierCurveTo(X(34), 22, X(44), 26, X(54), 32);
+      g.moveTo(X(32), 66); g.lineTo(X(18), 66); g.lineTo(X(18), 84);
+    }
+    g.moveTo(64, 30); g.lineTo(64, 52);
+    linha(g, [[46, 92], [52, 102], [58, 94], [64, 104], [70, 94], [76, 102], [82, 92]]);
+  },
+  atlas(g) { // Wumpus: bolha peluda com espinhos, bocarra de dentes e perninhas
+    g.beginPath();
+    g.moveTo(30, 70); g.bezierCurveTo(24, 40, 44, 30, 64, 34); g.bezierCurveTo(84, 30, 104, 40, 98, 70);
+    g.bezierCurveTo(104, 96, 84, 108, 64, 106); g.bezierCurveTo(44, 108, 24, 96, 30, 70);
+    linha(g, [[40, 40], [34, 14], [54, 34]]); linha(g, esp([[40, 40], [34, 14], [54, 34]]));
+    g.moveTo(40, 80); g.quadraticCurveTo(64, 108, 88, 80);
+    for (const x of [48, 56, 64, 72, 80]) { g.moveTo(x, 90 + (x === 64 ? 4 : 0)); g.lineTo(x, 97 + (x === 64 ? 5 : 0)); }
+    for (const x of [40, 56, 72, 88]) { g.moveTo(x, 106); g.lineTo(x - 3, 122); }
+  },
+  nova(g) { // Grue: sombra de espinhos com um olho enorme e dentes
+    g.beginPath();
+    for (let i = 0; i <= 28; i++) { const a = (i / 28) * Math.PI * 2, r = 44 + (i % 2 ? 11 : 0); g[i ? 'lineTo' : 'moveTo'](64 + Math.cos(a) * r, 64 + Math.sin(a) * r * 0.92); }
+    g.moveTo(26, 62); g.quadraticCurveTo(64, 30, 102, 62); g.quadraticCurveTo(64, 94, 26, 62);
+    linha(g, [[38, 98], [44, 108], [50, 98], [56, 108], [62, 98], [68, 108], [74, 98], [80, 108], [86, 98]]);
+  },
+  maia(g) { // Fantasma (ghostwriter): lençol com barra ondulada e uma pena
+    g.beginPath();
+    g.moveTo(34, 112); g.lineTo(34, 54); g.bezierCurveTo(34, 20, 94, 20, 94, 54); g.lineTo(94, 112);
+    linha(g, [[84, 102], [74, 112], [64, 102], [54, 112], [44, 102], [34, 112]]);
+    g.moveTo(64, 70); g.ellipse(64, 78, 6, 8, 0, 0, Math.PI * 2);
+    linha(g, [[100, 40], [120, 10]]); linha(g, [[100, 40], [108, 26], [118, 14]]); linha(g, [[100, 40], [96, 46]]);
+  },
+  leo(g) { // Verme: corpo em gomos erguendo a cabeça, presas e antenas
+    g.beginPath();
+    for (const [x, y, r] of [[28, 98, 11], [45, 106, 12], [64, 102, 13], [82, 88, 14]]) { g.moveTo(x + r, y); g.arc(x, y, r, 0, Math.PI * 2); }
+    g.moveTo(114, 62); g.arc(96, 62, 18, 0, Math.PI * 2);
+    linha(g, [[92, 46], [84, 28]]); linha(g, [[104, 46], [114, 28]]);
+    linha(g, [[88, 72], [90, 80], [94, 72], [98, 80], [102, 72]]);
+  },
+};
 
 export function desenharBicho(id) {
-  const S = 2, W = 64 * S * 2; // 128 px de desenho para 64 px na tela (nítido em tela densa)
-  const c = document.createElement('canvas'); c.width = c.height = W;
+  const c = document.createElement('canvas'); c.width = c.height = 128;
   const g = c.getContext('2d');
-  const rng = semente([...id].reduce((a, ch) => a * 31 + ch.charCodeAt(0), 7));
-  const [H, Sat, L] = hsl(COR[id]);
-  const cx = W / 2, cy = W * 0.55, rx = W * 0.31, ry = W * 0.28;
-  const raio = (t) => (rx * ry) / Math.hypot(ry * Math.cos(t), rx * Math.sin(t)) * (1 + 0.035 * Math.sin(3 * t + 1.7));
-  const cor = (dl, a = 1) => `hsla(${H},${Sat}%,${Math.max(8, Math.min(92, L + dl))}%,${a})`;
-  // corpo
-  g.beginPath();
-  for (let i = 0; i <= 64; i++) { const t = (i / 64) * Math.PI * 2; const r = raio(t); g[i ? 'lineTo' : 'moveTo'](cx + Math.cos(t) * r, cy + Math.sin(t) * r); }
-  g.closePath();
-  const fundo = g.createRadialGradient(cx - rx * 0.2, cy - ry * 0.35, rx * 0.1, cx, cy, rx * 1.05);
-  fundo.addColorStop(0, cor(14)); fundo.addColorStop(1, cor(-10));
-  g.fillStyle = fundo; g.fill();
-  // pelo: traços curtos, dentro (volume) e na borda (silhueta felpuda)
-  g.lineCap = 'round';
-  for (let i = 0; i < 1100; i++) {
-    const t = rng() * Math.PI * 2, dentro = rng() < 0.62;
-    const k = dentro ? 0.35 + rng() * 0.65 : 0.96 + rng() * 0.1;
-    const r = raio(t) * k, x = cx + Math.cos(t) * r, y = cy + Math.sin(t) * r;
-    const comp = (dentro ? 5 : 7) * S * (0.6 + rng() * 0.8), ang = t + (rng() - 0.5) * 0.9;
-    g.strokeStyle = cor((rng() - 0.42) * 22, 0.5 + rng() * 0.4);
-    g.lineWidth = (0.9 + rng() * 1.1) * S;
-    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(ang) * comp, y + Math.sin(ang) * comp); g.stroke();
-  }
-  // bochechas e sorriso
-  g.fillStyle = 'rgba(255,120,150,.32)';
-  for (const sx of [-1, 1]) { g.beginPath(); g.ellipse(cx + sx * rx * 0.62, cy + ry * 0.22, rx * 0.13, ry * 0.09, 0, 0, 7); g.fill(); }
-  g.strokeStyle = 'rgba(20,12,24,.8)'; g.lineWidth = 2.2 * S; g.beginPath(); g.arc(cx, cy + ry * 0.12, rx * 0.12, 0.2, Math.PI - 0.2); g.stroke();
-  // acessório de cada um
-  g.lineWidth = 2 * S;
-  if (id === 'nova') { g.strokeStyle = '#f2c14e'; for (const sx of [-1, 1]) { g.beginPath(); g.arc(cx + sx * rx * 0.36, cy - ry * 0.18, rx * 0.2, 0, 7); g.stroke(); } g.beginPath(); g.moveTo(cx - rx * 0.16, cy - ry * 0.18); g.lineTo(cx + rx * 0.16, cy - ry * 0.18); g.stroke(); }
-  if (id === 'atlas') { g.fillStyle = '#16324a'; g.beginPath(); g.ellipse(cx, cy - ry * 0.92, rx * 0.5, ry * 0.3, 0, Math.PI, 0); g.fill(); g.fillStyle = '#f4f4f5'; g.beginPath(); g.arc(cx, cy - ry * 1.24, 3.4 * S, 0, 7); g.fill(); }
-  if (id === 'maia') { g.fillStyle = '#ffd1e8'; for (const sx of [-1, 1]) { g.beginPath(); g.moveTo(cx + rx * 0.5, cy - ry * 0.92); g.lineTo(cx + rx * 0.5 + sx * rx * 0.3, cy - ry * 1.12); g.lineTo(cx + rx * 0.5 + sx * rx * 0.3, cy - ry * 0.72); g.closePath(); g.fill(); } g.beginPath(); g.arc(cx + rx * 0.5, cy - ry * 0.92, 2.6 * S, 0, 7); g.fill(); }
-  if (id === 'leo') { g.fillStyle = '#0d5c2a'; g.beginPath(); g.ellipse(cx, cy - ry * 0.9, rx * 0.46, ry * 0.2, 0, 0, 7); g.fill(); g.beginPath(); g.ellipse(cx + rx * 0.28, cy - ry * 0.74, rx * 0.3, ry * 0.07, 0, 0, 7); g.fill(); }
-  if (id === 'alva') { g.strokeStyle = cor(-22); g.beginPath(); g.moveTo(cx, cy - ry * 0.95); g.lineTo(cx, cy - ry * 1.3); g.stroke(); const b = g.createRadialGradient(cx, cy - ry * 1.38, 1, cx, cy - ry * 1.38, 6 * S); b.addColorStop(0, '#fff'); b.addColorStop(1, '#ff9ccf'); g.fillStyle = b; g.beginPath(); g.arc(cx, cy - ry * 1.38, 5 * S, 0, 7); g.fill(); }
+  const cor = NEON[id];
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.strokeStyle = cor; g.shadowColor = cor; g.shadowBlur = 9; g.lineWidth = 5;
+  FORMAS[id](g); g.stroke();                       // brilho
+  g.shadowBlur = 0; g.lineWidth = 2; g.strokeStyle = '#ffffff'; g.globalAlpha = 0.6;
+  FORMAS[id](g); g.stroke();                       // núcleo claro do neon
   return c;
 }
 
@@ -67,10 +83,8 @@ const CSS = `
 .mascote.dentro{opacity:1;transform:scale(1)}
 .mascote.saindo{opacity:0;transform:scale(.25) rotate(10deg);transition-duration:.45s}
 .mascote canvas{width:100%;height:100%;display:block;animation:mascote-respira 3.4s ease-in-out infinite}
-.mascote .olho{position:absolute;top:47%;width:11%;height:11%;border-radius:50%;background:#15121a;transition:transform .12s linear}
-.mascote .olho::after{content:"";position:absolute;left:18%;top:14%;width:34%;height:34%;border-radius:50%;background:#fff;opacity:.9}
-.mascote .olho.e{left:37%}.mascote .olho.d{left:54%}
-.mascote .brilho{position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.55),rgba(255,255,255,0) 70%);opacity:0;animation:mascote-poof .55s ease-out 1}
+.mascote .olho{position:absolute;border-radius:50%;background:#ff2a48;box-shadow:0 0 7px 2px #ff2a4899;transition:transform .12s linear}
+.mascote .brilho{position:absolute;inset:-6px;border-radius:50%;background:radial-gradient(circle,rgba(255,42,72,.45),rgba(255,42,72,0) 70%);opacity:0;animation:mascote-poof .55s ease-out 1}
 .mascote.brinca canvas{animation:mascote-pulinho 1.5s ease-in-out 3}
 /* o bloco global de "reduzir movimento" (base.css) corta tudo para 1ms; quem escolheu ver os mascotes ganha a duração normal só neles */
 .mascote.livre{transition-duration:.5s !important}.mascote.livre.saindo{transition-duration:.45s !important}
@@ -93,11 +107,10 @@ const POSICAO = {
 let estiloPronto = false, iniciado = false, timer = null, ativos = [], ultimos = [], ponteiro = null, ponteiroEm = 0, quadro = 0;
 const bichos = new Map();
 const reduzido = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-const falando = () => { const l = document.getElementById('legenda-voz'); return Boolean(l && !l.hidden); };
 // "Mostrar animações" desligado no Windows (comum em PC antigo, por velocidade) faz todo navegador dizer "reduzir movimento".
-// Por padrão respeitamos; quem escolhe de propósito em Voz e conforto pode ver os mascotes mesmo assim. O modo calmo sempre vence.
+// Por padrão respeitamos; quem escolhe de propósito em Conforto pode ver os mascotes mesmo assim. O modo calmo sempre vence.
 const reduzidoEfetivo = () => reduzido() && !preferencias().mascotesApesarDoSistema;
-const motivo = () => { const p = preferencias(); return motivoDeNaoAparecer({ ligado: p.mascotes, calmo: p.calmo, reduzido: reduzidoEfetivo(), abaOculta: document.hidden, falando: falando() }); };
+const motivo = () => { const p = preferencias(); return motivoDeNaoAparecer({ ligado: p.mascotes, calmo: p.calmo, reduzido: reduzidoEfetivo(), abaOculta: document.hidden }); };
 
 function criarElemento(id) {
   if (!estiloPronto) { const st = document.createElement('style'); st.textContent = CSS; document.head.append(st); estiloPronto = true; }
@@ -107,7 +120,7 @@ function criarElemento(id) {
   const cv = document.createElement('canvas'); cv.width = cv.height = bichos.get(id).width;
   cv.getContext('2d').drawImage(bichos.get(id), 0, 0);
   el.append(cv);
-  for (const lado of ['e', 'd']) { const o = document.createElement('i'); o.className = `olho ${lado}`; el.append(o); }
+  for (const [x, y, t] of OLHOS[id]) { const o = document.createElement('i'); o.className = 'olho'; Object.assign(o.style, { left: `${x}%`, top: `${y}%`, width: `${t}%`, height: `${t}%` }); el.append(o); }
   const b = document.createElement('i'); b.className = 'brilho'; el.append(b);
   document.body.append(el);
   return el;

@@ -33,12 +33,11 @@ export function planejarVisita(rng = Math.random, ultimos = [], cfg = CFG) {
 }
 
 // Por que NÃO podem aparecer agora (null = podem). Qualquer pedido de calma vence.
-export function motivoDeNaoAparecer({ ligado, calmo, reduzido, abaOculta, falando }) {
+export function motivoDeNaoAparecer({ ligado, calmo, reduzido, abaOculta }) {
   if (!ligado) return 'desligados';
   if (calmo) return 'modo calmo';
   if (reduzido) return 'sistema pede menos movimento';
   if (abaOculta) return 'aba escondida';
-  if (falando) return 'a Alva está falando (um canal por vez)';
   return null;
 }
 
