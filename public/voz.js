@@ -35,9 +35,9 @@ async function desenhar() {
       ${!suportaVoz() ? '<p>Este navegador não tem voz de leitura. Use o Chrome ou o Edge.</p>' : !vozes.length ? '<p>Nenhuma voz em português do Brasil foi encontrada neste navegador. No Windows: Configurações → Hora e idioma → Fala → Adicionar vozes → Português (Brasil).</p>' : `
       <p class="sub">Ouça cada uma e escolha. A frase de teste: “${esc(FRASE)}”</p>
       ${!temNatural ? '<p class="sub"><b>Dica:</b> as vozes mais naturais (“Natural”) aparecem no <b>Microsoft Edge</b>. Abra esta mesma página nele e compare.</p>' : ''}
-      <div role="radiogroup" aria-label="Voz da Alva">
+      <div class="voz-lista" role="radiogroup" aria-label="Voz da Alva">
         ${vozes.map((v, i) => `<div class="voz-linha ${v.name === escolhida ? 'voz-escolhida' : ''}">
-          <label class="nome"><input type="radio" name="voz" value="${esc(v.name)}" ${v.name === escolhida ? 'checked' : ''}> <b>${esc(v.name.replace(/^Microsoft /, ''))}</b><small>${esc(tipoDaVoz(v))} · ${esc(v.lang)}</small></label>
+          <label class="nome"><input type="radio" name="voz" value="${esc(v.name)}" ${v.name === escolhida ? 'checked' : ''}><span><b>${esc(v.name.replace(/^Microsoft /, '').replace(/ - Portuguese \(Brazil\)$/, ''))}</b><small>${esc(tipoDaVoz(v))} · ${esc(v.lang)}</small></span></label>
           <button class="btn" type="button" data-ouvir="${i}">Ouvir</button>
         </div>`).join('')}
       </div>

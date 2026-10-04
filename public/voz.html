@@ -31,13 +31,18 @@
   .voz-bloco h2 { margin: 0; font-size: var(--t-18, 18px); }
   .voz-bloco p, .voz-bloco ul { margin: 0; }
   .voz-bloco ul { padding-left: 1.2em; display: grid; gap: 4px; }
-  .voz-linha { display: flex; flex-wrap: wrap; gap: var(--esp-2); align-items: center; padding: var(--esp-2) 0; border-top: 1px solid var(--linha); }
-  .voz-linha:first-of-type { border-top: 0; }
-  .voz-linha .nome { flex: 1 1 14rem; min-width: 0; }
-  .voz-linha small { display: block; opacity: .7; }
+  .voz-lista { display: grid; gap: var(--esp-1); }
+  .voz-linha { display: flex; gap: var(--esp-3); align-items: center; justify-content: space-between; padding: var(--esp-2) var(--esp-3); border: 1px solid transparent; border-radius: 12px; }
+  .voz-linha:hover { background: color-mix(in oklab, currentColor 5%, transparent); }
+  .voz-linha .nome { display: flex; align-items: center; gap: var(--esp-3); flex: 1; min-width: 0; cursor: pointer; }
+  .voz-linha .nome > span { display: grid; gap: 2px; min-width: 0; }
+  .voz-linha small { opacity: .7; }
+  /* a regra global de campos (base.css) dá largura total e 40px a todo input: aqui rádio e slider voltam ao tamanho normal */
+  .voz-bloco input[type=radio] { width: 18px; height: 18px; min-height: 0; padding: 0; flex: none; accent-color: var(--acento); }
+  .voz-bloco input[type=range] { padding: 0; min-height: 32px; background: transparent; border: 0; box-shadow: none; accent-color: var(--acento); }
   .voz-controle { display: grid; grid-template-columns: 9rem 1fr 3.5rem; gap: var(--esp-3); align-items: center; }
   .voz-controle input[type=range] { width: 100%; min-height: 32px; }
-  .voz-escolhida { outline: 2px solid currentColor; outline-offset: 2px; }
+  .voz-escolhida { border-color: var(--acento); background: color-mix(in oklab, var(--acento) 9%, transparent); }
   @media (max-width: 520px) { .voz-controle { grid-template-columns: 1fr; } }
 </style>
 </head>
