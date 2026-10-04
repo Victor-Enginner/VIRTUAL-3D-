@@ -6,6 +6,8 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { CONFIG, ROOT } from './config.mjs';
 import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
+import { backupDiario } from './backup.mjs';
+import { versaoDoBanco } from './migracoes.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
@@ -71,6 +73,12 @@ rota('GET', '/api/estado', async () => {
     ajustes: lerAjustes(db),
     tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20), zonas: { limites: LIMITES_ZONA, nichos: resumoZonas(db) } },
   };
+});
+
+// leve e sem rede: serve para o atalho, o monitor e o teste saberem se o processo e o banco estão de pé
+rota('GET', '/api/saude', () => {
+  const ultimo = fs.existsSync(path.join(CONFIG.dataDir, 'backups')) ? fs.readdirSync(path.join(CONFIG.dataDir, 'backups')).filter((f) => f.startsWith('diario-')).sort().at(-1) || null : null;
+  return { ok: true, banco: versaoDoBanco(db), leads: db.prepare('SELECT COUNT(*) n FROM leads').get().n, pausado: orq.pausado, demo: CONFIG.demo, ultimo_backup: ultimo, uptime_s: Math.round(process.uptime()) };
 });
 
 rota('GET', '/api/leads', ({ url }) => {
@@ -382,8 +390,13 @@ function arquivo(req, res, p) {
   fs.createReadStream(alvo).pipe(res);
 }
 
+// CSP: o front usa <script>/<style> inline e Three.js via jsDelivr, então 'unsafe-inline' fica; o resto é fechado
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: data: https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
+  res.setHeader('Content-Security-Policy', CSP);
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Referrer-Policy', 'no-referrer');
   try {
     if (barrarRemoto(req, res, url)) return;
     if (url.pathname === '/api/stream') return sse(req, res);
@@ -412,6 +425,11 @@ const servidor = http.createServer(async (req, res) => {
 servidor.listen(CONFIG.port, CONFIG.host, () => {
   console.log(`Prospector em http://${CONFIG.host}:${CONFIG.port}  ${CONFIG.demo ? '(DEMONSTRAÇÃO: dados fictícios)' : `(decisão: ${CONFIG.decideBackend}/${CONFIG.decideModel})`}`);
   orq.iniciar();
+  if (!CONFIG.demo) {
+    const fazer = () => { try { const b = backupDiario(db, CONFIG.dataDir); if (b.criado) console.log(`backup diário: ${b.arquivo}`); } catch (e) { console.error('backup diário falhou:', e.message); } };
+    fazer();
+    setInterval(fazer, 6 * 3600_000).unref();
+  }
 });
 
 for (const sinal of ['SIGINT', 'SIGTERM']) process.on(sinal, () => { orq.parar(); servidor.close(); db.close(); process.exit(0); });

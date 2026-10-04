@@ -16,13 +16,18 @@ No computador novo: descompactar e dar duplo clique em `instalacao.bat` (confere
 modelos e disco; cria o `.env`; pergunta antes de instalar qualquer coisa; sobe o servidor e abre a Sala 3D).
 Só conferir: `instalacao.bat /checar` ou `npm run instalar -- --checar`. Banco com versão: `src/migracoes.mjs`
 (backup automático em `data/backups/` antes de migrar um banco com dados).
+Depois disso, o servidor guarda uma cópia por dia (`data/backups/diario-AAAA-MM-DD.db`, as 7 últimas; `src/backup.mjs`).
+`GET /api/saude` diz se o processo e o banco estão de pé (versão do banco, nº de leads, último backup).
+Todas as respostas levam CSP, `nosniff` e `Referrer-Policy` (CSP em `src/server.mjs`; se uma página nova precisar de outra origem, ajuste lá).
 
 ## Rodar
 
 ```bash
 cp .env.example .env      # tudo é opcional
 npm start                 # http://127.0.0.1:4300
-npm test                  # 30 testes (node:test)
+npm test                  # 212 testes (node:test), inclusive o de integração HTTP (test/http.test.mjs)
+npm run verificar         # testes + sintaxe + páginas + servidor de verdade; tem que passar antes de commit
+npm run estado -- "nota"  # salva um estado de produção (tag + cópia do banco)
 ```
 
 | Página | O que é |

@@ -65,7 +65,7 @@ for (let i = 0; i < 40 && !subiu; i++) { await esperar(250); subiu = /Prospector
 if (!subiu) falha(`servidor não subiu:\n${log.slice(-600)}`);
 else {
   const rotas = ['/', '/sala.html', '/base.html', '/configurador.html', '/entrar.html', '/inicio.html', '/producao.html', '/agentes.html', '/nichos.html', '/engine.html',
-    '/api/estado', '/api/leads', '/api/calibracao', '/api/habilidades', '/api/aprendizado', '/api/eventos', '/api/eventos?agente=nova', '/api/varreduras', '/api/grafo', '/api/nichos'];
+    '/api/estado', '/api/leads', '/api/calibracao', '/api/habilidades', '/api/aprendizado', '/api/eventos', '/api/eventos?agente=nova', '/api/varreduras', '/api/grafo', '/api/nichos', '/api/saude'];
   for (const r of rotas) {
     const res = await fetch(`http://127.0.0.1:${porta}${r}`).catch((e) => ({ status: e.message }));
     res.status === 200 ? ok(`GET ${r}`) : falha(`GET ${r} → ${res.status}`);
