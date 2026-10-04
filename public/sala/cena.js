@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { criarPainelLed } from './led.js';
+import { criarAssinatura } from './assinatura.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloquear, buscarCaminho, criarGrade } from './caminhos.js';
 import { criarColocador, metade, padronizar } from './modelos.js';
@@ -268,6 +269,7 @@ export function criarEscritorio(cena, cores) {
   const tela = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 1.4), painelLed.material);
   tela.position.set(0, 1.62, Z0 + 0.255);
   cena.add(moldura, tela);
+  cena.add(criarAssinatura({ x: 0, y: 0.6, z: Z0 + 0.2 })); // assinatura do autor, sob o telão
   // faixa de LED difusa no topo das divisórias de vidro (perfil de alumínio aceso)
   const led = new THREE.MeshStandardMaterial({ color: 0x111111, emissive: 0xdfe8ff, emissiveIntensity: 0.9 });
   for (const [x0, x1, z0, z1] of [[X0, -7, -3, -3], [-7, -7, Z0, -3], [7, 7, Z0, -3], [7, X1, -3, -3]]) {

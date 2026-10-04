@@ -3,6 +3,7 @@
 import { montarShell } from './ui/shell.js';
 import { esc } from './ui/util.js';
 import { falar, modoCalmo, parar, preferencias, salvar, suportaVoz, vozesPtBR } from './ui/audio.js';
+import { chamarMascote } from './ui/mascotes.js';
 
 montarShell('voz', { fundoNeural: false });
 const $ = (s) => document.querySelector(s);
@@ -45,6 +46,19 @@ async function desenhar() {
       <p><button class="btn primario" type="button" id="ouvir-escolhida">Ouvir a voz escolhida</button> <button class="btn fantasma" type="button" id="parar">Parar</button></p>`}
     </section>
 
+    <section class="voz-bloco" aria-labelledby="h-mascotes">
+      <h2 id="h-mascotes">Mascotes</h2>
+      <label class="check"><input type="checkbox" id="mascotes" ${p.mascotes ? 'checked' : ''} ${p.calmo ? 'disabled' : ''}> Deixar os mascotes dos agentes visitarem a tela (desligado por padrão)</label>
+      <ul>
+        <li>Ficam mais ausentes que presentes: somem por 2 a 6 minutos e ficam só 10 a 24 segundos.</li>
+        <li>São pequenos (64 px), ficam nas bordas, olham para você, às vezes brincam em dupla e somem “como mágica”.</li>
+        <li>Nunca bloqueiam um clique, não fazem som e não aparecem no modo calmo, quando a Alva fala ou na Sala 3D.</li>
+      </ul>
+      <label class="check"><input type="checkbox" id="mascotes-sistema" ${p.mascotesApesarDoSistema ? 'checked' : ''} ${p.calmo ? 'disabled' : ''}> Mostrar mesmo com “reduzir movimento” do sistema</label>
+      <p class="sub">${matchMedia('(prefers-reduced-motion: reduce)').matches ? 'O seu computador está com as animações do Windows desligadas (comum para ganhar velocidade), então os mascotes só aparecem se você marcar esta opção.' : 'O seu sistema não pede menos movimento; esta opção só faz diferença se isso mudar.'}</p>
+      <p><button class="btn" type="button" id="chamar-mascote" ${p.mascotes && !p.calmo ? '' : 'disabled'}>Chamar um agora</button></p>
+    </section>
+
     <section class="voz-bloco" aria-labelledby="h-resp">
       <h2 id="h-resp">Quando a Alva fala</h2>
       <label class="check"><input type="checkbox" id="respostas" ${p.respostas ? 'checked' : ''}> Ler em voz alta a resposta dos comandos que eu falo (desligado por padrão)</label>
@@ -57,8 +71,11 @@ async function desenhar() {
     </section>`;
   $('#pagina').setAttribute('aria-busy', 'false');
 
-  $('#calmo').addEventListener('change', (e) => { salvar({ calmo: e.target.checked }); if (e.target.checked) $('#respostas').checked = false; });
+  $('#calmo').addEventListener('change', (e) => { salvar({ calmo: e.target.checked }); if (e.target.checked) $('#respostas').checked = false; $('#mascotes').disabled = e.target.checked; $('#mascotes-sistema').disabled = e.target.checked; $('#chamar-mascote').disabled = e.target.checked || !$('#mascotes').checked; });
   $('#respostas').addEventListener('change', (e) => salvar({ respostas: e.target.checked }));
+  $('#mascotes').addEventListener('change', (e) => { salvar({ mascotes: e.target.checked }); $('#chamar-mascote').disabled = !e.target.checked || preferencias().calmo; });
+  $('#mascotes-sistema').addEventListener('change', (e) => salvar({ mascotesApesarDoSistema: e.target.checked }));
+  $('#chamar-mascote').addEventListener('click', () => chamarMascote());
   if (!vozes.length) return;
   document.querySelectorAll('[name=voz]').forEach((r) => r.addEventListener('change', () => {
     salvar({ voz: r.value });

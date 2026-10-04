@@ -1,5 +1,6 @@
 // Barra lateral única das três telas. Mostra a equipe com o status REAL de /api/estado.
 import './audio.js'; // aplica o modo calmo (data-calmo) em toda página, antes de qualquer animação
+import { iniciarMascotes } from './mascotes.js'; // desligados por padrão; ver docs/ACESSIBILIDADE.md
 import { montarNeural } from './neural.js';
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
@@ -41,6 +42,7 @@ const NO_POLEGAR = ['inicio', 'painel', 'producao', 'sala'];
 
 export function montarShell(ativa, { extra = false, fundoNeural = true } = {}) {
   if (fundoNeural) neural = montarNeural();
+  if (!['sala', 'base'].includes(ativa)) iniciarMascotes(); // a Sala 3D já tem os agentes dela
   const lateral = document.querySelector('#lateral');
   lateral.innerHTML = `
     <div class="marca">${MARCA}<div><strong>Prospector</strong><small id="shell-status"><span class="ponto"></span>conectando…</small></div></div>
@@ -49,7 +51,7 @@ export function montarShell(ativa, { extra = false, fundoNeural = true } = {}) {
     </nav>
     ${extra ? '<div class="extra" id="shell-extra"></div>' : ''}
     <div class="equipe" id="shell-equipe" aria-live="polite"></div>
-    <div class="rodape-lateral"><div><span id="shell-operador">Operador</span><small>dono da conta</small></div>
+    <div class="rodape-lateral"><div><span id="shell-operador">Operador</span><small>dono da conta</small><small>Feito por Victor Borsari</small></div>
       <a class="btn icone fantasma" href="/#ajustes" title="Ajustes" aria-label="Ajustes">${ICONES.ajustes}</a></div>`;
   // celular: as 4 telas numa barra embaixo, ao alcance do polegar (o menu lateral fica para a equipe)
   if (!document.querySelector('.nav-inferior')) {

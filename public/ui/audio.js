@@ -9,7 +9,7 @@
 //     Quem usa leitor de tela ou "reduzir movimento" no sistema já entra assim.
 // Preferências ficam só neste navegador (localStorage) e a página funciona igual se ele estiver bloqueado.
 const CHAVE = 'prospector.conforto.v1';
-const PADRAO = { respostas: false, voz: null, velocidade: 0.95, volume: 0.9, calmo: false };
+const PADRAO = { respostas: false, voz: null, velocidade: 0.95, volume: 0.9, calmo: false, mascotes: false, mascotesApesarDoSistema: false };
 const LIMITE = 300;
 
 function ler() {
