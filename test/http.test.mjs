@@ -139,3 +139,14 @@ test('acesso remoto desligado: /api/entrar recusa e /api/sair limpa o cookie', a
   assert.equal(s.status, 200);
   assert.ok(s.headers.get('set-cookie'));
 });
+
+test('comandos de voz novos pelo HTTP: quentes, aprovar o próximo, trocar a cidade', async () => {
+  const q = await chamar('POST', '/api/comando', { texto: 'quantos leads quentes' });
+  assert.match(q.json.resposta, /quente/);
+  const a = await chamar('POST', '/api/comando', { texto: 'aprova o próximo' });
+  assert.equal(a.status, 200);
+  assert.match(a.json.resposta, /Aprovei|Não aprovei|Não há cartão/);
+  const c = await chamar('POST', '/api/comando', { texto: 'troca a cidade para Batatais SP' });
+  assert.equal(c.status, 200);
+  assert.match(c.json.resposta, /Troquei para Batatais-SP|Não há varredura anterior/);
+});

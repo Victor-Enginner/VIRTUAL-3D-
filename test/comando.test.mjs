@@ -35,3 +35,26 @@ test('frase ambígua com o Ollama fora do ar vira "não entendi", não erro', as
     assert.equal(r.intencao, 'outro'); assert.equal(r.confianca, 0);
   } finally { CONFIG.ollamaUrl = antes; }
 });
+
+test('comandos novos por regra: quentes, aprovar, descartar, trocar cidade', () => {
+  const casos = [
+    ['quantos leads quentes eu tenho?', 'quentes'],
+    ['quantos quentes', 'quentes'],
+    ['aprova o próximo', 'aprovar_proximo'],
+    ['aprovar o próximo cartão', 'aprovar_proximo'],
+    ['descarta o próximo', 'descartar_proximo'],
+    ['descartar', 'descartar_proximo'],
+    ['troca a cidade para Ribeirão Preto SP', 'cidade'],
+    ['mudar a cidade pra Franca', 'cidade'],
+    ['varre barbearias em Franca SP', 'varrer'], // não regride
+    ['pare de varrer', 'pausar'],
+  ];
+  for (const [fala, esperado] of casos) assert.equal(intencaoPorRegra(fala), esperado, fala);
+});
+
+test('trocar a cidade extrai cidade e UF depois de "para"', async () => {
+  const a = await interpretar('troca a cidade para Ribeirão Preto SP');
+  assert.deepEqual([a.intencao, a.cidade, a.uf], ['cidade', 'Ribeirão Preto', 'SP']);
+  const b = await interpretar('mudar a cidade pra Franca');
+  assert.deepEqual([b.cidade, b.uf], ['Franca', null]);
+});

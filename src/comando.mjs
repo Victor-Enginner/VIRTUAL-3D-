@@ -16,12 +16,27 @@ export const PERGUNTA_INTENCAO = {
       pausar: 'Pausar, parar ou desligar os agentes',
       retomar: 'Retomar, continuar ou ligar os agentes',
       resumo: 'Pedir um resumo, relatório ou como está o dia',
+      quentes: 'Perguntar quantos leads quentes (de alta prioridade) existem',
+      aprovar_proximo: 'Aprovar o próximo cartão de mensagem da fila',
+      descartar_proximo: 'Descartar o próximo cartão de mensagem da fila',
+      cidade: 'Trocar a cidade das varreduras',
       outro: 'Outra coisa que não é nenhuma dessas',
     },
   },
 };
 
-export function extrairLiterais(texto) {
+// "trocar a cidade para Ribeirão Preto SP": a cidade vem depois de "para/pra/pro/em/:"
+function cidadeDepoisDe(texto) {
+  const m = texto.match(/(?:\bpara|\bpra|\bpro|\bem|:)\s+([A-Za-zÀ-ÿ' ]+?)(?:\s*[-,/]?\s*\b([A-Za-z]{2})\b)?\s*[.!?]*$/i);
+  if (!m) return null;
+  let cidade = m[1].trim(), uf = m[2]?.toUpperCase();
+  if (uf && !UFS.includes(uf)) { cidade = `${cidade} ${m[2]}`; uf = null; }
+  cidade = cidade.toLowerCase().split(/\s+/).map((p, i) => (i > 0 && ['de', 'da', 'do', 'das', 'dos'].includes(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
+  return { cidade, uf: uf || null };
+}
+
+export function extrairLiterais(texto, intencao = null) {
+  if (intencao === 'cidade') return { nicho: null, fonte: 'maps', ...(cidadeDepoisDe(texto) || { cidade: null, uf: null }) };
   const t = sem(texto);
   let nicho = null;
   for (const [k, n] of Object.entries(NICHOS)) {
@@ -44,6 +59,10 @@ export function extrairLiterais(texto) {
 // O LLM só entra em frase ambígua. Ordem importa: "pare de varrer" é pausar, não varrer; "Pará" (estado) não é "pare".
 export function intencaoPorRegra(texto) {
   const t = sem(texto).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/\b(quantos|quantas|numero de|tem algum)\b.*\bquente/.test(t) || /\bleads? quentes?\b/.test(t)) return 'quentes';
+  if (/\b(aprov\w*|manda\w* ver)\b.*\b(proxim\w*|cartao|mensagem|seguinte)\b|^aprov\w*$/.test(t)) return 'aprovar_proximo';
+  if (/\b(descart\w*|joga\w* fora|recus\w*)\b.*\b(proxim\w*|cartao|mensagem|seguinte)\b|^descart\w*$/.test(t)) return 'descartar_proximo';
+  if (/\b(troc\w*|mud\w*|alter\w*) (a |de )?cidade\b/.test(t)) return 'cidade';
   if (/\b(pare|parar|para|pausa|pausar|chega) de (varr|busc|procur|miner|trabalh)/.test(t)) return 'pausar';
   if (/\b(varr|busc|procur|miner|pesquis)\w*/.test(t)) return 'varrer';
   if (/\b(retoma\w*|continu\w*|volta\w*|religa\w*|liga\w*|reinicia\w*)\b/.test(t) && !/\bdesliga/.test(t)) return 'retomar';
@@ -54,7 +73,7 @@ export function intencaoPorRegra(texto) {
 
 export async function interpretar(texto) {
   const porRegra = intencaoPorRegra(texto);
-  if (porRegra) return { intencao: porRegra, confianca: 1, probabilidades: { [porRegra]: 1 }, origem: 'regra', ...extrairLiterais(texto), latency_ms: 0 };
+  if (porRegra) return { intencao: porRegra, confianca: 1, probabilidades: { [porRegra]: 1 }, origem: 'regra', ...extrairLiterais(texto, porRegra), latency_ms: 0 };
   if (!CONFIG.modelos.comando.modelo) return { intencao: 'outro', confianca: 0, probabilidades: {}, origem: 'sem_modelo', ...extrairLiterais(texto), latency_ms: 0 };
   let r;
   try { r = await decide({ state: { fala_da_pessoa: texto, contexto: 'transcrição de voz ou texto digitado no painel de prospecção' }, questions: PERGUNTA_INTENCAO, papel: 'comando' }); }

@@ -7,6 +7,7 @@ import crypto from 'node:crypto';
 import { CONFIG, ROOT } from './config.mjs';
 import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
 import { backupDiario } from './backup.mjs';
+import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES } from './nichos.mjs';
@@ -279,6 +280,25 @@ rota('POST', '/api/comando', async ({ body }) => {
   } else if (c.intencao === 'pausar') { orq.pausar(true); resposta = 'Agentes pausados.'; }
   else if (c.intencao === 'retomar') { orq.pausar(false); resposta = 'Agentes retomados.'; }
   else if (c.intencao === 'resumo') { const b = briefing(db); resposta = `${b.leads} leads, ${b.para_aprovar} mensagens para aprovar, ${b.responderam} responderam, ${b.enviados_hoje} de ${b.limite} envios hoje.`; }
+  else if (c.intencao === 'quentes') { const q = contarQuentes(db); resposta = `${q.quentes} lead(s) quente(s) (prioridade ${LIMITE_QUENTE}+), ${q.para_aprovar} esperando sua aprovação.`; }
+  else if (c.intencao === 'aprovar_proximo' || c.intencao === 'descartar_proximo') {
+    const l = proximoCartao(db);
+    if (!l) resposta = 'Não há cartão esperando sua decisão.';
+    else if (c.intencao === 'aprovar_proximo') {
+      try { aprovarEnvio(db, l.id); resposta = `Aprovei a mensagem para ${l.nome} (prioridade ${l.score ?? '?'}). Ela entra na fila; você envia à mão ou o sistema segue o modo de envio.`; }
+      catch (e) { resposta = `Não aprovei ${l.nome}: ${e.message}.`; }
+    } else {
+      db.prepare("UPDATE leads SET etapa = 'descartado', atualizado_em = ? WHERE id = ?").run(agora(), l.id);
+      registrar(db, 'leo', 'descartado', `${l.nome}: descartado por você (comando de voz)`, { lead_id: l.id });
+      resposta = `Descartei ${l.nome}.`;
+    }
+  } else if (c.intencao === 'cidade') {
+    if (!c.cidade) resposta = 'Qual cidade? Diga, por exemplo: "troca a cidade para Ribeirão Preto SP".';
+    else {
+      const r = trocarCidade(db, c.cidade, c.uf || 'SP', criarVarredura);
+      resposta = r.base ? `Troquei para ${c.cidade}-${c.uf || 'SP'}: ${r.criadas} varredura(s) nova(s), ${r.desativadas} antiga(s) desativada(s).${c.uf ? '' : ' (UF não dita, usei SP)'}` : 'Não há varredura anterior para copiar o ramo. Diga: "varre barbearias em ' + c.cidade + '".';
+    }
+  }
   else resposta = 'Não é um comando que eu sei executar.';
   registrar(db, 'alva', 'comando', `"${fala}" → ${resposta}`, { dados: c });
   return { comando: c, resposta };
