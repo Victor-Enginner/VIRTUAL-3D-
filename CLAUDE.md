@@ -5,7 +5,7 @@ Projeto do Victor (PT-BR). Agentes de prospecção com modelos abertos + escrit�
 `docs/ROADMAP.md` (o que vem a seguir). Mudança motivada por paper cita o id do arXiv.
 
 ## Invioláveis
-- **Não mexer no Repass AI** nem em outras pastas de `opensource-marketplace/` fora de `prospector/`.
+- **Não mexer em outros projetos** fora desta pasta (`Escritório Virtual 3D` tem irmãos, como `AGENT_FOUNDRY_GEN01` e `JEV SHOWCASE`). O Repass AI continua intocável.
 - **Não iniciar o Ollama** nem baixar modelos sem o Victor pedir. Testes não dependem dele.
 - **Nunca inventar dado de lead** (telefone, nota, avaliação). Sem fonte → `null`.
 - Nada de instalar pacote, baixar arquivo ou publicar/subir para o GitHub sem pedir. O git é **só local**.
@@ -19,7 +19,8 @@ Projeto do Victor (PT-BR). Agentes de prospecção com modelos abertos + escrit�
 
 ## Comandos
 ```bash
-npm test     # node --test — tem que passar antes de qualquer commit
+npm test     # node --test
+npm run verificar   # tem que passar antes de qualquer commit
 npm start    # http://127.0.0.1:4300 (DATA_DIR opcional; padrão ./data)
 ```
 
