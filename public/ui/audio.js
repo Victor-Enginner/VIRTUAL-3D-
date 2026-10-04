@@ -87,6 +87,17 @@ export function vozesPtBR() {
   });
 }
 
+// Ordem de preferência quando a voz escolhida não existe neste navegador (as "Natural" só vêm no Edge):
+// as vozes naturais femininas conhecidas, depois qualquer natural, depois as do sistema, nunca a primeira por acaso.
+const PREFERIDAS = ['thalita', 'francisca', 'giovanna', 'leticia', 'letícia', 'leila', 'brenda', 'elza', 'maria'];
+export function escolherVoz(vozes, nomeSalvo) {
+  const salva = vozes.find((v) => v.name === nomeSalvo);
+  if (salva) return { voz: salva, trocou: false };
+  const nota = (v) => { const i = PREFERIDAS.findIndex((p) => v.name.toLowerCase().includes(p)); return (/natural|neural/i.test(v.name) ? 0 : 100) + (i < 0 ? 50 : i); };
+  const melhor = [...vozes].sort((a, b) => nota(a) - nota(b))[0] || null;
+  return { voz: melhor, trocou: Boolean(nomeSalvo && melhor) };
+}
+
 export function recortar(texto) {
   const t = String(texto || '').replace(/\s+/g, ' ').trim();
   if (t.length <= LIMITE) return t;
@@ -108,9 +119,9 @@ export async function falar(texto, { origem } = {}) {
   const vozes = await vozesPtBR();
   const u = new SpeechSynthesisUtterance(fala);
   u.lang = 'pt-BR'; u.rate = prefs.velocidade; u.volume = prefs.volume; u.pitch = 1;
-  const escolhida = vozes.find((v) => v.name === prefs.voz) || vozes[0];
+  const { voz: escolhida, trocou } = escolherVoz(vozes, prefs.voz);
   if (escolhida) u.voice = escolhida;
-  legenda(fala, silenciadas.length ? 'som da TV/sala pausado enquanto eu falo' : '');
+  legenda(fala, [silenciadas.length ? 'som da TV/sala pausado enquanto eu falo' : '', trocou ? `a voz que você escolheu não existe neste navegador; usei ${escolhida.name.replace(/^Microsoft /, '')}` : ''].filter(Boolean).join(' · '));
   return new Promise((ok) => {
     const fim = (motivo) => {
       if (meu !== sequencia) return ok({ falou: false, motivo: 'substituída por outra fala' });

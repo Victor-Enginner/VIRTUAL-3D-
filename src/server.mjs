@@ -1,3 +1,4 @@
+import { registrarEdicao } from './tocomas/edicoes.mjs';
 import { cadeia, TIPOS_DA_CADEIA } from './tocomas/causa.mjs';
 import fs from 'node:fs';
 import http from 'node:http';
@@ -95,6 +96,8 @@ rota('GET', '/api/leads/:id', ({ params }) => {
 rota('POST', '/api/leads/:id/mensagem', async ({ params, body }) => {
   const t = texto(body.texto, 1000);
   if (!t) throw new HttpError(400, 'mensagem vazia');
+  const antes = db.prepare('SELECT * FROM leads WHERE id = ?').get(params.id);
+  if (antes) registrarEdicao(db, antes, t); // guarda o original da Maia antes de sobrescrever
   const r = db.prepare("UPDATE leads SET mensagem = ?, mensagem_origem = 'operador', atualizado_em = ? WHERE id = ?").run(t, agora(), params.id);
   if (!r.changes) throw new HttpError(404, 'lead não encontrado');
   return { ok: true };

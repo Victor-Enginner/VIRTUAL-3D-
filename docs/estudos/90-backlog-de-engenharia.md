@@ -22,6 +22,10 @@ Prospector agora (modelos locais pequenos, 10 envios/dia, você aprova tudo).
 | **B15** ✅ 04/10 | Revisar o fetch do Atlas contra vazamento pela web: URL só vem do Maps/OSM, nunca de texto gerado por modelo | `src/auditoria.mjs` | 2610.01768 | teste: URL vinda de texto livre é recusada. Feito também: IP validado no `lookup` da conexão (fecha DNS rebinding, item 71) — `test/b15.test.mjs` |
 | **B16** ✅ 04/10 | **Fixo com "só celular":** a Maia escreve para lead de telefone fixo que nunca pode ser aprovado (5 de 17 em 04/10). Qualificar deve parar antes de T4 com motivo, e reabrir se você desligar "só celular" | `qualificar()` + portão de T4 | achado no teste dos cartões | lead fixo não chega a "mensagem" com "só celular" ligado |
 
+| **B17** ✅ 04/10 | Guardar o par **original da Maia × texto editado por você** (antes o original era sobrescrito) | `src/tocomas/edicoes.mjs`, tabela `edicoes` | 2601.19055, 2610.00061 | `test/edicoes.test.mjs`: aprovar sem mexer não gera edição |
+| **B18** | Exportar o conjunto de treino anonimizado (edições, aprovações, respostas, fechamentos) | script `npm run exportar-treino` | 2601.19055 | arquivo sem telefone nem nome de pessoa |
+| **B19** | Afinar um modelo pequeno com LoRA fora do PC e só aceitar se a bancada aprovar | fora do repo + `modelos.json` | 2601.19055, 2610.00061, 2610.02076 | recusa da Maia < 30% e Nova sem regressão |
+
 ## Decisões de implementação (03/10/2026)
 - **B3 só liga por nicho calibrado** (B10: 30+ decisões suas nas últimas 60, ECE ≤ 0,10). Antes disso tudo passa por você.
 - **Zona baixa** = a Nova descarta sozinha; **zona alta** só marca confiança — envio continua exigindo sua aprovação.

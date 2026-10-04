@@ -29,6 +29,7 @@ import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from '
 import { conferirHandoff, exigirHandoff, visao } from './tocomas/grafo.mjs';
 import { prontidao, zona } from './tocomas/zonas.mjs';
 import { estaPreso, fatosDaFonte, fecharCiclo, lerCrenca, limparBloqueio, marcarBloqueio, registrarFatos, semearDoLead, versaoDe } from './tocomas/crenca.mjs';
+import { igual as igualTexto, registrarEdicao } from './tocomas/edicoes.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
 import { aplicar as aplicarHabilidades } from './tocomas/habilidades.mjs';
@@ -432,6 +433,9 @@ export function aprovarEnvio(db, leadId, texto, quem = 'operador') {
   const ja = db.prepare("SELECT id FROM envios WHERE telefone = ? AND status IN ('aprovado', 'enviado')").get(lead.telefone);
   if (ja) throw new Error('já existe envio para este telefone');
   const msg = validarMensagem(texto || lead.mensagem, ajustes).texto;
+  // se você mexeu no texto ao aprovar, o original da Maia fica guardado. Compara com a versão JÁ validada: a linha do SAIR
+  // e a limpeza de links são do sistema, não edição sua, e não podem sujar o dado de treino.
+  if (!igualTexto(msg, validarMensagem(lead.mensagem, ajustes).texto)) registrarEdicao(db, lead, msg);
   db.prepare("INSERT INTO envios (lead_id, telefone, texto, status, criado_em) VALUES (?, ?, ?, 'aprovado', ?)").run(lead.id, lead.telefone, msg, agora());
   db.prepare("UPDATE leads SET etapa = 'aprovado', mensagem = ?, atualizado_em = ? WHERE id = ?").run(msg, agora(), lead.id);
   registrar(db, 'leo', 'aprovado', `${lead.nome} entrou na fila de envio (${quem})`, { lead_id: lead.id });

@@ -17,6 +17,7 @@ export const MIGRACOES = [
     adicionarColuna(db, 'eventos', 'causa_id', 'INTEGER');
     db.exec('CREATE INDEX IF NOT EXISTS eventos_lead ON eventos(lead_id, id); CREATE INDEX IF NOT EXISTS eventos_causa ON eventos(causa_id)');
   } },
+  { v: 5, nome: 'edicoes: pares original x editado para treino futuro; a tabela vem do SCHEMA', up() {} },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

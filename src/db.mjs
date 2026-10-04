@@ -127,6 +127,17 @@ CREATE TABLE IF NOT EXISTS negocios (
   fechado_em TEXT NOT NULL
 );
 
+-- o que você mudou nos textos da Maia: par original x editado, base de treino futuro (src/tocomas/edicoes.mjs)
+CREATE TABLE IF NOT EXISTS edicoes (
+  lead_id TEXT PRIMARY KEY REFERENCES leads(id),
+  original TEXT NOT NULL,
+  editado TEXT NOT NULL,
+  origem_original TEXT,
+  nicho TEXT,
+  angulo TEXT,
+  em TEXT NOT NULL
+);
+
 -- previsão que existia quando cada rótulo seu chegou (antes de aprender com ele): base da calibração (B10)
 CREATE TABLE IF NOT EXISTS previsoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
