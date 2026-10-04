@@ -10,6 +10,8 @@
     "test": "node --test",
     "calibracao": "node scripts/calibracao.mjs",
     "verificar": "node scripts/verificar.mjs",
-    "estado": "node scripts/estado.mjs"
+    "estado": "node scripts/estado.mjs",
+    "instalar": "node scripts/instalar.mjs",
+    "empacotar": "node scripts/empacotar.mjs"
   }
 }

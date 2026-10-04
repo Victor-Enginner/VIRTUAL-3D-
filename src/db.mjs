@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { AJUSTES_PADRAO } from './config.mjs';
+import { migrar } from './migracoes.mjs';
 
 const SCHEMA = `
 PRAGMA journal_mode = WAL;
@@ -168,11 +169,7 @@ export function abrirBanco(dataDir) {
     file = path.join(dataDir, 'prospector.db');
   }
   const db = new DatabaseSync(file);
-  db.exec(SCHEMA);
-  // colunas novas em bancos antigos
-  for (const col of ['bloqueio', 'historico', 'diagnostico']) {
-    try { db.exec(`ALTER TABLE crencas ADD COLUMN ${col} TEXT`); } catch { /* já existe */ }
-  }
+  migrar(db, file === ':memory:' ? null : file, SCHEMA); // src/migracoes.mjs: versão, backup antes, idempotente
   // jobs que estavam rodando quando o processo caiu voltam para a fila
   db.prepare("UPDATE jobs SET status = 'pendente' WHERE status = 'rodando'").run();
   return db;

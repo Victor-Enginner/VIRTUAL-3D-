@@ -7,3 +7,5 @@ scripts/hooks/* text eol=lf
 *.jpg binary
 *.ktx2 binary
 *.bin binary
+
+*.bat text eol=crlf
