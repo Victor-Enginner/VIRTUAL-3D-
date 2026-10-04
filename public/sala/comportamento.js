@@ -6,22 +6,26 @@
 //   conversando  → em pausa e outro agente em pausa no mesmo ponto: viram um para o outro
 //   apresentando → acabou de fazer o briefing (Alva) ou relatório: fica em pé na TV da reunião
 //   desligado    → agentes pausados pelo operador: descansam no sofá do lounge
-//   na_mesa      → ocioso há pouco tempo: continua sentado, sem digitar (pode vir tarefa já)
+//   na_mesa      → ocioso há pouco tempo, OU a equipe tem trabalho em andamento: fica sentado, sem digitar (pode vir tarefa já)
 //   rotina       → o plano do dia (rotina.js) manda: café, almoço, pausa da tarde
 //   reuniao      → reunião diária da Alva às 9h: senta à mesa de reunião (a Alva apresenta na TV)
 
-export const PAUSA_APOS_MS = 45_000;      // a especificação fala em 15 min; na demonstração ao vivo 45 s mostra a vida da sala
+export const PAUSA_APOS_MS = 120_000;     // um agente só vai passear depois de 2 min ocioso (a especificação fala em 15 min)
+// Enquanto QUALQUER agente trabalhou há menos que isto, ninguém sai da mesa: levantar no meio de uma varredura parece defeito.
+export const EQUIPE_OCUPADA_MS = 180_000;
 export const APRESENTACAO_MS = 25_000;
 export const TEMPO_NO_PONTO_MS = [18_000, 40_000]; // quanto tempo fica na copa/janela antes de trocar de lugar
 
 // Prioridades (de cima para baixo): pausado por você > trabalho real > briefing da Alva > você chamou
-// a equipe > ROTINA DO DIA (plano: café, reunião, almoço) > ficou ativo há pouco > pausa por ócio.
+// a equipe > EQUIPE OCUPADA (alguém trabalhou há pouco: todos esperam na mesa) > ROTINA DO DIA (plano: café,
+// reunião, almoço) > ficou ativo há pouco > pausa por ócio. A rotina e as pausas só valem com a equipe parada.
 // `ag.bloco` = o que o plano do dia manda agora (rotina.js), ou null.
 export function proximoEstado(ag, agora) {
   if (ag.pausadoGlobal) return { estado: 'desligado', destino: 'sofa' };
   if (ag.trabalhando) return { estado: 'trabalhando', destino: 'mesa' };
   if (ag.apresentarAte && agora < ag.apresentarAte) return { estado: 'apresentando', destino: 'tv' };
   if (ag.chamadoAteMs && agora < ag.chamadoAteMs) return { estado: 'na_mesa', destino: 'mesa' };
+  if (agora - (ag.ultimaAtividadeEquipe ?? -Infinity) < EQUIPE_OCUPADA_MS) return { estado: 'na_mesa', destino: 'mesa' };
   if (ag.bloco) return { estado: ag.bloco.atividade === 'reuniao' ? (ag.bloco.area === 'tv' ? 'apresentando' : 'reuniao') : 'rotina', destino: ag.bloco.area, rotulo: ag.bloco.rotulo };
   if (agora - (ag.ultimaAtividade ?? agora) < PAUSA_APOS_MS) return { estado: 'na_mesa', destino: 'mesa' };
   return { estado: 'pausa', destino: ag.pontoDePausa || 'copa' };

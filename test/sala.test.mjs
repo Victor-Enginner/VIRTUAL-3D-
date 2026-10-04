@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { bloquear, buscarCaminho, criarGrade, livre, paraCelula } from '../public/sala/caminhos.js';
-import { PAUSA_APOS_MS, proximoEstado, sortearPonto } from '../public/sala/comportamento.js';
+import { EQUIPE_OCUPADA_MS, PAUSA_APOS_MS, proximoEstado, sortearPonto } from '../public/sala/comportamento.js';
 
 test('A* contorna um móvel em vez de atravessar', () => {
   const g = criarGrade({ largura: 10, profundidade: 10, celula: 0.5 });
@@ -42,4 +42,32 @@ test('máquina de estados segue o estado real da API', () => {
   assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: 0, apresentarAte: t + 5 }, t).destino, 'tv');
   assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: 0, chamadoAteMs: t + 5 }, t).destino, 'mesa');
   assert.ok(['biblioteca', 'janela', 'copa'].includes(sortearPonto('atlas', () => 0.5)));
+});
+
+test('equipe ocupada: quem não está trabalhando espera na mesa, não sai passear (defeito visto em 04/10)', () => {
+  const t = 5_000_000;
+  const ocioso = { trabalhando: false, ultimaAtividade: 0, pontoDePausa: 'copa' }; // ocioso há muito tempo
+  // o Atlas varrendo agora: Alva, Maia e Leo (ociosos) ficam na mesa
+  assert.deepEqual(proximoEstado({ ...ocioso, ultimaAtividadeEquipe: t - 1000 }, t), { estado: 'na_mesa', destino: 'mesa' });
+  // continua assim por alguns minutos depois que o trabalho acabou
+  assert.equal(proximoEstado({ ...ocioso, ultimaAtividadeEquipe: t - EQUIPE_OCUPADA_MS + 1000 }, t).estado, 'na_mesa');
+  // a rotina do dia (café) também espera enquanto há trabalho
+  const cafe = { atividade: 'cafe', area: 'copa', rotulo: 'Café' };
+  assert.equal(proximoEstado({ ...ocioso, bloco: cafe, ultimaAtividadeEquipe: t - 1000 }, t).estado, 'na_mesa');
+});
+
+test('equipe parada há tempo: a vida da sala volta (pausa e rotina)', () => {
+  const t = 5_000_000;
+  const parado = { trabalhando: false, ultimaAtividade: 0, pontoDePausa: 'janela', ultimaAtividadeEquipe: t - EQUIPE_OCUPADA_MS - 1 };
+  assert.deepEqual(proximoEstado(parado, t), { estado: 'pausa', destino: 'janela' });
+  const cafe = { atividade: 'cafe', area: 'copa', rotulo: 'Café' };
+  assert.equal(proximoEstado({ ...parado, bloco: cafe }, t).estado, 'rotina');
+  assert.ok(PAUSA_APOS_MS >= 60_000 && EQUIPE_OCUPADA_MS >= PAUSA_APOS_MS, 'ninguém passeia em menos de 1 min nem antes de a equipe parar');
+});
+
+test('equipe ocupada não atrapalha o que tem prioridade: pausado por você e briefing da Alva', () => {
+  const t = 5_000_000;
+  assert.equal(proximoEstado({ trabalhando: false, pausadoGlobal: true, ultimaAtividadeEquipe: t - 1 }, t).estado, 'desligado');
+  assert.equal(proximoEstado({ trabalhando: false, apresentarAte: t + 5, ultimaAtividadeEquipe: t - 1 }, t).estado, 'apresentando');
+  assert.equal(proximoEstado({ trabalhando: true, ultimaAtividadeEquipe: t - 1 }, t).estado, 'trabalhando');
 });

@@ -1,6 +1,7 @@
 // Sala 3D: escritório vivo. O estado vem de /api/estado e /api/stream (o mesmo do painel);
 // cada agente decide onde estar pela máquina de estados (sala/comportamento.js), anda pela
 // grade com A* (sala/caminhos.js) e mostra no monitor o que está fazendo de verdade.
+import { lerCena, salvarCena } from './sala/cena-salva.js';
 import { modoCalmo, movimentoReduzido } from './ui/conforto.js';
 import * as THREE from 'three';
 import { MapControls } from 'three/addons/controls/MapControls.js';
@@ -24,6 +25,9 @@ const hora = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit
 const semMovimento = movimentoReduzido(); // sistema pede menos movimento OU modo calmo ligado
 const escuro = matchMedia('(prefers-color-scheme: dark)').matches;
 const AGENTES = ['alva', 'atlas', 'nova', 'maia', 'leo'];
+// retrato da cena entre páginas: ao voltar para a Sala, agentes e câmera continuam de onde estavam (sala/cena-salva.js)
+const armazem = (() => { try { return window.sessionStorage; } catch { return null; } })();
+const cenaSalva = lerCena(armazem);
 
 async function api(caminho, corpo) {
   const r = await fetch(caminho, corpo === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
@@ -185,8 +189,10 @@ function rotuloPara(id, info) {
 function criarAgente(id, info) {
   const assento = escritorio.postos[id].assento;
   const p = base ? criarPersonagem(base, info.cor) : bonecoReserva(info.cor);
-  p.grupo.position.set(assento.x, 0, assento.z);
-  p.grupo.rotation.y = assento.rot;
+  const volta = cenaSalva?.ag?.[id]; // onde ele estava quando você saiu da Sala
+  const inicio = volta || assento;
+  p.grupo.position.set(inicio.x, 0, inicio.z);
+  p.grupo.rotation.y = volta ? volta.rot : assento.rot;
   p.grupo.userData.id = id;
   cena.add(p.grupo);
   const el = rotuloPara(id, info);
@@ -195,12 +201,13 @@ function criarAgente(id, info) {
   p.grupo.add(r);
   const a = {
     id, info, p, el, estado: 'na_mesa', destino: 'mesa', ponto: assento, caminho: null, sentado: false, alturaY: 0,
-    ultimaAtividade: Date.now(), pontoDePausa: sortearPonto(id), trocaPontoEm: 0, ritmo: PERSONALIDADE[id]?.ritmo || 1,
+    ultimaAtividade: volta?.ultimaAtividade ?? Date.now(), pontoDePausa: volta?.pontoDePausa ?? sortearPonto(id), ultimaArea: volta?.ultimaArea ?? undefined, trocaPontoEm: 0, ritmo: PERSONALIDADE[id]?.ritmo || 1,
     emCaminho: false,
   };
   // ritmo pessoal pequeno (0,9–1,1): ninguém "corre", mas cada um tem seu passo
-  entrar(multidao, id, assento.x, assento.z, { ritmo: 0.9 + 0.2 * Math.min(1, Math.max(0, (a.ritmo - 0.9) / 0.3)) });
-  sentar(a, false);
+  entrar(multidao, id, inicio.x, inicio.z, { ritmo: 0.9 + 0.2 * Math.min(1, Math.max(0, (a.ritmo - 0.9) / 0.3)) });
+  if (volta) a.destino = null; // o primeiro quadro decide o destino certo e leva o agente de onde ele está (sem teletransporte)
+  else sentar(a, false);
   agentes[id] = a;
 }
 
@@ -257,15 +264,18 @@ function irPara(a, ponto) {
 }
 
 const giroAlvo = new THREE.Quaternion(), eixoY = new THREE.Vector3(0, 1, 0);
+let ultimaAtividadeEquipe = cenaSalva?.equipe ?? -Infinity; // última vez que QUALQUER agente estava trabalhando
 function atualizarAgente(a, dt, agoraMs) {
   const info = estado?.agentes?.[a.id];
   const trabalhando = info?.status === 'trabalhando';
   if (trabalhando) a.ultimaAtividade = agoraMs;
+  // a equipe inteira conta: se qualquer agente está trabalhando, os outros esperam na mesa em vez de passear
+  if (Object.values(estado?.agentes || {}).some((x) => x.status === 'trabalhando')) ultimaAtividadeEquipe = agoraMs;
   const hoje = new Date(agoraMs), dia = diaDe(hoje);
   if (a.planoDia !== dia) { a.plano = planoDoDia(a.id, dia); a.planoDia = dia; }
   a.bloco = blocoAgora(a.plano, hoje);
   const dec = proximoEstado({
-    trabalhando, pausadoGlobal: estado?.pausado, ultimaAtividade: a.ultimaAtividade,
+    trabalhando, pausadoGlobal: estado?.pausado, ultimaAtividade: a.ultimaAtividade, ultimaAtividadeEquipe,
     apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa, bloco: a.bloco,
   }, agoraMs);
   // na pausa, de tempos em tempos troca de lugar (copa → janela → biblioteca), no ritmo do agente
@@ -620,6 +630,20 @@ $('#btn-pausa').addEventListener('click', async () => { await api(estado.pausado
 let cameraMexida = false;
 let voo = null; // transição de câmera em andamento (vistas)
 controles.addEventListener('start', () => { cameraMexida = true; voo = null; marcarVista(null); });
+if (cenaSalva?.cam) { camera.position.fromArray(cenaSalva.cam.p); controles.target.fromArray(cenaSalva.cam.t); cameraMexida = true; } // a vista que você tinha escolhido
+
+function gravarCena() {
+  const ag = {};
+  for (const a of Object.values(agentes)) {
+    const m = multidao.agentes.get(a.id);
+    if (m) ag[a.id] = { x: +m.x.toFixed(2), z: +m.z.toFixed(2), rot: a.p.grupo.rotation.y, pontoDePausa: a.pontoDePausa, ultimaArea: a.ultimaArea ?? null, ultimaAtividade: a.ultimaAtividade };
+  }
+  if (!Object.keys(ag).length) return; // cena ainda não montada: não sobrescreve o retrato bom com um vazio
+  salvarCena(armazem, { ag, equipe: Number.isFinite(ultimaAtividadeEquipe) ? ultimaAtividadeEquipe : null, cam: { mexida: cameraMexida, p: camera.position.toArray(), t: controles.target.toArray() } });
+}
+setInterval(gravarCena, 4000);
+addEventListener('pagehide', gravarCena);
+document.addEventListener('visibilitychange', () => { if (document.hidden) gravarCena(); });
 
 // visão geral: a sala inteira cabe na tela (de lado quando o celular está em pé)
 function vistaGeral() {
