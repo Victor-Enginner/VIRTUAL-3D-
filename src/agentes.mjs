@@ -132,7 +132,7 @@ async function auditar(db, job, ctx) {
   let aud = null;
   if (situacao === 'site_proprio' || situacao === 'site_gratuito') {
     ctx.usar?.('buscar_seguro');
-    aud = await auditarSite(lead.site);
+    aud = await auditarSite(lead.site, lead.fonte); // B15: a origem é a fonte de coleta do lead
     if (aud.erro) situacao = 'site_fora_do_ar';
     else if (aud.redireciona_para) {
       const destino = classificarUrl(aud.redireciona_para);

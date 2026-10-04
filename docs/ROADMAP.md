@@ -126,7 +126,7 @@ Conjunto fixo de leads de teste, métricas de calibração das decisões (`[R:62
 68. Ler PDF de cardápio com OCR local (estudo) `[R:8]` surya / `[R:3]` MinerU / `[R:4]` docling
 69. Converter documentos para Markdown no Configurador `[R:93]` anydoc / `[R:86]` marker
 70. Instagram: só sinal público (bio com link?) — sem login `[C]`
-71. Corrigir lacuna de DNS rebinding (fixar IP entre checagem e conexão) `[C]`
+71. ✅ Corrigir lacuna de DNS rebinding (IP validado no lookup da própria conexão) `[C]`
 72. Fonte nova: listas públicas de CNPJ (estudo de licença antes) `[R:240]`
 73. Nicho como dado editável no Painel `[C]`
 74. Mapa de calor de leads por bairro `[C]`
