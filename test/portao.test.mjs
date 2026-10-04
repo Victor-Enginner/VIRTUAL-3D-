@@ -21,7 +21,7 @@ test('portão: redigir sem telefone é recusado e vira pendência', () => {
   assert.equal(passar(db, 'qualificar', 'redigir', 'L'), null);
   assert.equal(jobs(db, 'redigir'), 0);
   const p = lerCrenca(db, 'L', 'qualificado').pendencias.find((x) => x.tipo === 'handoff_bloqueado');
-  assert.deepEqual(p, { chave: 'redigir', tipo: 'handoff_bloqueado', falta: ['telefone'] });
+  assert.deepEqual(p, { chave: 'redigir', tipo: 'handoff_bloqueado', falta: ['telefone'], natureza: 'epistemica' });
   // o mesmo bloqueio de novo não repete o aviso
   passar(db, 'controle', 'redigir', 'L');
   assert.equal(eventos(db), 1);

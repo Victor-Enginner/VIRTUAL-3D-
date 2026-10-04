@@ -268,7 +268,7 @@ function blocoCrencaGaveta(c, l) {
   const portao = bloq ? `<p class="aviso">Parado antes de "${esc(bloq.chave)}": falta ${esc((bloq.falta || []).map((k) => ROTULO_FATO[k] || k).join(', '))}. ${soPolitica ? 'O número é fixo e "só celular" está ligado: desligue nos Ajustes se ele tiver WhatsApp.' : '"Refazer auditoria" busca de novo.'}</p>` : '';
   const pend = c.pendencias.filter((p) => p.tipo !== 'handoff_bloqueado');
   return `${preso}${portao}<ul class="crenca">${c.fatos.map((f) => `<li><span>${esc(ROTULO_FATO[f.chave] || f.chave)}</span><b>${esc(valorFato(f, l))}</b><small>${esc(f.fonte)} · vale até ${esc(f.valido_ate ? new Date(f.valido_ate).toLocaleDateString('pt-BR') : '—')}</small></li>`).join('')}</ul>
-    ${pend.length ? `<p class="sub">Pendências: ${pend.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''}`;
+    ${['epistemica', 'realizacao'].map((nat) => { const l = pend.filter((p) => p.natureza === nat); return l.length ? `<p class="sub">${nat === 'epistemica' ? 'Falta saber' : 'Falta fazer'}: ${l.map((p) => `${esc(ROTULO_FATO[p.chave] || p.chave)} (${esc(ROTULO_PEND[p.tipo])})`).join(' · ')}</p>` : ''; }).join('')}`;
 }
 
 // ---------------------------------------------------------------- linha do tempo do lead

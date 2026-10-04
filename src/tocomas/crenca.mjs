@@ -74,7 +74,14 @@ export function resolverConflito(db, leadId, chave) {
   salvar(db, c);
 }
 
+// B6 (2610.01415): pendência EPISTÊMICA = falta saber (a lacuna ativa vem só daqui); de REALIZAÇÃO = falta alguém fazer
+// (você aprovar, o negócio responder). Esperar você ou o cliente não é armadilha nem lacuna.
+export const NATUREZA = { falta_dado: 'epistemica', conflito: 'epistemica', handoff_bloqueado: 'epistemica', aguardando_humano: 'realizacao', aguardando_resposta: 'realizacao' };
+
 export function pendencias(c, etapa, quando = agora()) {
+  return pendenciasBrutas(c, etapa, quando).map((x) => ({ ...x, natureza: NATUREZA[x.tipo] }));
+}
+function pendenciasBrutas(c, etapa, quando) {
   const p = [];
   const valido = (k) => c.fatos.some((f) => f.chave === k && !vencido(f, quando));
   for (const k of ['telefone', 'situacao_site']) if (!valido(k)) p.push({ chave: k, tipo: 'falta_dado' });

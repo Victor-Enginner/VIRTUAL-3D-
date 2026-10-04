@@ -174,6 +174,12 @@
                   "handoff_bloqueado"
                 ]
               },
+              "natureza": {
+                "enum": [
+                  "epistemica",
+                  "realizacao"
+                ]
+              },
               "falta": {
                 "type": "array",
                 "items": {

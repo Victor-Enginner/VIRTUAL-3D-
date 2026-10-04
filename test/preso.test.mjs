@@ -93,3 +93,13 @@ test('Reprocessar zera conflito, janela e diagnóstico (débito: antes o conflit
   assert.equal(c.progresso.diagnostico, undefined);
   assert.equal(c.pendencias.some((p) => p.tipo === 'conflito'), false);
 });
+
+test('B6: pendência epistêmica (falta saber) separada da de realização (falta fazer)', async () => {
+  const { NATUREZA, pendencias } = await import('../src/tocomas/crenca.mjs');
+  assert.deepEqual(Object.entries(NATUREZA).filter(([, n]) => n === 'realizacao').map(([t]) => t).sort(), ['aguardando_humano', 'aguardando_resposta']);
+  const c = { fatos: [], conflitos: ['telefone'], bloqueio: null };
+  const p = pendencias(c, 'mensagem');
+  assert.ok(p.every((x) => x.natureza === NATUREZA[x.tipo]));
+  assert.equal(p.find((x) => x.tipo === 'aguardando_humano').natureza, 'realizacao');
+  assert.equal(p.find((x) => x.tipo === 'conflito').natureza, 'epistemica');
+});
