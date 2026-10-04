@@ -12,6 +12,7 @@
     "verificar": "node scripts/verificar.mjs",
     "estado": "node scripts/estado.mjs",
     "instalar": "node scripts/instalar.mjs",
-    "empacotar": "node scripts/empacotar.mjs"
+    "empacotar": "node scripts/empacotar.mjs",
+    "bancada": "node scripts/bancada.mjs"
   }
 }

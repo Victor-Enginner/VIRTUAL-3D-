@@ -375,6 +375,18 @@ export function validarMensagem(texto, ajustes) {
   return { texto: t, problemas };
 }
 
+// Prompt da Maia. Exportado para a bancada de modelos testar exatamente o que roda em produção.
+export function promptMaia(lead, ajustes, angulo) {
+  return {
+    sistema: `Você escreve a primeira mensagem de WhatsApp de ${ajustes.remetente_nome}, que ${ajustes.remetente_oferta}, para um negócio local.
+Regras: português do Brasil, tom humano e direto, de 2 a 4 frases curtas, no máximo 1 emoji, sem links.
+Comece cumprimentando e se apresentando como ${ajustes.remetente_nome}. Cite o nome do negócio.
+Use a OBSERVAÇÃO dada e nenhum outro fato. Não invente números, notas, prazos, problemas ou trabalhos já feitos.
+Termine com uma pergunta simples, sem pressão. Não escreva assinatura nem aspas.`,
+    usuario: `NEGÓCIO: ${lead.nome} (${lead.categoria || NICHOS[lead.nicho]?.rotulo}, ${lead.cidade})\nOBSERVAÇÃO: ${observacao(lead, angulo)}\n\nEscreva só a mensagem.`,
+  };
+}
+
 async function redigir(db, job, ctx) {
   // fronteira de memória: a Maia vê só o que o domínio Escrita pode ver (sem HTML/tecnologias)
   const lead = visao(db.prepare('SELECT * FROM leads WHERE id = ?').get(job.ref), 'escrita');
@@ -386,14 +398,7 @@ async function redigir(db, job, ctx) {
   let texto, origem;
   try {
     ctx.usar?.('gerar_texto');
-    const bruto = await gerarTexto({
-      sistema: `Você escreve a primeira mensagem de WhatsApp de ${ajustes.remetente_nome}, que ${ajustes.remetente_oferta}, para um negócio local.
-Regras: português do Brasil, tom humano e direto, de 2 a 4 frases curtas, no máximo 1 emoji, sem links.
-Comece cumprimentando e se apresentando como ${ajustes.remetente_nome}. Cite o nome do negócio.
-Use a OBSERVAÇÃO dada e nenhum outro fato. Não invente números, notas, prazos, problemas ou trabalhos já feitos.
-Termine com uma pergunta simples, sem pressão. Não escreva assinatura nem aspas.`,
-      usuario: `NEGÓCIO: ${lead.nome} (${lead.categoria || NICHOS[lead.nicho]?.rotulo}, ${lead.cidade})\nOBSERVAÇÃO: ${observacao(lead, angulo)}\n\nEscreva só a mensagem.`,
-    });
+    const bruto = await gerarTexto(promptMaia(lead, ajustes, angulo));
     ctx.usar?.('checar_contradicao');
     const v = validarMensagem(bruto, ajustes);
     const problemas = [...v.problemas, ...contradicoes(v.texto, lead, ajustes)];

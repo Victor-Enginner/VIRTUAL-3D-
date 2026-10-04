@@ -3,6 +3,6 @@
   "papeis": {
     "comando": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0", "template": "qwen3" },
     "decisao": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0", "template": "qwen3" },
-    "escrita": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0" }
+    "escrita": { "modelo": null, "_motivo": "bancada de 04/10/2026: o Josiefied 1.7B teve 67-100% de recusa na checagem da Maia (meta < 30%). Texto fixo assume. Rever com modelo maior." }
   }
 }
