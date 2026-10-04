@@ -29,6 +29,12 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem atalho com icone na Area de Trabalho e nesta pasta (so pergunta se ainda nao existe)
+if not exist "%~dp0*rio Virtual.lnk" (
+  set /p ATALHO=Criar o atalho do Escritorio Virtual na Area de Trabalho? [s/N] 
+  if /i "%ATALHO%"=="s" powershell -NoProfile -ExecutionPolicy Bypass -File scripts\criar-atalhos.ps1
+)
+
 rem porta do .env (padrao 4300)
 set PORT=4300
 if exist .env for /f "tokens=2 delims==" %%a in ('findstr /b /c:"PORT=" .env') do set PORT=%%a
