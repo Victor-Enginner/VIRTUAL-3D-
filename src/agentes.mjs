@@ -450,15 +450,19 @@ export function situacaoDoEnvio(db) {
   const ajustes = lerAjustes(db);
   const prox = lerFlag(db, 'proximo_envio_em', null);
   const aval = avaliarEnvio({ agora: new Date(), enviadosHoje: enviadosHoje(db), proximoPermitido: prox ? new Date(prox) : null, cfg: ajustes.envio, aleatorio: () => 0 });
-  return { ...aval, enviados_hoje: enviadosHoje(db), limite: ajustes.envio.limite_diario, openwa: openwaConfigurado(), na_fila: db.prepare("SELECT COUNT(*) n FROM envios WHERE status = 'aprovado'").get().n };
+  const escuta = ajustes.envio.so_escuta !== false;
+  return { ...aval, ...(escuta ? { pode: false, motivo: 'modo só escuta: você envia à mão' } : {}), so_escuta: escuta, enviados_hoje: enviadosHoje(db), limite: ajustes.envio.limite_diario, openwa: openwaConfigurado(), na_fila: db.prepare("SELECT COUNT(*) n FROM envios WHERE status = 'aprovado'").get().n };
 }
 
-async function despachar(db, ctx) {
-  const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' ORDER BY e.id LIMIT 1").get();
-  if (!pendente || !openwaConfigurado()) return false;
-  // sessão desconectada não pode virar "erro" no envio: espera o WhatsApp voltar
-  if (!(await saudeOpenwa()).ok) return false;
+// `dep` existe para o teste provar que, em modo só escuta, nada é enviado.
+export async function despachar(db, ctx, dep = { configurado: openwaConfigurado, saude: saudeOpenwa, enviar: enviarTexto }) {
+  // modo só escuta (padrão): o Leo nunca envia sozinho, mesmo com o WhatsApp conectado
   const ajustes = lerAjustes(db);
+  if (ajustes.envio.so_escuta !== false) return false;
+  const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' ORDER BY e.id LIMIT 1").get();
+  if (!pendente || !dep.configurado()) return false;
+  // sessão desconectada não pode virar "erro" no envio: espera o WhatsApp voltar
+  if (!(await dep.saude()).ok) return false;
   const prox = lerFlag(db, 'proximo_envio_em', null);
   const aval = avaliarEnvio({ agora: new Date(), enviadosHoje: enviadosHoje(db), proximoPermitido: prox ? new Date(prox) : null, cfg: ajustes.envio });
   if (!aval.pode) {
@@ -467,7 +471,7 @@ async function despachar(db, ctx) {
   }
   ctx.tarefa('leo', `Enviando para ${pendente.nome}`);
   try {
-    const resp = await enviarTexto(pendente.telefone, pendente.texto);
+    const resp = await dep.enviar(pendente.telefone, pendente.texto);
     db.prepare("UPDATE envios SET status = 'enviado', enviado_em = ?, resposta = ? WHERE id = ?").run(agora(), json(resp), pendente.id);
     db.prepare("UPDATE leads SET etapa = 'enviado', atualizado_em = ? WHERE id = ?").run(agora(), pendente.lead_id);
     registrar(db, 'leo', 'enviado', `Mensagem enviada para ${pendente.nome} (${formatarTelefone(pendente.telefone)})`, { lead_id: pendente.lead_id });
@@ -480,8 +484,30 @@ async function despachar(db, ctx) {
   return true;
 }
 
+// Você mandou a mensagem pelo seu WhatsApp (celular ou web ligado ao OpenWA): o sistema percebe e marca como enviado.
+// Só vale para quem ainda não foi contatado; conversa em andamento não muda de etapa.
+export function registrarEnvioDoCelular(db, telefone, texto = '') {
+  const candidatos = [telefone, telefone.length === 12 ? `${telefone.slice(0, 4)}9${telefone.slice(4)}` : null].filter(Boolean);
+  const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
+  if (!lead || !['qualificado', 'mensagem', 'aprovado'].includes(lead.etapa)) return null;
+  const t = agora();
+  const envio = db.prepare("SELECT id FROM envios WHERE lead_id = ? AND status = 'aprovado'").get(lead.id);
+  const resp = json({ manual: true, detectado: true });
+  if (envio) db.prepare("UPDATE envios SET status = 'enviado', enviado_em = ?, resposta = ? WHERE id = ?").run(t, resp, envio.id);
+  else db.prepare("INSERT INTO envios (lead_id, telefone, texto, status, enviado_em, resposta, criado_em) VALUES (?, ?, ?, 'enviado', ?, ?, ?)").run(lead.id, lead.telefone, String(texto).slice(0, 1000), t, resp, t);
+  db.prepare("UPDATE leads SET etapa = 'enviado', atualizado_em = ? WHERE id = ?").run(t, lead.id);
+  registrar(db, 'leo', 'enviado', `${lead.nome}: detectei que você mandou a mensagem pelo WhatsApp`, { lead_id: lead.id, dados: { detectado: true } });
+  // agir sem passar pelo botão "Aprovar" também é aprovar: o gosto do operador continua sendo medido
+  if (lead.decisao && ['qualificado', 'mensagem'].includes(lead.etapa)) {
+    const a = aprender(db, 'aprovacao', lead, 1);
+    registrar(db, 'nova', 'aprendizado', `Aprendi com seu envio de ${lead.nome} (previa ${Math.round(a.p_antes * 100)}% · ${a.n} exemplos)`, { lead_id: lead.id });
+  }
+  return lead.id;
+}
+
 export function receberMensagem(db, { telefone, texto, deMim }) {
-  if (!telefone || deMim) return null;
+  if (!telefone) return null;
+  if (deMim) return registrarEnvioDoCelular(db, telefone, texto);
   const candidatos = [telefone, telefone.length === 12 ? `${telefone.slice(0, 4)}9${telefone.slice(4)}` : null].filter(Boolean);
   const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
   if (!lead) return null;

@@ -54,7 +54,7 @@ export async function garantirWebhook(url, segredo) {
   const atuais = await chamar('GET', `/sessions/${sid()}/webhooks`);
   const base = url.split('?')[0];
   if ((Array.isArray(atuais) ? atuais : []).some((w) => String(w.url).split('?')[0] === base)) return 'já existia';
-  await chamar('POST', `/sessions/${sid()}/webhooks`, { url, events: ['message.received', 'session.status'], ...(segredo?.length >= 16 ? { secret: segredo } : {}) });
+  await chamar('POST', `/sessions/${sid()}/webhooks`, { url, events: ['message.received', 'message.sent', 'session.status'], ...(segredo?.length >= 16 ? { secret: segredo } : {}) });
   return 'criado';
 }
 
@@ -69,15 +69,27 @@ export async function saudeOpenwa() {
   }
 }
 
-// corpo do webhook: { event, sessionId, data: { from, body, fromMe, isGroup, kind, senderPhone? } }.
+// corpo do webhook: { event, sessionId, data: { from, to, chatId, body, fromMe, isGroup, kind, senderPhone? } }.
 // Remetente com id de privacidade (@lid) só vira telefone com RESOLVE_LID_TO_PHONE=true no OpenWA.
+// Só vale conversa 1 a 1 com um número. Grupo, comunidade (que é um grupo "@g.us"), canal, lista de transmissão e
+// status são ignorados pelo `kind` E pelo formato do id, para não depender de um campo só (docs/06 e 03 do OpenWA).
+const ID_ESPECIAL = /@(g\.us|newsletter|broadcast)$|^status@/i;
+export function ehConversaIndividual(d = {}) {
+  if (d.isGroup || d.isStatusBroadcast) return false;
+  if (d.kind != null && d.kind !== 'individual') return false;
+  return ![d.chatId, d.from, d.to].some((id) => ID_ESPECIAL.test(String(id || '')));
+}
+
 export function lerMensagemRecebida(payload) {
   const evento = payload?.event || null;
   const d = payload?.data || {};
-  const individual = !d.isGroup && (d.kind == null || d.kind === 'individual');
-  const de = d.senderPhone || (String(d.from || '').endsWith('@c.us') ? d.from : '');
-  const telefone = evento === 'message.received' && individual ? String(de).split('@')[0].replace(/\D/g, '') || null : null;
-  return { evento, telefone, texto: String(d.body || ''), deMim: Boolean(d.fromMe), status: evento === 'session.status' ? d.status : null };
+  const mensagem = evento === 'message.received' || evento === 'message.sent';
+  const deMim = Boolean(d.fromMe) || evento === 'message.sent';
+  // o outro lado da conversa: em mensagem minha é o destinatário (chatId), em mensagem recebida é quem enviou
+  const jid = (ids) => ids.map((x) => String(x || '')).find((x) => x.endsWith('@c.us')) || '';
+  const de = deMim ? jid([d.chatId, d.to]) : (d.senderPhone || jid([d.from, d.chatId]));
+  const telefone = mensagem && ehConversaIndividual(d) ? String(de).split('@')[0].replace(/\D/g, '') || null : null;
+  return { evento, telefone, texto: String(d.body || ''), deMim, status: evento === 'session.status' ? d.status : null };
 }
 
 export const PEDIU_PARA_SAIR = /\b(sair|parar|pare|remover|remova|descadastr|n[aã]o (tenho interesse|quero|me mande|mande)|stop)\b/i;

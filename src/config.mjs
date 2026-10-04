@@ -64,6 +64,8 @@ export const AJUSTES_PADRAO = {
     dias_semana: [1, 2, 3, 4, 5],
     exigir_aprovacao: true,
     so_celular: true,
+    // Leo só OUVE: nunca envia sozinho, mesmo com o WhatsApp conectado. Você manda à mão e o sistema detecta.
+    so_escuta: true,
   },
   varredura: { limite_por_execucao: 20, refazer_apos_h: 24 },
 };

@@ -239,6 +239,7 @@ rota('POST', '/api/ajustes', ({ body }) => {
       dias_semana: (Array.isArray(e.dias_semana) ? e.dias_semana : atual.envio.dias_semana).map(Number).filter((d) => d >= 0 && d <= 6),
       exigir_aprovacao: Boolean(e.exigir_aprovacao),
       so_celular: Boolean(e.so_celular),
+      so_escuta: Boolean(e.so_escuta),
     },
   };
   salvarAjustes(db, novo);

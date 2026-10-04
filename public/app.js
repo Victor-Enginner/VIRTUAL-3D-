@@ -497,7 +497,7 @@ function abrirAjustes() {
   f.limite_diario.value = a.envio.limite_diario;
   f.intervalo_min_m.value = Math.round(a.envio.intervalo_min_s / 60); f.intervalo_max_m.value = Math.round(a.envio.intervalo_max_s / 60);
   f.janela_inicio_h.value = a.envio.janela_inicio_h; f.janela_fim_h.value = a.envio.janela_fim_h;
-  f.exigir_aprovacao.checked = a.envio.exigir_aprovacao; f.so_celular.checked = a.envio.so_celular;
+  f.exigir_aprovacao.checked = a.envio.exigir_aprovacao; f.so_celular.checked = a.envio.so_celular; f.so_escuta.checked = a.envio.so_escuta !== false;
   $('#dlg-ajustes').showModal();
 }
 
@@ -509,7 +509,7 @@ async function salvarAjustes(ev) {
     envio: {
       limite_diario: Number(f.limite_diario.value), intervalo_min_s: Number(f.intervalo_min_m.value) * 60, intervalo_max_s: Number(f.intervalo_max_m.value) * 60,
       janela_inicio_h: Number(f.janela_inicio_h.value), janela_fim_h: Number(f.janela_fim_h.value),
-      exigir_aprovacao: f.exigir_aprovacao.checked, so_celular: f.so_celular.checked,
+      exigir_aprovacao: f.exigir_aprovacao.checked, so_celular: f.so_celular.checked, so_escuta: f.so_escuta.checked,
     },
   });
   $('#dlg-ajustes').close();
