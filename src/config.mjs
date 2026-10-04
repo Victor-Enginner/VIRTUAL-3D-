@@ -11,7 +11,7 @@ const env = (k, d = '') => (process.env[k] ?? '').trim() || d;
 
 // Modelo por papel. Ordem: variável de ambiente > modelos.json (versionado, viaja no zip) > padrão.
 // "modelo": null em modelos.json DESLIGA o LLM daquele papel (a regra assume: Nova usa o primeiro ângulo válido,
-// Maia usa o texto fixo, o comando do Painel fica indisponível). Papéis: comando (Alva), decisao (Nova), escrita (Maia).
+// Maia usa o texto fixo, o comando do Painel continua por regra). Papéis: comando (Alva), decisao (Nova), escrita (Maia).
 export const PADRAO_MODELO = 'qwen3:1.7b';
 export function resolverModelos(papeisArquivo = {}, ambiente = process.env) {
   const e = (k) => (ambiente[k] ?? '').trim();

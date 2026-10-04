@@ -1,5 +1,6 @@
 // Comando falado ou digitado → ação. Igual ao Estúdio por Voz do Jev Showcase:
 // o modelo de decisão escolhe a INTENÇÃO; o código só extrai literais (nicho, cidade, UF).
+import { CONFIG } from './config.mjs';
 import { decide } from './decide/index.mjs';
 import { NICHOS } from './nichos.mjs';
 
@@ -39,7 +40,24 @@ export function extrairLiterais(texto) {
   return { nicho, cidade, uf: uf || null, fonte };
 }
 
+// Fato é regra: os 5 comandos têm palavras inequívocas, então a regra decide primeiro (instantâneo, sem modelo).
+// O LLM só entra em frase ambígua. Ordem importa: "pare de varrer" é pausar, não varrer; "Pará" (estado) não é "pare".
+export function intencaoPorRegra(texto) {
+  const t = sem(texto).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (/\b(pare|parar|para|pausa|pausar|chega) de (varr|busc|procur|miner|trabalh)/.test(t)) return 'pausar';
+  if (/\b(varr|busc|procur|miner|pesquis)\w*/.test(t)) return 'varrer';
+  if (/\b(retoma\w*|continu\w*|volta\w*|religa\w*|liga\w*|reinicia\w*)\b/.test(t) && !/\bdesliga/.test(t)) return 'retomar';
+  if (/\b(pausa\w*|pare|parar|desliga\w*|segura|congela\w*|chega)\b/.test(t)) return 'pausar';
+  if (/\b(resum\w*|relatorio|status|placar|como (esta|foi|ta|vai)|o que (rolou|aconteceu)|novidades?)\b/.test(t)) return 'resumo';
+  return null;
+}
+
 export async function interpretar(texto) {
-  const r = await decide({ state: { fala_da_pessoa: texto, contexto: 'transcrição de voz ou texto digitado no painel de prospecção' }, questions: PERGUNTA_INTENCAO, papel: 'comando' });
-  return { intencao: r.answers.intencao.choice, confianca: r.answers.intencao.confidence, probabilidades: r.answers.intencao.probabilities, ...extrairLiterais(texto), latency_ms: r.latency_ms };
+  const porRegra = intencaoPorRegra(texto);
+  if (porRegra) return { intencao: porRegra, confianca: 1, probabilidades: { [porRegra]: 1 }, origem: 'regra', ...extrairLiterais(texto), latency_ms: 0 };
+  if (!CONFIG.modelos.comando.modelo) return { intencao: 'outro', confianca: 0, probabilidades: {}, origem: 'sem_modelo', ...extrairLiterais(texto), latency_ms: 0 };
+  let r;
+  try { r = await decide({ state: { fala_da_pessoa: texto, contexto: 'transcrição de voz ou texto digitado no painel de prospecção' }, questions: PERGUNTA_INTENCAO, papel: 'comando' }); }
+  catch { return { intencao: 'outro', confianca: 0, probabilidades: {}, origem: 'modelo_indisponivel', ...extrairLiterais(texto), latency_ms: 0 }; } // Ollama desligado: a frase ambígua vira "não entendi", sem erro 500
+  return { origem: 'modelo', intencao: r.answers.intencao.choice, confianca: r.answers.intencao.confidence, probabilidades: r.answers.intencao.probabilities, ...extrairLiterais(texto), latency_ms: r.latency_ms };
 }
