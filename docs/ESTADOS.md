@@ -51,3 +51,4 @@ git checkout main
 | `producao-2026-10-03-7` | dd97f6e | 2026-10-03 | 97 | data/estados/producao-2026-10-03-7.db | Rotina do dia, reunião das 9h, olhar para quem fala |
 | `producao-2026-10-03-8` | dd68117 | 2026-10-03 | 97 | data/estados/producao-2026-10-03-8.db | Câmera de mapa: arrastar anda, zoom no cursor, WASD |
 | `producao-2026-10-03-9` | 5b0e857 | 2026-10-03 | 100 | data/estados/producao-2026-10-03-9.db | Demonstração pública pronta para Render + Netlify |
+| `producao-2026-10-04` | f78ccf2 | 2026-10-04 | 212 | data/estados/producao-2026-10-04.db | Base firme: integração HTTP, cabeçalhos de segurança, /api/saude, backup diário, banco real na v5 |
