@@ -40,6 +40,6 @@ export function extrairLiterais(texto) {
 }
 
 export async function interpretar(texto) {
-  const r = await decide({ state: { fala_da_pessoa: texto, contexto: 'transcrição de voz ou texto digitado no painel de prospecção' }, questions: PERGUNTA_INTENCAO });
+  const r = await decide({ state: { fala_da_pessoa: texto, contexto: 'transcrição de voz ou texto digitado no painel de prospecção' }, questions: PERGUNTA_INTENCAO, papel: 'comando' });
   return { intencao: r.answers.intencao.choice, confianca: r.answers.intencao.confidence, probabilidades: r.answers.intencao.probabilities, ...extrairLiterais(texto), latency_ms: r.latency_ms };
 }

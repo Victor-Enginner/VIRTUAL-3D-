@@ -1,12 +1,13 @@
 // Geração de texto (só onde texto é o produto: a mensagem de abordagem).
 import { CONFIG } from './config.mjs';
 
-export async function gerarTexto({ sistema, usuario, maxTokens = 300, temperatura = 0.6 }) {
+export async function gerarTexto({ sistema, usuario, maxTokens = 300, temperatura = 0.6, modelo = CONFIG.modelos.escrita.modelo }) {
+  if (!modelo) throw new Error('o LLM da escrita está desligado em modelos.json');
   const r = await fetch(`${CONFIG.ollamaUrl}/api/chat`, {
     method: 'POST',
     signal: AbortSignal.timeout(180_000),
     body: JSON.stringify({
-      model: CONFIG.writeModel, stream: false, think: false,
+      model: modelo, stream: false, think: false,
       messages: [{ role: 'system', content: sistema }, { role: 'user', content: usuario }],
       options: { num_predict: maxTokens, temperature: temperatura },
     }),
@@ -34,6 +35,7 @@ export async function saudeOllama() {
   } catch (e) {
     return { ok: false, erro: e.message };
   }
-  const [decide, escrita] = await Promise.all([modeloUtilizavel(CONFIG.decideModel), modeloUtilizavel(CONFIG.writeModel)]);
-  return { ok: true, decide, escrita };
+  const usa = (m) => (m ? modeloUtilizavel(m) : false); // papel desligado = não utilizável, de propósito
+  const [decide, escrita, comando] = await Promise.all([usa(CONFIG.modelos.decisao.modelo), usa(CONFIG.modelos.escrita.modelo), usa(CONFIG.modelos.comando.modelo)]);
+  return { ok: true, decide, escrita, comando };
 }

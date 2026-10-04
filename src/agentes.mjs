@@ -260,7 +260,7 @@ async function qualificar(db, job, ctx) {
   } else {
     // sem modelo, a fila não trava: a regra decide o que é fato, e "ativo" fica neutro (50%), sem chute
     r = decisaoSemModelo();
-    registrar(db, 'nova', 'aviso', `${lead.nome}: decidi só por regra (modelo de decisão indisponível); ângulo = o primeiro válido`, { lead_id: lead.id });
+    registrar(db, 'nova', 'aviso', `${lead.nome}: decidi só por regra (${CONFIG.modelos.decisao.modelo ? 'modelo de decisão indisponível' : 'LLM da decisão desligado em modelos.json'}); ângulo = o primeiro válido`, { lead_id: lead.id });
   }
   const abordagem = r.answers.abordagem || regra('choice', angulos[0], { choice: angulos[0] });
   const ativo = r.answers.ativo;

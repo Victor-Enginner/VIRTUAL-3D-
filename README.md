@@ -64,6 +64,14 @@ Regras aplicadas, das skills que você indicou:
 
 Coordenação por fila (`jobs` no SQLite): cada agente pega só jobs do seu tipo.
 
+## Modelo por papel (`modelos.json`)
+
+`comando` (Alva, voz/texto do Painel), `decisao` (Nova) e `escrita` (Maia) têm cada um o seu modelo no Ollama.
+`"modelo": null` **desliga** o LLM daquele papel e a regra assume (Nova: primeiro ângulo válido; Maia: texto fixo;
+Alva: comando indisponível). `.env` (`DECIDE_MODEL`, `WRITE_MODEL`, `COMANDO_MODEL`) tem prioridade. O arquivo viaja
+no zip do `npm run empacotar`, então a escolha sobrevive à formatação. Templates de conversa: qwen3, chatml (testados),
+llama3, gemma (formato oficial, ainda não testados aqui).
+
 ## Decisão estilo Jev com modelo aberto (`src/decide/`)
 
 Mesma interface do Jev (`choice` / `score` / `noul`, respostas como probabilidades):

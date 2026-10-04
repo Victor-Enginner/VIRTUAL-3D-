@@ -9,14 +9,32 @@ if (fs.existsSync(envFile)) process.loadEnvFile(envFile);
 
 const env = (k, d = '') => (process.env[k] ?? '').trim() || d;
 
+// Modelo por papel. Ordem: variável de ambiente > modelos.json (versionado, viaja no zip) > padrão.
+// "modelo": null em modelos.json DESLIGA o LLM daquele papel (a regra assume: Nova usa o primeiro ângulo válido,
+// Maia usa o texto fixo, o comando do Painel fica indisponível). Papéis: comando (Alva), decisao (Nova), escrita (Maia).
+export const PADRAO_MODELO = 'qwen3:1.7b';
+export function resolverModelos(papeisArquivo = {}, ambiente = process.env) {
+  const e = (k) => (ambiente[k] ?? '').trim();
+  const um = (nome, chaveEnv, herda) => {
+    const a = papeisArquivo[nome] || {};
+    const modelo = e(chaveEnv) || ('modelo' in a ? a.modelo : (herda ?? PADRAO_MODELO));
+    return { modelo: modelo || null, template: e('DECIDE_TEMPLATE') || a.template || 'qwen3' };
+  };
+  const decisao = um('decisao', 'DECIDE_MODEL');
+  return { decisao, escrita: um('escrita', 'WRITE_MODEL', decisao.modelo), comando: um('comando', 'COMANDO_MODEL', decisao.modelo) };
+}
+const lerPapeis = () => { try { return JSON.parse(fs.readFileSync(path.join(ROOT, 'modelos.json'), 'utf8')).papeis ?? {}; } catch { return {}; } };
+const MODELOS = resolverModelos(lerPapeis());
+
 export const CONFIG = {
   port: Number(env('PORT', '4300')),
   dataDir: path.resolve(ROOT, env('DATA_DIR', './data')),
   ollamaUrl: env('OLLAMA_URL', 'http://127.0.0.1:11434').replace(/\/$/, ''),
   decideBackend: env('DECIDE_BACKEND', 'local'),
-  decideModel: env('DECIDE_MODEL', 'qwen3:1.7b'),
-  decideTemplate: env('DECIDE_TEMPLATE', 'qwen3'),
-  writeModel: env('WRITE_MODEL', env('DECIDE_MODEL', 'qwen3:1.7b')),
+  modelos: MODELOS,
+  decideModel: MODELOS.decisao.modelo,
+  decideTemplate: MODELOS.decisao.template,
+  writeModel: MODELOS.escrita.modelo,
   openrouterKey: env('OPENROUTER_API_KEY'),
   openwa: {
     url: env('OPENWA_URL', 'http://127.0.0.1:2785').replace(/\/$/, ''),

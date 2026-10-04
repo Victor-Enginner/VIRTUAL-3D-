@@ -68,21 +68,31 @@ export function montarResposta(q, probs, cobertura) {
   return { ...base, choice: ops[melhor][0] };
 }
 
-function promptLocal(state, q, ordem, template) {
+// Cada família de modelo tem seu formato de conversa. Em modo raw o prompt termina onde a resposta começa ("[").
+// qwen3 e chatml foram testados; llama3 e gemma seguem o formato oficial mas ainda NÃO foram testados aqui.
+export const TEMPLATES = {
+  qwen3: (sys, user) => `<|im_start|>system\n${sys}<|im_end|>\n<|im_start|>user\n${user}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n[`,
+  chatml: (sys, user) => `<|im_start|>system\n${sys}<|im_end|>\n<|im_start|>user\n${user}<|im_end|>\n<|im_start|>assistant\n[`,
+  llama3: (sys, user) => `<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n${sys}<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n${user}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n[`,
+  gemma: (sys, user) => `<bos><start_of_turn>user\n${sys}\n\n${user}<end_of_turn>\n<start_of_turn>model\n[`,
+};
+
+export function promptLocal(state, q, ordem, template) {
   const ops = ordem.map(([, d], i) => `[${i + 1}] ${d}`).join('\n');
   const user = `ESTADO (dados do momento, em JSON):\n${JSON.stringify(state, null, 1)}\n\nPERGUNTA: ${q.instructions}\n\nOPÇÕES:\n${ops}\n\nResponda apenas com o número da opção.`;
   const sys = 'Você é um modelo de decisão. Leia o estado com atenção e escolha a opção correta. Use somente o que está no estado.';
-  const pre = template === 'qwen3' ? '<think>\n\n</think>\n\n[' : '[';
-  return `<|im_start|>system\n${sys}<|im_end|>\n<|im_start|>user\n${user}<|im_end|>\n<|im_start|>assistant\n${pre}`;
+  const montar = TEMPLATES[template];
+  if (!montar) throw new Error(`template "${template}" desconhecido (use: ${Object.keys(TEMPLATES).join(', ')})`);
+  return montar(sys, user);
 }
 
-async function lerUmaOrdem(state, q, ordem) {
+async function lerUmaOrdem(state, q, ordem, perfil) {
   const r = await fetch(`${CONFIG.ollamaUrl}/api/generate`, {
     method: 'POST',
     signal: AbortSignal.timeout(120_000),
     body: JSON.stringify({
-      model: CONFIG.decideModel, raw: true, stream: false,
-      prompt: promptLocal(state, q, ordem, CONFIG.decideTemplate),
+      model: perfil.modelo, raw: true, stream: false,
+      prompt: promptLocal(state, q, ordem, perfil.template),
       options: { num_predict: 1, temperature: 0 },
       logprobs: true, top_logprobs: 20,
     }),
@@ -109,13 +119,13 @@ export function combinarRotacoes(leituras, n) {
   return { probs: acc.map((x) => x / total), cobertura: cobertura / leituras.length };
 }
 
-async function perguntarLocal(state, q) {
+async function perguntarLocal(state, q, perfil) {
   const ops = opcoes(q);
   const n = ops.length;
   const leituras = [];
   for (let rot = 0; rot < n; rot++) {
     const ordem = ops.map((_, i) => ops[(i + rot) % n]);
-    leituras.push({ rot, ...(await lerUmaOrdem(state, q, ordem)) });
+    leituras.push({ rot, ...(await lerUmaOrdem(state, q, ordem, perfil)) });
   }
   const { probs, cobertura } = combinarRotacoes(leituras, n);
   return { ...montarResposta(q, probs, cobertura), rotations: n };
@@ -134,9 +144,12 @@ async function decidirJev(state, questions) {
   return j.answers;
 }
 
-export async function decide({ state, questions }) {
+// `papel` escolhe o modelo em modelos.json: decisao (Nova, padrão) ou comando (Alva). `perfil` força um modelo (bancada).
+export async function decide({ state, questions, papel = 'decisao', perfil = null }) {
   const erro = validarPerguntas(questions);
   if (erro) throw new Error(erro);
+  perfil = perfil || CONFIG.modelos[papel];
+  if (CONFIG.decideBackend !== 'jev' && !perfil?.modelo) throw new Error(`o LLM do papel "${papel}" está desligado em modelos.json`);
   const t0 = performance.now();
   let answers;
   if (CONFIG.decideBackend === 'jev') {
@@ -144,12 +157,12 @@ export async function decide({ state, questions }) {
   } else {
     answers = {};
     // o Ollama atende uma requisição por vez neste hardware; sequencial evita fila escondida
-    for (const [id, q] of Object.entries(questions)) answers[id] = await perguntarLocal(state, q);
+    for (const [id, q] of Object.entries(questions)) answers[id] = await perguntarLocal(state, q, perfil);
   }
   return {
     answers,
     backend: CONFIG.decideBackend === 'jev' ? 'jev' : 'local',
-    model: CONFIG.decideBackend === 'jev' ? 'typesafe/jev-1.13' : CONFIG.decideModel,
+    model: CONFIG.decideBackend === 'jev' ? 'typesafe/jev-1.13' : perfil.modelo,
     latency_ms: Math.round(performance.now() - t0),
   };
 }

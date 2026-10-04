@@ -103,9 +103,10 @@ else {
   reg(bons.length ? 'ok' : 'aviso', `Modelos baixados: ${bons.length ? bons.map((m) => `${m.nome} (${gb(m.bytes)} GB)`).join(', ') : 'nenhum'}`);
   if (cascas.length) reg('info', `${cascas.length} registro(s) sem os arquivos do modelo (ocupam ~0 de disco): ${cascas.map((m) => m.nome).join(', ')}`, 'sem lixo para limpar. Para tirar da lista:  ollama rm <nome>');
   const norm = (n) => (n.includes(':') ? n : `${n}:latest`);
-  for (const [papel, nome] of [['decisão (Nova)', CONFIG.decideModel], ['escrita (Maia)', CONFIG.writeModel]]) {
+  for (const [papel, nome] of [['decisão (Nova)', CONFIG.modelos.decisao.modelo], ['escrita (Maia)', CONFIG.modelos.escrita.modelo], ['comando (Alva)', CONFIG.modelos.comando.modelo]]) {
+    if (!nome) { reg('info', `Modelo de ${papel}: desligado (modelos.json) — a regra assume`); continue; }
     const tem = bons.some((m) => norm(m.nome) === norm(nome));
-    reg(tem ? 'ok' : 'aviso', `Modelo de ${papel}: ${nome}`, tem ? '' : `não está baixado. Baixe com:  ollama pull ${nome}   — ou ajuste DECIDE_MODEL / WRITE_MODEL no .env para um que você já tem.`);
+    reg(tem ? 'ok' : 'aviso', `Modelo de ${papel}: ${nome}`, tem ? '' : `não está baixado. Baixe com:  ollama pull ${nome}   — ou ajuste modelos.json para um que você já tem.`);
   }
 }
 

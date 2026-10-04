@@ -1,0 +1,8 @@
+{
+  "_ajuda": "Modelo por papel. 'modelo': null DESLIGA o LLM do papel e a regra assume. Variáveis DECIDE_MODEL / WRITE_MODEL / COMANDO_MODEL no .env têm prioridade. Templates: qwen3, chatml, llama3, gemma.",
+  "papeis": {
+    "comando": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0", "template": "qwen3" },
+    "decisao": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0", "template": "qwen3" },
+    "escrita": { "modelo": "goekdenizguelmez/JOSIEFIED-Qwen3:1.7b-q4_0" }
+  }
+}

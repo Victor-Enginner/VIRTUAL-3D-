@@ -63,7 +63,7 @@ rota('GET', '/api/estado', async () => {
     agentes: Object.fromEntries(Object.entries(AGENTES).map(([k, a]) => [k, { ...a, ...orq.estado()[k] }])),
     pausado: orq.pausado,
     demo: CONFIG.demo,
-    saude: { ollama, openwa, motor: { backend: CONFIG.decideBackend, modelo_decisao: CONFIG.decideModel, modelo_escrita: CONFIG.writeModel } },
+    saude: { ollama, openwa, motor: { backend: CONFIG.decideBackend, modelo_decisao: CONFIG.decideModel, modelo_escrita: CONFIG.writeModel, modelo_comando: CONFIG.modelos.comando.modelo } },
     funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
     ajustes: lerAjustes(db),
