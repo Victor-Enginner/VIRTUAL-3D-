@@ -12,8 +12,8 @@ Prospector agora (modelos locais pequenos, 10 envios/dia, você aprova tudo).
 | **B13** ✅ 04/10 | **Só veredito escreve:** rejeições da Maia/Atlas registradas por **componente e causa** (índice), aceitos num registro | `src/agentes.mjs` + tabela `rejeicoes` | 2609.31937 (V-model) | Base do Mestre mostra "por que mensagens foram recusadas" |
 | **B10** ✅ 03/10 | **Calibração** das decisões (ECE, Brier) **por nicho**, não só média | script `npm run calibracao` sobre suas aprovações | 2610.02076, 2609.33401 | relatório por nicho |
 | **B9** | Regras aprendidas ganham o campo **"usar"** (o que continua decisão sua) e **uma mudança por descarte** com evidência citada | `src/tocomas/habilidades.mjs` | 2609.38143 | contrato `habilidade` com `usar`; teste de 1 proposta por evento |
-| **B2** | Memória por lead limitada aos **3** fatos mais relevantes ao montar prompt | `observacao()` / prompts | 2609.37953 (pico em k = 3) | prompt da Maia com ≤ 3 fatos |
-| **B12** | **Orçamento de prompt** com teste: prompt da Nova/Maia não pode crescer além de N tokens | `test/` | 2610.02001 (Mingbird M1) | teste falha se o prompt engordar |
+| **B2** ✅ 04/10 | Memória por lead limitada aos **3** fatos mais relevantes ao montar prompt | `observacao()` / prompts | 2609.37953 (pico em k = 3) | prompt da Maia com ≤ 3 fatos |
+| **B12** ✅ 04/10 | **Orçamento de prompt** com teste: prompt da Nova/Maia não pode crescer além de N tokens | `test/` | 2610.02001 (Mingbird M1) | teste falha se o prompt engordar |
 | **B5** ✅ 04/10 | **Grafo de artefatos:** cada mensagem registra de quais fatos/decisões veio | `envios`/`eventos` | 2609.38147 | gaveta mostra "esta frase veio do fato X" |
 | **B11** | Nova **aconselha ou se abstém** sobre o texto da Maia | pipeline T3→T4 | 2609.38142 (padrão AdviSD) | só quando houver modelo ≥ 4B |
 | **B4** | Controlador com **Propor (sem orçamento) → Avaliar (com orçamento)** | `src/tocomas/controlador.mjs` | 2609.38147 | só com modelo maior; com orçamento pequeno o paper mostra que regra vence |
