@@ -1,0 +1,59 @@
+/* Botão avião — base "Button Mastery 2" (marcelodolza, Uiverse, licença MIT), adaptada ao tema escuro do Prospector.
+   Movimento só com o ponteiro em cima ou no clique; modo calmo e "reduzir movimento" deixam tudo parado. Uso: ui/botao-aviao.js */
+/* Base: "Button Mastery 2" (marcelodolza, Uiverse, MIT) adaptada para o tema escuro do Prospector */
+  .btn-aviao { --acento: var(--lima-500); --raio: 14px; --a: #232a34; --b: #161a21;
+    cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center;
+    min-width: 200px; height: 56px; padding: 0 20px; border: 0; border-radius: var(--raio); color: var(--texto);
+    font: 600 16px/1 var(--fonte); letter-spacing: -.005em; isolation: isolate;
+    box-shadow: 0 0 0 1px #ffffff14, 0 10px 20px #00000066, 0 4px 5px #0000002e;
+    transition: transform .3s ease, box-shadow .3s ease; }
+  .btn-aviao:hover { transform: scale(1.02); box-shadow: 0 0 0 1px #ffffff26, 0 15px 30px #00000080; }
+  .btn-aviao:active { transform: scale(1); }
+  .btn-aviao:focus-visible { outline: 2px solid var(--acento); outline-offset: 4px; }
+  .btn-aviao::after { content: ""; position: absolute; inset: 0; border-radius: var(--raio); border: 2px solid transparent; z-index: 0; transition: all .4s ease;
+    background: linear-gradient(var(--a), var(--b)) padding-box, linear-gradient(to bottom, #ffffff26, #ffffff08) border-box; }
+  .btn-aviao:hover::after { transform: scale(1.05, 1.1); }
+  .btn-aviao::before { content: ""; position: absolute; inset: 6px; border-radius: 10px; background: linear-gradient(to top, #1b2028, #262d38); z-index: 2; }
+
+  /* borda de luz: só gira com o ponteiro em cima */
+  .btn-aviao .luz { position: absolute; inset: -2px -3px; border-radius: inherit; overflow: hidden; z-index: 1; opacity: 0; transition: opacity .4s ease; }
+  .btn-aviao .luz::before { content: ""; position: absolute; inset: -100%; background: conic-gradient(from 180deg, transparent 60%, var(--acento) 80%, transparent 100%); animation: giro 2s linear infinite; animation-play-state: paused; }
+  .btn-aviao:hover .luz, .btn-aviao:focus-visible .luz { opacity: 1; }
+  .btn-aviao:hover .luz::before, .btn-aviao:focus-visible .luz::before { animation-play-state: running; }
+  @keyframes giro { to { transform: rotate(360deg); } }
+
+  .btn-aviao .estado { z-index: 3; position: relative; display: flex; align-items: center; justify-content: center; gap: 0; padding-left: 28px; }
+  .btn-aviao .estado p { display: flex; margin: 0; }
+  .btn-aviao .estado span.l { display: block; }
+  .btn-aviao .icone { position: absolute; left: 0; top: 0; bottom: 0; margin: auto; display: flex; align-items: center; transform: scale(1.2); transition: transform .3s ease; color: var(--acento); }
+  .btn-aviao .icone svg { overflow: visible; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .btn-aviao:hover .normal .icone { transform: rotate(45deg) scale(1.2); }
+  .btn-aviao:hover .normal .l { animation: onda .5s ease forwards calc(var(--i) * .02s); }
+  @keyframes onda { 30% { transform: translateY(3px); } 50% { transform: translateY(-3px); color: var(--acento); } 100% { transform: none; } }
+
+  /* clique: o avião decola e o texto vira "Aprovado" (classe .enviado posta pelo JS, não pelo foco) */
+  .btn-aviao .pronto { display: none; position: absolute; }
+  .btn-aviao.enviado .normal { visibility: hidden; position: absolute; }
+  .btn-aviao.enviado .pronto { display: flex; position: relative; }
+  .btn-aviao.enviado .pronto .l { opacity: 0; animation: entra .6s ease forwards calc(var(--i) * .08s); }
+  .btn-aviao.enviado .pronto .icone svg { opacity: 0; animation: surge 1s ease forwards .4s; }
+  .btn-aviao.enviado .luz { opacity: 0; }
+  @keyframes entra { from { opacity: 0; transform: translateY(-14px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes surge { 0% { opacity: 0; transform: scale(3) rotate(-40deg); filter: blur(4px); } 50% { opacity: 1; transform: scale(1.15); filter: none; } 100% { opacity: 1; transform: scale(1); } }
+  .btn-aviao.decolando .normal .icone svg { animation: decola .7s linear forwards; }
+  @keyframes decola { 60% { opacity: 1; transform: translateX(60px) rotate(45deg) scale(1.8); } 100% { opacity: 0; transform: translateX(140px) rotate(45deg) scale(0); } }
+
+  /* variações pelo mesmo molde */
+  .btn-aviao.perigo { --acento: var(--vermelho-400); }
+  .btn-aviao.perigo .icone { color: var(--vermelho-400); }
+  .btn-aviao.compacto { min-width: 0; height: 44px; font-size: 14px; padding: 0 16px; --raio: 12px; }
+  .btn-aviao.compacto::before { inset: 5px; border-radius: 8px; }
+
+  /* calmo / reduzir movimento: sem giro, sem onda, sem decolagem; o estado final aparece direto */
+  html[data-calmo="1"] .btn-aviao .luz::before, html[data-calmo="1"] .btn-aviao .l, html[data-calmo="1"] .btn-aviao .icone svg { animation: none !important; }
+  @media (prefers-reduced-motion: reduce) { .btn-aviao, .btn-aviao::after { transition: none; } .btn-aviao .luz::before, .btn-aviao .l, .btn-aviao .icone svg { animation: none !important; } .btn-aviao.enviado .pronto .l, .btn-aviao.enviado .pronto .icone svg { opacity: 1; } }
+
+.btn-aviao:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.btn-aviao:disabled .luz { display: none; }
+.btn-aviao.cheio { width: 100%; }
+.btn-aviao .oculto { position: absolute; left: -9999px; }

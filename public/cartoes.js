@@ -3,6 +3,8 @@
 // abre os motivos de descarte. Cada decisão só vai para o servidor 5 s depois — dá para desfazer.
 // Nada aqui envia mensagem: aprovar põe na fila do Leo, que continua exigindo o WhatsApp conectado.
 
+import { vestirAviao } from './ui/botao-aviao.js';
+
 const ESPERA_DESFAZER_MS = 5000;
 const LIMIAR_GESTO = 110; // px de arrasto para valer como decisão
 
@@ -186,6 +188,7 @@ export async function abrirCartoes({ motivos, avisar, aoFechar }) {
       if (msg.value === l.mensagem) textos.delete(l.id); else textos.set(l.id, msg.value);
       $('#c-contagem').textContent = `${msg.value.length} caracteres${textos.has(l.id) ? ' · editada' : ''}`;
     });
+    vestirAviao($('#c-aprovar'), { texto: 'Aprovar', icone: 'aviao' });
     $('#c-aprovar').addEventListener('click', () => aprovar(l));
     $('#c-pular').addEventListener('click', () => pular(l));
     $('#c-descartar').addEventListener('click', (ev) => abrirMotivos(ev.currentTarget));

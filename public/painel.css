@@ -401,3 +401,6 @@ button.etapa[aria-pressed="true"] .escala { background: linear-gradient(to right
 .causa li { padding-left: var(--esp-3); border-left: 2px solid var(--linha); }
 .causa .seta { display: block; font-size: var(--t-12, 12px); opacity: .7; }
 .causa small { display: block; opacity: .75; }
+
+/* botão avião nos cartões de aprovação (ui/botao-aviao.css) */
+.cartao-acoes .btn-aviao { min-width: 0; width: 100%; height: 52px; font-size: var(--t-14); }
