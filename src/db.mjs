@@ -138,6 +138,26 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- conversa com o lead: tudo que entra e sai pelo WhatsApp, com o estado de entrega (src/conversa.mjs)
+CREATE TABLE IF NOT EXISTS mensagens (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  lead_id TEXT REFERENCES leads(id),
+  telefone TEXT NOT NULL,
+  direcao TEXT NOT NULL,        -- saida | entrada
+  origem TEXT NOT NULL,         -- sistema (o Leo enviou) | celular (você mandou pelo seu WhatsApp) | lead
+  texto TEXT,
+  wa_id TEXT,                   -- id da mensagem no WhatsApp: é a chave que impede duplicata quando o webhook repete
+  status TEXT NOT NULL,         -- saida: registrada | enviada | entregue | lida | falhou · entrada: recebida
+  envio_id INTEGER,
+  erro TEXT,
+  criado_em TEXT NOT NULL,
+  atualizado_em TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS mensagens_wa ON mensagens(wa_id) WHERE wa_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS mensagens_lead ON mensagens(lead_id, id);
+-- recibo de entrega que chegou antes de a mensagem ser registrada (o webhook pode ganhar a corrida do envio)
+CREATE TABLE IF NOT EXISTS acks_orfaos (wa_id TEXT PRIMARY KEY, status TEXT NOT NULL, em TEXT NOT NULL);
+
 -- por que a Maia (ou outro componente) recusou um texto: uma linha por causa (B13, 2609.31937)
 CREATE TABLE IF NOT EXISTS rejeicoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

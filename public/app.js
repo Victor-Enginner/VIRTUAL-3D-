@@ -259,6 +259,15 @@ function valorFato(f, l) {
   if (Array.isArray(f.valor)) return f.valor.length ? f.valor.join(', ') : 'nenhum';
   return String(f.valor);
 }
+// conversa com o lead (src/conversa.mjs): o que saiu, o que chegou e o estado de entrega de cada envio
+const ESTADO_ENTREGA = { registrada: 'registrada', enviada: 'enviada', entregue: 'entregue', lida: 'lida', falhou: 'falhou' };
+const ORIGEM_MSG = { sistema: 'o Leo enviou', celular: 'você enviou pelo celular', lead: 'o cliente' };
+function blocoConversa(msgs) {
+  if (!msgs?.length) return '<p class="sub">Nenhuma mensagem trocada pelo WhatsApp ainda. Quando você enviar ou o cliente responder, aparece aqui.</p>';
+  return `<ol class="conversa">${msgs.map((m) => `<li class="msg ${m.direcao}" data-estado="${esc(m.status)}">
+    <p>${esc(m.texto || '(sem texto)')}</p>
+    <small>${esc(ORIGEM_MSG[m.origem] || m.origem)} · ${esc(dataHora(m.criado_em))}${m.direcao === 'saida' ? ` · <b class="entrega ${esc(m.status)}">${esc(ESTADO_ENTREGA[m.status] || m.status)}</b>${m.erro ? ` (${esc(m.erro)})` : ''}` : ''}</small></li>`).join('')}</ol>`;
+}
 function blocoCrencaGaveta(c, l) {
   if (!c || !c.fatos.length) return '<p class="sub">Os agentes ainda não registraram fatos sobre este lead.</p>';
   const d = c.progresso.diagnostico;
@@ -327,7 +336,7 @@ function vizinho(id, passo) {
 
 async function abrirLead(id) {
   leadAberto = id;
-  const { lead: l, eventos, envios, crenca, causa = [] } = await api(`/api/leads/${encodeURIComponent(id)}`);
+  const { lead: l, eventos, envios, conversa = [], crenca, causa = [] } = await api(`/api/leads/${encodeURIComponent(id)}`);
   const podeAprovar = l.telefone && l.mensagem && ['mensagem', 'qualificado'].includes(l.etapa);
   const naFila = envios.find((e) => e.status === 'aprovado');
   const podeDescartar = !['descartado', 'nao_contatar'].includes(l.etapa);
@@ -368,6 +377,7 @@ async function abrirLead(id) {
       </div>
     </section>
 
+    <details class="g-detalhe"${conversa.length ? ' open' : ''}><summary>Conversa <span class="meta">${conversa.length} mensagem(ns)</span></summary>${blocoConversa(conversa)}</details>
     <details class="g-detalhe"><summary>O que os agentes sabem <span class="meta">versão ${crenca?.versao ?? 0}</span></summary>${blocoCrencaGaveta(crenca, l)}</details>
     <details class="g-detalhe"><summary>O que o Atlas mediu no site</summary>${blocoAuditoria(l)}</details>
     <details class="g-detalhe"><summary>Como a Nova decidiu</summary>${blocoDecisao(l.decisao)}</details>

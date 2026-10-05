@@ -70,6 +70,15 @@
 .lado section + section { padding-top: var(--esp-6); border-top: 1px solid var(--linha-suave); }
 .form-varredura { display: grid; grid-template-columns: 1fr 64px; gap: var(--esp-3); }
 .form-varredura .largo { grid-column: 1 / -1; }
+.conversa { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--esp-2); }
+.conversa .msg { max-width: 88%; padding: var(--esp-2) var(--esp-3); border-radius: 12px; background: var(--superficie-2); border: 1px solid var(--linha-suave); }
+.conversa .msg.saida { align-self: flex-end; background: color-mix(in oklab, var(--verde-400) 12%, var(--superficie)); }
+.conversa .msg p { margin: 0 0 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.conversa .msg small { color: var(--texto-3); font-size: var(--t-12); }
+.entrega { font-weight: 600; }
+.entrega.lida { color: var(--ciano); }
+.entrega.entregue { color: var(--verde-400); }
+.entrega.falhou { color: var(--perigo); }
 .dica-cidade { margin: 0; min-height: 1.2em; font-size: var(--t-12); color: var(--texto-3); }
 .dica-cidade.ok { color: var(--verde-400); }
 .dica-cidade.aviso { color: var(--amarelo-400); }

@@ -34,7 +34,7 @@ before(async () => {
   db.close();
   const porta = await portaLivre();
   base = `http://127.0.0.1:${porta}`;
-  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
+  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', WEBHOOK_TOKEN: 'token-de-teste-1234567890', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/api/saude')).ok) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 150)); }
   await chamar('POST', '/api/agentes/pausar', {}); // nenhum agente mexe nos leads durante o teste
 });
@@ -183,4 +183,26 @@ test('comando de voz: erro de digitação na cidade e UF não dita', async () =>
   const amb = await chamar('POST', '/api/comando', { texto: 'varre dentista em Bom Jesus' });
   assert.equal(amb.status, 200);
   assert.match(amb.json.resposta, /mais de um estado/);
+});
+
+test('webhook do WhatsApp: token, resposta sem duplicar, recibo de entrega, restrição pausa o envio', async () => {
+  const hook = (corpo, token = 'token-de-teste-1234567890') => chamar('POST', `/webhooks/openwa?token=${token}`, corpo);
+  assert.equal((await hook({ event: 'message.received', data: {} }, 'errado-errado-errado-12')).status, 401);
+
+  const recebida = { event: 'message.received', data: { id: 'WA-IN-1', from: '5516999990003@c.us', chatId: '5516999990003@c.us', body: 'Oi, quanto custa?', fromMe: false, kind: 'individual' } };
+  assert.equal((await hook(recebida)).status, 200);
+  assert.equal((await hook(recebida)).status, 200); // o provedor repete
+  const conv = (await chamar('GET', '/api/leads/P1')).json.conversa;
+  assert.equal(conv.filter((m) => m.texto === 'Oi, quanto custa?').length, 1);
+  assert.equal(conv[0].origem, 'lead');
+
+  // recibo para uma mensagem que ainda não conhecemos é guardado, sem erro
+  assert.equal((await hook({ event: 'message.ack', data: { messageId: 'WA-OUT-1', status: 'delivered' } })).json.resultado, 'guardado');
+
+  assert.equal((await hook({ event: 'session.restriction', data: { restriction: 'spam' } })).status, 200);
+  const wa = (await chamar('GET', '/api/whatsapp')).json;
+  assert.match(wa.envio_pausado_por, /restrição/);
+  assert.ok('entregue' in wa.entrega);
+  assert.equal((await hook({ event: 'session.restriction', data: { restriction: null } })).status, 200);
+  assert.equal((await chamar('GET', '/api/whatsapp')).json.envio_pausado_por, null);
 });

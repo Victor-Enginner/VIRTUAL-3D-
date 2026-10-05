@@ -14,6 +14,7 @@
 // controlador segura a escrita/varredura quando o estoque passa do que o teto de envios dá conta.
 
 import { registrarRejeicoes } from './rejeicoes.mjs';
+import { emEnvio, envioPausadoPelaConexao, jaRegistrada, registrarMensagem } from './conversa.mjs';
 import crypto from 'node:crypto';
 import { agora, concluirJob, enfileirar, falharJob, json, lerAjustes, lerFlag, parse, pegarJob, salvarFlag } from './db.mjs';
 import { registrar } from './eventos.mjs';
@@ -26,6 +27,7 @@ import { gerarTexto, saudeOllama } from './llm.mjs';
 import { CONFIG } from './config.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR, saudeOpenwa } from './envio/openwa.mjs';
+import { canal } from './envio/canal.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
 import { conferirHandoff, exigirHandoff, visao } from './tocomas/grafo.mjs';
 import { prontidao, zona } from './tocomas/zonas.mjs';
@@ -472,6 +474,8 @@ export async function despachar(db, ctx, dep = { configurado: openwaConfigurado,
   if (ajustes.envio.so_escuta !== false) return false;
   const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' ORDER BY e.id LIMIT 1").get();
   if (!pendente || !dep.configurado()) return false;
+  // restrição da conta ou laço de reconexão (eventos do provedor): não insiste, o Painel mostra o motivo
+  if (envioPausadoPelaConexao(db)) return false;
   // sessão desconectada não pode virar "erro" no envio: espera o WhatsApp voltar
   if (!(await dep.saude()).ok) return false;
   const prox = lerFlag(db, 'proximo_envio_em', null);
@@ -481,15 +485,20 @@ export async function despachar(db, ctx, dep = { configurado: openwaConfigurado,
     return false;
   }
   ctx.tarefa('leo', `Enviando para ${pendente.nome}`);
+  emEnvio.add(pendente.telefone);
   try {
     const resp = await dep.enviar(pendente.telefone, pendente.texto);
+    // a conversa guarda o id da mensagem no WhatsApp: é por ele que o recibo de entrega/leitura encontra a mensagem depois
+    registrarMensagem(db, { leadId: pendente.lead_id, telefone: pendente.telefone, direcao: 'saida', origem: 'sistema', texto: pendente.texto, waId: (dep.idDaResposta || canal.idDaResposta)(resp), envioId: pendente.id, status: 'enviada' });
     db.prepare("UPDATE envios SET status = 'enviado', enviado_em = ?, resposta = ? WHERE id = ?").run(agora(), json(resp), pendente.id);
     db.prepare("UPDATE leads SET etapa = 'enviado', atualizado_em = ? WHERE id = ?").run(agora(), pendente.lead_id);
     registrar(db, 'leo', 'enviado', `Mensagem enviada para ${pendente.nome} (${formatarTelefone(pendente.telefone)})`, { lead_id: pendente.lead_id });
   } catch (e) {
+    registrarMensagem(db, { leadId: pendente.lead_id, telefone: pendente.telefone, direcao: 'saida', origem: 'sistema', texto: pendente.texto, envioId: pendente.id, status: 'falhou' });
     db.prepare("UPDATE envios SET status = 'erro', resposta = ? WHERE id = ?").run(json({ erro: e.message }), pendente.id);
     registrar(db, 'leo', 'erro', `Falha ao enviar para ${pendente.nome}: ${e.message}`, { lead_id: pendente.lead_id });
   }
+  emEnvio.delete(pendente.telefone);
   // a espera conta a partir da tentativa, com ou sem sucesso
   salvarFlag(db, 'proximo_envio_em', new Date(Date.now() + intervaloAleatorioMs(ajustes.envio)).toISOString());
   return true;
@@ -497,10 +506,12 @@ export async function despachar(db, ctx, dep = { configurado: openwaConfigurado,
 
 // Você mandou a mensagem pelo seu WhatsApp (celular ou web ligado ao OpenWA): o sistema percebe e marca como enviado.
 // Só vale para quem ainda não foi contatado; conversa em andamento não muda de etapa.
-export function registrarEnvioDoCelular(db, telefone, texto = '') {
+export function registrarEnvioDoCelular(db, telefone, texto = '', waId = null) {
   const candidatos = [telefone, telefone.length === 12 ? `${telefone.slice(0, 4)}9${telefone.slice(4)}` : null].filter(Boolean);
   const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
-  if (!lead || !['qualificado', 'mensagem', 'aprovado'].includes(lead.etapa)) return null;
+  if (!lead) return null;
+  registrarMensagem(db, { leadId: lead.id, telefone: lead.telefone, direcao: 'saida', origem: 'celular', texto, waId, status: 'enviada' }); // a conversa guarda tudo, em qualquer etapa
+  if (!['qualificado', 'mensagem', 'aprovado'].includes(lead.etapa)) return null;
   const t = agora();
   const envio = db.prepare("SELECT id FROM envios WHERE lead_id = ? AND status = 'aprovado'").get(lead.id);
   const resp = json({ manual: true, detectado: true });
@@ -516,12 +527,15 @@ export function registrarEnvioDoCelular(db, telefone, texto = '') {
   return lead.id;
 }
 
-export function receberMensagem(db, { telefone, texto, deMim }) {
+export function receberMensagem(db, { telefone, texto, deMim, waId = null }) {
   if (!telefone) return null;
-  if (deMim) return registrarEnvioDoCelular(db, telefone, texto);
+  if (waId && jaRegistrada(db, waId)) return null; // webhook repetido, ou o eco do que o próprio Leo enviou: já está na conversa
+  if (deMim && emEnvio.has(telefone)) return null; // o Leo está enviando para este número agora; o registro sai do próprio envio
+  if (deMim) return registrarEnvioDoCelular(db, telefone, texto, waId);
   const candidatos = [telefone, telefone.length === 12 ? `${telefone.slice(0, 4)}9${telefone.slice(4)}` : null].filter(Boolean);
   const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
   if (!lead) return null;
+  registrarMensagem(db, { leadId: lead.id, telefone: lead.telefone, direcao: 'entrada', origem: 'lead', texto, waId, status: 'recebida' });
   registrarReacao(db, lead, { texto, sair: PEDIU_PARA_SAIR.test(texto), origem: 'whatsapp' });
   return lead.id;
 }

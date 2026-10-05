@@ -19,6 +19,7 @@ export const MIGRACOES = [
   } },
   { v: 5, nome: 'edicoes: pares original x editado para treino futuro; a tabela vem do SCHEMA', up() {} },
   { v: 6, nome: 'rejeicoes: por que a Maia recusou cada texto (B13); a tabela vem do SCHEMA', up() {} },
+  { v: 7, nome: 'mensagens + acks_orfaos: conversa e estado de entrega do WhatsApp; as tabelas vêm do SCHEMA', up() {} },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

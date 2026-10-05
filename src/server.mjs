@@ -8,6 +8,8 @@ import { CONFIG, ROOT } from './config.mjs';
 import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
 import { estatisticasDecide } from './decide/index.mjs';
 import { resumoRejeicoes } from './rejeicoes.mjs';
+import { lerEvento } from './envio/canal.mjs';
+import { avancarEstado, conversaDoLead, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
 import { cidadesDe, ESTADOS, mensagemCidade, resolverCidade, resolverUF } from './localidades.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
@@ -102,7 +104,7 @@ rota('GET', '/api/leads/:id', ({ params }) => {
   const eventos = db.prepare('SELECT * FROM eventos WHERE lead_id = ? ORDER BY id DESC LIMIT 50').all(l.id);
   const envios = db.prepare('SELECT * FROM envios WHERE lead_id = ? ORDER BY id DESC').all(l.id);
   const doCaminho = db.prepare(`SELECT * FROM eventos WHERE lead_id = ? AND tipo IN (${TIPOS_DA_CADEIA.map(() => '?').join(',')}) ORDER BY id`).all(l.id, ...TIPOS_DA_CADEIA);
-  return { lead: leadPublico(l), eventos, envios, crenca: lerCrenca(db, l.id, l.etapa), causa: cadeia(doCaminho) };
+  return { lead: leadPublico(l), eventos, envios, conversa: conversaDoLead(db, l.id), crenca: lerCrenca(db, l.id, l.etapa), causa: cadeia(doCaminho) };
 });
 
 rota('POST', '/api/leads/:id/mensagem', async ({ params, body }) => {
@@ -346,16 +348,27 @@ rota('POST', '/webhooks/openwa', ({ url, body }) => {
   const tok = url.searchParams.get('token') || '';
   const esperado = CONFIG.webhookToken;
   if (!esperado || tok.length !== esperado.length || !crypto.timingSafeEqual(Buffer.from(tok), Buffer.from(esperado))) throw new HttpError(401, 'token inválido');
-  const m = lerMensagemRecebida(body);
-  if (m.status) { registrar(db, 'leo', 'whatsapp', `WhatsApp: sessão ${m.status}`); return { ok: true }; }
-  const lead = receberMensagem(db, m);
-  if (!lead && m.telefone) registrar(db, 'leo', 'webhook', `Evento ${m.evento || '?'} de número fora da base`, { dados: { evento: m.evento } });
+  // o provedor (hoje o OpenWA) fica atrás de envio/canal.mjs: aqui só chegam eventos já normalizados
+  const e = lerEvento(body);
+  if (e.tipo === 'conexao') {
+    const c = registrarConexao(db, { status: e.status, restricao: e.evento === 'session.restriction' ? e.restricao : null });
+    if (c.mudou) {
+      const motivo = envioPausadoPelaConexao(db);
+      registrar(db, 'leo', 'whatsapp', `WhatsApp: ${e.evento === 'session.restriction' ? (e.restricao ? 'restrição na conta' : 'restrição levantada') : `sessão ${e.status}`}${motivo ? `. Envio pausado: ${motivo}` : ''}`, { dados: { evento: e.evento } });
+    }
+    return { ok: true };
+  }
+  if (e.tipo === 'recibo') { return { ok: true, resultado: avancarEstado(db, e.waId, e.recibo, e.erro) }; }
+  if (e.tipo === 'mensagem') {
+    const lead = receberMensagem(db, e);
+    if (!lead && e.telefone && !e.deMim) registrar(db, 'leo', 'webhook', `Evento ${e.evento || '?'} de número fora da base`, { dados: { evento: e.evento } });
+  }
   return { ok: true };
 });
 
 // ---------- WhatsApp (OpenWA): conectar pelo QR, status e um teste para o seu próprio número
 const exigirChave = () => { if (!temChave()) throw new HttpError(409, 'OpenWA sem chave: defina OPENWA_API_KEY no .env (o OpenWA grava a chave em data/.api-key no 1º boot)'); };
-rota('GET', '/api/whatsapp', async () => ({ chave: temChave(), sessao: sessaoId(), ...(await saudeOpenwa()) }));
+rota('GET', '/api/whatsapp', async () => ({ chave: temChave(), sessao: sessaoId(), ...(await saudeOpenwa()), envio_pausado_por: envioPausadoPelaConexao(db), entrega: resumoDeEntrega(db) }));
 rota('POST', '/api/whatsapp/conectar', async () => {
   exigirChave();
   if (!CONFIG.webhookToken || CONFIG.webhookToken.length < 16) throw new HttpError(409, 'defina WEBHOOK_TOKEN (16+ caracteres) no .env');
