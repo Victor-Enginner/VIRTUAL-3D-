@@ -14,6 +14,7 @@
 // controlador segura a escrita/varredura quando o estoque passa do que o teto de envios dá conta.
 
 import { registrarRejeicoes } from './rejeicoes.mjs';
+import { abrirLote, concluirLote, destravarLotesOrfaos } from './lotes.mjs';
 import { emEnvio, envioPausadoPelaConexao, jaRegistrada, registrarMensagem } from './conversa.mjs';
 import crypto from 'node:crypto';
 import { agora, concluirJob, enfileirar, falharJob, json, lerAjustes, lerFlag, parse, pegarJob, salvarFlag } from './db.mjs';
@@ -84,21 +85,36 @@ export const idDoLead = (nome, cidade, uf) => crypto.createHash('sha1').update(`
 async function varrer(db, job, ctx) {
   const v = db.prepare('SELECT * FROM varreduras WHERE id = ?').get(Number(job.ref));
   if (!v || !v.ativa) return;
+  // cada execução do Atlas é um LOTE (src/lotes.mjs): quem pede a busca já abriu o lote; um job antigo, sem lote, só roda se o portão permitir
+  let lote = job.payload?.lote ? db.prepare('SELECT * FROM lotes WHERE id = ?').get(job.payload.lote) : null;
+  if (!lote) {
+    try { lote = abrirLote(db, v.id, v.limite); }
+    catch (e) { registrar(db, 'atlas', 'aviso', `Busca em ${v.cidade}-${v.uf} não começou: ${e.message}`); return; }
+  }
+  if (lote.status !== 'rodando') return; // lote já concluído (job repetido)
   const rotulo = `${NICHOS[v.nicho]?.rotulo || v.nicho} em ${v.cidade}-${v.uf}`;
   ctx.tarefa('atlas', `Varrendo ${rotulo} (${v.fonte})`);
-  registrar(db, 'atlas', 'varredura_inicio', `Começou a varrer ${rotulo} via ${v.fonte === 'maps' ? 'Google Maps' : 'OpenStreetMap'}`);
+  registrar(db, 'atlas', 'varredura_inicio', `Começou o lote ${lote.numero} de ${rotulo} (${lote.meta} empresas) via ${v.fonte === 'maps' ? 'Google Maps' : 'OpenStreetMap'}`);
   let novos = 0, repetidos = 0;
   const salvar = (item) => {
-    const r = salvarLead(db, item, v);
+    const r = salvarLead(db, item, { ...v, lote: lote.id });
     if (r === 'novo') novos++; else repetidos++;
   };
-  const args = { cidade: v.cidade, uf: v.uf, nicho: v.nicho, limite: v.limite };
+  const args = { cidade: v.cidade, uf: v.uf, nicho: v.nicho, limite: lote.pedido };
   ctx.usar?.(v.fonte === 'maps' ? 'coletor_maps' : 'overpass');
-  const res = v.fonte === 'maps' ? await coletarMaps({ ...args, aoItem: salvar }) : await coletarOsm(args);
-  if (v.fonte !== 'maps') res.itens.forEach(salvar);
-  const resultado = { coletados: res.itens.length, novos, repetidos, aviso: res.aviso };
+  let res;
+  try {
+    if (CONFIG.atlasDesligado) res = { itens: [], aviso: 'Atlas desligado (ATLAS_DESLIGADO=1)' };
+    else res = v.fonte === 'maps' ? await coletarMaps({ ...args, aoItem: salvar }) : await coletarOsm(args);
+    if (v.fonte !== 'maps') res.itens.forEach(salvar);
+  } catch (e) {
+    concluirLote(db, lote.id, { coletados: novos + repetidos, novos, repetidos, erro: e.message });
+    throw e;
+  }
+  const fechado = concluirLote(db, lote.id, { coletados: res.itens.length, novos, repetidos, aviso: res.aviso });
+  const resultado = { lote: lote.numero, coletados: res.itens.length, novos, repetidos, aviso: res.aviso, fim: Boolean(fechado.fim) };
   db.prepare('UPDATE varreduras SET ultima_execucao = ?, ultimo_resultado = ? WHERE id = ?').run(agora(), json(resultado), v.id);
-  registrar(db, 'atlas', 'varredura_fim', `${rotulo}: ${res.itens.length} encontrados, ${novos} novos${res.aviso ? ` (${res.aviso})` : ''}`, { dados: resultado });
+  registrar(db, 'atlas', 'varredura_fim', `${rotulo}, lote ${lote.numero}: ${res.itens.length} encontrados, ${novos} novos${fechado.fim ? ' (a fonte não tem mais resultados para esta busca)' : ''}${res.aviso ? ` (${res.aviso})` : ''}`, { dados: resultado });
 }
 
 function salvarLead(db, item, v) {
@@ -124,6 +140,7 @@ function salvarLead(db, item, v) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(id, item.nome, item.categoria || null, v.nicho, v.cidade, v.uf, item.endereco || null, telefone, tipo, item.site || null,
       item.rating ?? null, item.avaliacoes ?? null, item.maps_url || null, v.fonte, v.id, t, t);
+  if (v.lote) db.prepare('UPDATE leads SET lote_id = ? WHERE id = ?').run(v.lote, id);
   passar(db, 'varrer', 'auditar', id);
   return 'novo';
 }
@@ -609,10 +626,8 @@ export function verificarSemResposta(db, horas = 72) {
 
 export function abrirExpediente(db) {
   verificarSemResposta(db);
-  const ajustes = lerAjustes(db);
-  const limite = new Date(Date.now() - ajustes.varredura.refazer_apos_h * 3600_000).toISOString();
-  const vencidas = db.prepare('SELECT * FROM varreduras WHERE ativa = 1 AND (ultima_execucao IS NULL OR ultima_execucao < ?)').all(limite);
-  for (const v of vencidas) enfileirar(db, 'varrer', String(v.id));
+  // NÃO refaz varreduras sozinho: o Atlas só busca quando você pede (varredura nova ou "buscar mais"), um lote por vez (src/lotes.mjs)
+  destravarLotesOrfaos(db);
   // leads que ficaram pela metade em uma execução anterior voltam para a etapa certa
   // (o Controle pode reabrir qualquer nó; leads presos ficam de fora até alguém reprocessar)
   for (const [etapa, job] of [['descoberto', 'auditar'], ['auditado', 'qualificar'], ['qualificado', 'redigir']]) {
@@ -623,7 +638,7 @@ export function abrirExpediente(db) {
     }
   }
   const b = briefing(db);
-  registrar(db, 'alva', 'briefing', `Expediente aberto: ${vencidas.length} varredura(s) reaberta(s) · ${b.para_aprovar} mensagem(ns) esperando sua aprovação · ${b.enviados_hoje}/${b.limite} envios hoje`, { dados: b });
+  registrar(db, 'alva', 'briefing', `Equipe em espera: dê um comando de prospecção para começar · ${b.para_aprovar} mensagem(ns) esperando sua aprovação · ${b.enviados_hoje}/${b.limite} envios hoje`, { dados: b });
 }
 
 export function briefing(db) {
@@ -646,7 +661,9 @@ export function briefing(db) {
 export function criarOrquestrador(db) {
   // uma tarefa por laço (o Atlas tem dois: varrer e auditar), para um não apagar o status do outro
   const tarefas = {};
-  let pausado = lerFlag(db, 'pausado', false);
+  // a equipe SEMPRE começa em espera: só trabalha depois que você dá um comando de prospecção (ou clica em Retomar)
+  let pausado = true;
+  salvarFlag(db, 'pausado', true);
   let parar = false;
   const controlador = criarControlador(db);
   const ctxDo = (laco) => ({ tarefa(_agente, texto) { tarefas[laco] = { texto, desde: agora() }; }, usar: null });

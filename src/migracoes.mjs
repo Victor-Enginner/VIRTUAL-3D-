@@ -20,6 +20,17 @@ export const MIGRACOES = [
   { v: 5, nome: 'edicoes: pares original x editado para treino futuro; a tabela vem do SCHEMA', up() {} },
   { v: 6, nome: 'rejeicoes: por que a Maia recusou cada texto (B13); a tabela vem do SCHEMA', up() {} },
   { v: 7, nome: 'mensagens + acks_orfaos: conversa e estado de entrega do WhatsApp; as tabelas vêm do SCHEMA', up() {} },
+  { v: 8, nome: 'lotes de busca (histórico por cidade x ramo) e leads.lote_id; a tabela vem do SCHEMA', up(db) {
+    adicionarColuna(db, 'leads', 'lote_id', 'INTEGER');
+    // o que já foi buscado antes dos lotes vira o "lote 1" de cada busca, para o histórico não começar do zero
+    for (const v of db.prepare('SELECT id, limite, ultima_execucao, criado_em FROM varreduras').all()) {
+      const n = db.prepare('SELECT COUNT(*) n FROM leads WHERE varredura_id = ? AND lote_id IS NULL').get(v.id).n;
+      if (!n || db.prepare('SELECT 1 FROM lotes WHERE varredura_id = ?').get(v.id)) continue;
+      const r = db.prepare("INSERT INTO lotes (varredura_id, numero, meta, pedido, coletados, novos, repetidos, status, iniciado_em, coletado_em) VALUES (?, 1, ?, ?, ?, ?, 0, 'coletado', ?, ?)")
+        .run(v.id, v.limite || n, n, n, n, v.criado_em, v.ultima_execucao || v.criado_em);
+      db.prepare('UPDATE leads SET lote_id = ? WHERE varredura_id = ? AND lote_id IS NULL').run(Number(r.lastInsertRowid), v.id);
+    }
+  } },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

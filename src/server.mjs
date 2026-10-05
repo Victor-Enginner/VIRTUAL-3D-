@@ -10,6 +10,7 @@ import { estatisticasDecide } from './decide/index.mjs';
 import { resumoRejeicoes } from './rejeicoes.mjs';
 import { canal, lerEvento } from './envio/canal.mjs';
 import { avancarEstado, conversaDoLead, registrarMensagem, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
+import { abrirLote, cobertura, META_MAXIMA, META_PADRAO } from './lotes.mjs';
 import { cidadesDe, ESTADOS, mensagemCidade, resolverCidade, resolverUF } from './localidades.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
@@ -185,13 +186,25 @@ function criarVarredura({ cidade, uf, nicho, fonte, limite }) {
   cidade = achada.cidade; uf = achada.uf;
   if (!NICHOS[nicho]) throw new HttpError(400, 'nicho desconhecido');
   if (!FONTES[fonte]) throw new HttpError(400, 'fonte desconhecida');
-  const lim = Math.min(Math.max(Number(limite) || lerAjustes(db).varredura.limite_por_execucao, 1), 60);
-  db.prepare(`INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em) VALUES (?, ?, ?, ?, ?, ?)
-    ON CONFLICT(cidade, uf, nicho, fonte) DO UPDATE SET ativa = 1, limite = excluded.limite`).run(cidade, uf, nicho, fonte, lim, agora());
-  const v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
-  enfileirar(db, 'varrer', String(v.id));
-  registrar(db, 'alva', 'varredura_agendada', `Varredura de ${NICHOS[nicho].rotulo} em ${cidade}-${uf} entrou na fila${achada.corrigido ? ` (corrigi "${original}")` : ''}`);
-  return { ...v, correcao: achada.corrigido ? { de: original, para: cidade } : null, uf_inferida: Boolean(achada.ufInferida) };
+  const meta = Math.min(Math.max(Math.round(Number(limite)) || lerAjustes(db).varredura.limite_por_execucao, 1), META_MAXIMA);
+  let v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
+  if (!v) {
+    db.prepare('INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em) VALUES (?, ?, ?, ?, ?, ?)').run(cidade, uf, nicho, fonte, meta, agora());
+    v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
+  }
+  const lote = pedirLote(v, meta, achada.corrigido ? ` (corrigi "${original}")` : '');
+  return { ...db.prepare('SELECT * FROM varreduras WHERE id = ?').get(v.id), lote, correcao: achada.corrigido ? { de: original, para: cidade } : null, uf_inferida: Boolean(achada.ufInferida) };
+}
+
+// Pedir uma busca = abrir um LOTE. O portão (src/lotes.mjs) recusa se o lote anterior ainda tem lead esperando você ou os agentes.
+// Dar o comando é o que tira a equipe da espera: ela sempre sobe parada.
+function pedirLote(v, meta, nota = '') {
+  const lote = abrirLote(db, v.id, meta); // lança 409 com o motivo se o portão estiver fechado
+  db.prepare('UPDATE varreduras SET ativa = 1, limite = ? WHERE id = ?').run(lote.meta, v.id);
+  enfileirar(db, 'varrer', String(v.id), { lote: lote.id });
+  registrar(db, 'alva', 'varredura_agendada', `Lote ${lote.numero} de ${NICHOS[v.nicho].rotulo} em ${v.cidade}-${v.uf} entrou na fila (${lote.meta} empresas)${nota}`);
+  if (orq.pausado) { orq.pausar(false); registrar(db, 'alva', 'retomada', 'Equipe saiu da espera: você pediu uma busca'); }
+  return lote;
 }
 
 // catálogo para o formulário: 4 grupos de nichos, estados e cidades por estado (IBGE)
@@ -214,6 +227,12 @@ rota('POST', '/api/varreduras/lote', ({ body }) => {
   if (ids.length > LIMITE_LOTE) throw new HttpError(400, `no máximo ${LIMITE_LOTE} nichos por vez (cada um é uma busca demorada)`);
   const criadas = ids.map((nicho) => criarVarredura({ cidade: body.cidade, uf: body.uf, nicho, fonte: body.fonte || 'maps', limite: body.limite }));
   return { varreduras: criadas };
+});
+rota('GET', '/api/cobertura', () => ({ buscas: cobertura(db).map((b) => ({ ...b, nicho_rotulo: NICHOS[b.nicho]?.rotulo || b.nicho })), meta_padrao: META_PADRAO }));
+rota('POST', '/api/varreduras/:id/proximo-lote', ({ params, body }) => {
+  const v = db.prepare('SELECT * FROM varreduras WHERE id = ?').get(Number(params.id));
+  if (!v) throw new HttpError(404, 'busca não encontrada');
+  return { lote: pedirLote(v, body.meta || v.limite) };
 });
 rota('GET', '/api/varreduras', () => ({ varreduras: db.prepare('SELECT * FROM varreduras ORDER BY id DESC').all().map((v) => ({ ...v, ultimo_resultado: parse(v.ultimo_resultado), nicho_rotulo: NICHOS[v.nicho]?.rotulo })) }));
 rota('POST', '/api/varreduras', ({ body }) => ({ varredura: criarVarredura(body) }));
@@ -324,6 +343,13 @@ rota('POST', '/api/comando', async ({ body }) => {
       db.prepare("UPDATE leads SET etapa = 'descartado', atualizado_em = ? WHERE id = ?").run(agora(), l.id);
       registrar(db, 'leo', 'descartado', `${l.nome}: descartado por você (comando de voz)`, { lead_id: l.id });
       resposta = `Descartei ${l.nome}.`;
+    }
+  } else if (c.intencao === 'mais_leads') {
+    const v = db.prepare('SELECT v.* FROM varreduras v JOIN lotes l ON l.varredura_id = v.id ORDER BY l.iniciado_em DESC, l.id DESC LIMIT 1').get();
+    if (!v) resposta = 'Ainda não há busca para continuar. Diga, por exemplo: "varre dentistas em Franca SP".';
+    else {
+      try { const l = pedirLote(v, v.limite); resposta = `Atlas vai buscar o lote ${l.numero} de ${NICHOS[v.nicho].rotulo} em ${v.cidade}-${v.uf} (${l.meta} empresas).`; }
+      catch (e) { if (!e.status) throw e; resposta = e.message; }
     }
   } else if (c.intencao === 'cidade') {
     if (!c.cidade) resposta = 'Qual cidade? Diga, por exemplo: "troca a cidade para Ribeirão Preto SP".';

@@ -28,6 +28,8 @@ const MODELOS = resolverModelos(lerPapeis());
 
 export const CONFIG = {
   port: Number(env('PORT', '4300')),
+  // testes: o Atlas não abre navegador nem acessa a internet (a busca termina na hora, sem resultados)
+  atlasDesligado: env('ATLAS_DESLIGADO') === '1',
   dataDir: path.resolve(ROOT, env('DATA_DIR', './data')),
   ollamaUrl: env('OLLAMA_URL', 'http://127.0.0.1:11434').replace(/\/$/, ''),
   decideBackend: env('DECIDE_BACKEND', 'local'),
@@ -67,5 +69,5 @@ export const AJUSTES_PADRAO = {
     // Leo só OUVE: nunca envia sozinho, mesmo com o WhatsApp conectado. Você manda à mão e o sistema detecta.
     so_escuta: true,
   },
-  varredura: { limite_por_execucao: 20, refazer_apos_h: 24 },
+  varredura: { limite_por_execucao: 50, refazer_apos_h: 24 },
 };

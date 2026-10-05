@@ -9,7 +9,7 @@ import path from 'node:path';
 import { abrirBanco } from '../src/db.mjs';
 
 const RAIZ = path.resolve(import.meta.dirname, '..');
-let srv, base, tmp;
+let srv, base, tmp, inicial;
 
 const portaLivre = () => new Promise((ok) => { const s = net.createServer().listen(0, '127.0.0.1', () => { const { port } = s.address(); s.close(() => ok(port)); }); });
 const chamar = async (metodo, rota, corpo) => {
@@ -34,8 +34,9 @@ before(async () => {
   db.close();
   const porta = await portaLivre();
   base = `http://127.0.0.1:${porta}`;
-  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', WEBHOOK_TOKEN: 'token-de-teste-1234567890', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
+  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', ATLAS_DESLIGADO: '1', WEBHOOK_TOKEN: 'token-de-teste-1234567890', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/api/saude')).ok) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 150)); }
+  inicial = (await chamar('GET', '/api/saude')).json; // a equipe SEMPRE sobe em espera
   await chamar('POST', '/api/agentes/pausar', {}); // nenhum agente mexe nos leads durante o teste
 });
 after(() => { srv?.kill(); try { fs.rmSync(tmp, { recursive: true, force: true }); } catch { /* o Windows às vezes segura o arquivo */ } });
@@ -177,7 +178,7 @@ test('catálogo, cidades por estado, resolver e varredura em lote', async () => 
 });
 
 test('comando de voz: erro de digitação na cidade e UF não dita', async () => {
-  const c = await chamar('POST', '/api/comando', { texto: 'varre ortodontia em Ribeirão Preot' });
+  const c = await chamar('POST', '/api/comando', { texto: 'varre tatuagem em Ribeirão Preot' });
   assert.match(c.json.resposta, /Ribeirão Preto/);
   assert.match(c.json.resposta, /SP/);
   const amb = await chamar('POST', '/api/comando', { texto: 'varre dentista em Bom Jesus' });
@@ -205,4 +206,36 @@ test('webhook do WhatsApp: token, resposta sem duplicar, recibo de entrega, rest
   assert.ok('entregue' in wa.entrega);
   assert.equal((await hook({ event: 'session.restriction', data: { restriction: null } })).status, 200);
   assert.equal((await chamar('GET', '/api/whatsapp')).json.envio_pausado_por, null);
+});
+
+test('a equipe sobe sempre em espera e só sai dela quando você pede uma busca', async () => {
+  assert.equal(inicial.pausado, true);
+  await chamar('POST', '/api/agentes/pausar', {});
+  assert.equal((await chamar('GET', '/api/saude')).json.pausado, true);
+  const v = await chamar('POST', '/api/varreduras', { cidade: 'Campinas', nicho: 'fotografia', fonte: 'osm' });
+  assert.equal(v.status, 200);
+  assert.equal((await chamar('GET', '/api/saude')).json.pausado, false); // o comando tirou a equipe da espera
+  await chamar('POST', '/api/agentes/pausar', {});
+});
+
+test('portão de lotes: não busca mais enquanto o lote anterior tem lead aberto; cobertura guarda o histórico', async () => {
+  const novo = (await chamar('POST', '/api/varreduras', { cidade: 'Batatais', uf: 'SP', nicho: 'pet_shop', fonte: 'osm', limite: 50 })).json.varredura;
+  assert.equal(novo.lote.numero, 1);
+  assert.equal(novo.lote.meta, 50);
+  // espera o Atlas (desligado no teste) fechar a coleta do lote 1
+  for (let i = 0; i < 40; i++) { const c = (await chamar('GET', '/api/cobertura')).json.buscas.find((b) => b.varredura_id === novo.id); if (c?.lotes[0]?.status === 'coletado') break; await new Promise((r) => setTimeout(r, 100)); }
+  const depois = await chamar('POST', `/api/varreduras/${novo.id}/proximo-lote`, {});
+  // sem resultados na fonte, a busca é dada como esgotada: não insiste
+  assert.equal(depois.status, 409);
+  assert.match(depois.json.erro, /já trouxe tudo|ainda tem/);
+  const cob = (await chamar('GET', '/api/cobertura')).json;
+  const linha = cob.buscas.find((b) => b.varredura_id === novo.id);
+  assert.deepEqual([linha.cidade, linha.uf, linha.nicho, linha.lotes.length], ['Batatais', 'SP', 'pet_shop', 1]);
+  assert.equal(cob.meta_padrao, 50);
+});
+
+test('comando de voz "busca mais 50" continua a busca atual, e o portão responde em português', async () => {
+  const r = await chamar('POST', '/api/comando', { texto: 'busca mais 50' });
+  assert.equal(r.status, 200);
+  assert.match(r.json.resposta, /lote|Ainda não dá para buscar mais|Ainda não há busca/);
 });

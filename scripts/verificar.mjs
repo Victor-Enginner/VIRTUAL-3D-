@@ -55,7 +55,7 @@ if (!quebradas) ok('todas as referências locais existem');
 console.log('5. servidor');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'prospector-verificar-'));
 const porta = 4390 + Math.floor(Math.random() * 9);
-const srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '' }, stdio: 'pipe' });
+const srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', ATLAS_DESLIGADO: '1' }, stdio: 'pipe' });
 let log = '';
 srv.stdout.on('data', (d) => { log += d; });
 srv.stderr.on('data', (d) => { log += d; });

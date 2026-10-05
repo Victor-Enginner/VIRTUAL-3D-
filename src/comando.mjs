@@ -20,6 +20,7 @@ export const PERGUNTA_INTENCAO = {
       aprovar_proximo: 'Aprovar o próximo cartão de mensagem da fila',
       descartar_proximo: 'Descartar o próximo cartão de mensagem da fila',
       cidade: 'Trocar a cidade das varreduras',
+      mais_leads: 'Buscar mais empresas (o próximo lote) na busca que já está em andamento, sem trocar cidade nem ramo',
       outro: 'Outra coisa que não é nenhuma dessas',
     },
   },
@@ -63,6 +64,8 @@ export function extrairLiterais(texto, intencao = null) {
 // O LLM só entra em frase ambígua. Ordem importa: "pare de varrer" é pausar, não varrer; "Pará" (estado) não é "pare".
 export function intencaoPorRegra(texto) {
   const t = sem(texto).replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+  // "busca mais 50", "próximo lote": continua a busca atual. Se a frase traz cidade ("em Franca"), é uma varredura normal.
+  if (/\b(mais|proximo lote|outro lote)\b/.test(t) && /\b(busc|varr|procur|traz|pega|lote)/.test(t) && !/\bem [a-z]/.test(t)) return 'mais_leads';
   if (/\b(quantos|quantas|numero de|tem algum)\b.*\bquente/.test(t) || /\bleads? quentes?\b/.test(t)) return 'quentes';
   if (/\b(aprov\w*|manda\w* ver)\b.*\b(proxim\w*|cartao|mensagem|seguinte)\b|^aprov\w*$/.test(t)) return 'aprovar_proximo';
   if (/\b(descart\w*|joga\w* fora|recus\w*)\b.*\b(proxim\w*|cartao|mensagem|seguinte)\b|^descart\w*$/.test(t)) return 'descartar_proximo';

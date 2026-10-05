@@ -415,3 +415,11 @@ button.etapa[aria-pressed="true"] .escala { background: linear-gradient(to right
 
 /* botão avião nos cartões de aprovação (ui/botao-aviao.css) */
 .cartao-acoes .btn-aviao { min-width: 0; width: 100%; height: 52px; font-size: var(--t-14); }
+
+/* mapa de cobertura (lotes de busca) */
+.lotes { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.lote { font-size: var(--t-12); padding: 2px 8px; border-radius: 999px; background: var(--superficie-2); color: var(--texto-2); border: 1px solid var(--linha-suave); }
+.lote.ok { color: var(--verde-400); border-color: color-mix(in oklab, var(--verde-400) 35%, var(--linha-suave)); }
+.lote.rodando { color: var(--lima-500); }
+.lote.erro { color: var(--perigo); }
+.motivo-bloqueio { display: block; margin-top: 4px; color: var(--amarelo-400); }

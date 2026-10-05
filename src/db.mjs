@@ -138,6 +138,25 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- lotes de busca: cada vez que o Atlas busca N empresas de uma varredura (cidade x ramo x fonte) é um lote. O histórico NUNCA é apagado:
+-- é ele que diz onde já buscamos, quantas empresas vieram e se o lote já foi todo tratado (src/lotes.mjs)
+CREATE TABLE IF NOT EXISTS lotes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  varredura_id INTEGER NOT NULL REFERENCES varreduras(id),
+  numero INTEGER NOT NULL,
+  meta INTEGER NOT NULL,            -- quantas empresas NOVAS este lote procura (padrão 50)
+  pedido INTEGER,                   -- quantos resultados o coletor foi mandado trazer (inclui os já vistos nos lotes anteriores)
+  coletados INTEGER NOT NULL DEFAULT 0,
+  novos INTEGER NOT NULL DEFAULT 0,
+  repetidos INTEGER NOT NULL DEFAULT 0,
+  fim INTEGER NOT NULL DEFAULT 0,   -- 1 = a fonte não tem mais resultados para esta busca
+  aviso TEXT,
+  status TEXT NOT NULL,             -- rodando | coletado | erro  (o "fechado" é calculado: nenhum lead do lote espera decisão sua)
+  iniciado_em TEXT NOT NULL,
+  coletado_em TEXT,
+  UNIQUE(varredura_id, numero)
+);
+
 -- conversa com o lead: tudo que entra e sai pelo WhatsApp, com o estado de entrega (src/conversa.mjs)
 CREATE TABLE IF NOT EXISTS mensagens (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

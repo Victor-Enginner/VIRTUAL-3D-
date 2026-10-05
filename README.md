@@ -48,6 +48,12 @@ escrita das mensagens ficam indisponíveis e o painel mostra isso; o resto funci
 - API: `GET /api/catalogo`, `GET /api/localidades/cidades?uf=SP`, `GET /api/localidades/resolver?cidade=…`, `POST /api/varreduras/lote` (um grupo inteiro, até 8 nichos).
 - Fonte dos nichos e das tags: o Repass AI (`backend/osm_engine.py`, `src/views/LeadsView.jsx`), só lido, nunca alterado.
 
+## Como a prospecção é controlada (lotes)
+- **A equipe sempre sobe em espera.** Só sai da espera quando você pede uma busca (formulário, comando de voz ou "Buscar mais"), ou clica em Retomar. Nada de varrer sozinho: o Atlas não refaz buscas por conta própria.
+- **Lote de 50:** cada busca (ramo × cidade × fonte) traz 50 empresas por vez, que passam pelo fluxo dos agentes. O **próximo lote só abre depois que todos os leads do lote anterior foram tratados** (aprovou e enviou à mão, ou descartou). O motivo do bloqueio aparece na tela.
+- **Nada se perde:** a tabela `lotes` guarda cada busca (cidade, ramo, fonte, lote, quantas vieram, quantas eram repetidas). O Painel mostra o mapa de cobertura; `GET /api/cobertura` entrega os mesmos dados. Comando de voz: "busca mais 50" / "próximo lote".
+- Quando a fonte não tem mais resultados para a busca, o sistema avisa e sugere outro ramo, cidade ou fonte, em vez de insistir.
+
 ## Interface
 
 As três telas são um app só: a mesma barra lateral (`public/ui/shell.js`) mostra navegação e a equipe

@@ -447,14 +447,26 @@ function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; if (loc
 
 // ---------------------------------------------------------------- lateral
 
+// Mapa de cobertura (src/lotes.mjs): cada linha é uma busca (ramo x cidade x fonte) com o histórico dos lotes. Nada se perde.
+const FONTE_ROTULO = { maps: 'Google Maps', osm: 'OpenStreetMap' };
 async function carregarVarreduras() {
-  const { varreduras } = await api('/api/varreduras');
-  $('#varreduras').innerHTML = varreduras.map((v) => {
-    const r = v.ultimo_resultado;
-    const info = v.ultima_execucao ? `${dataHora(v.ultima_execucao)} · ${r?.coletados ?? 0} achados, ${r?.novos ?? 0} novos${r?.aviso ? ` · ${r.aviso}` : ''}` : 'na fila';
-    return `<li><div><strong>${esc(v.nicho_rotulo)}</strong> · ${esc(v.cidade)}-${esc(v.uf)}<small>${esc(v.fonte)} · ${esc(info)}</small></div>
-      <button class="btn" data-varredura="${v.id}" data-ativa="${v.ativa ? 0 : 1}">${v.ativa ? 'Desativar' : 'Ativar'}</button></li>`;
-  }).join('') || '<li><span class="sub">Nenhuma varredura. Varreduras ativas rodam de novo a cada 24 h quando o painel está ligado.</span></li>';
+  const { buscas, meta_padrao: meta } = await api('/api/cobertura');
+  $('#varreduras').innerHTML = buscas.map((b) => {
+    const ult = b.lotes.at(-1);
+    const rodando = ult?.status === 'rodando';
+    const abertos = b.lotes.reduce((n, l) => n + (l.pendentes || 0), 0);
+    const lotes = b.lotes.map((l) => {
+      const est = l.status === 'rodando' ? 'buscando…' : l.status === 'erro' ? 'erro na busca' : l.fechado ? 'tratado ✓' : `${l.pendentes} aberto(s)`;
+      return `<span class="lote ${l.fechado ? 'ok' : l.status === 'rodando' ? 'rodando' : l.status === 'erro' ? 'erro' : ''}" title="${esc(l.aviso || '')}">Lote ${l.numero}: ${l.novos} novos · ${est}</span>`;
+    }).join('');
+    const prox = b.proximo;
+    const botao = prox.esgotada ? '' : `<button class="btn" data-proximo="${b.varredura_id}" ${prox.ok ? '' : 'disabled'}>Buscar mais ${esc(b.meta || meta)}</button>`;
+    const motivo = prox.ok || rodando ? '' : `<small class="motivo-bloqueio">${esc(prox.esgotada ? 'A fonte não tem mais resultados para esta busca: tente outro ramo, outra cidade ou outra fonte.' : `Próximo lote bloqueado: ${prox.motivo}.`)}</small>`;
+    return `<li class="busca"><div>
+      <strong>${esc(b.nicho_rotulo)}</strong> · ${esc(b.cidade)}-${esc(b.uf)}<small>${esc(FONTE_ROTULO[b.fonte] || b.fonte)}</small>
+      <small>${b.leads} empresas · ${b.sem_site_ou_fraco} sem site ou site fraco · ${b.enviados} enviados · ${b.responderam} responderam${abertos ? ` · ${abertos} esperando decisão` : ''}</small>
+      <span class="lotes">${lotes || '<span class="lote">na fila</span>'}</span>${motivo}</div>${botao}</li>`;
+  }).join('') || '<li><span class="sub">Nenhuma busca ainda. Escolha o estado, a cidade e o ramo acima, ou fale o comando. A equipe só começa quando você pede.</span></li>';
 }
 
 async function carregarEnvios() {
@@ -627,8 +639,12 @@ $('#form-varredura').addEventListener('submit', async (ev) => {
   } catch (e) { msg.textContent = e.message; msg.className = 'dica-cidade largo aviso'; }
 });
 $('#varreduras').addEventListener('click', async (ev) => {
-  const b = ev.target.closest('[data-varredura]');
-  if (b) { await api(`/api/varreduras/${b.dataset.varredura}/ativa`, { ativa: b.dataset.ativa === '1' }); carregarVarreduras(); }
+  const b = ev.target.closest('[data-proximo]');
+  if (!b) return;
+  const msg = $('#msg-varredura');
+  b.setAttribute('aria-busy', 'true');
+  try { const { lote } = await api(`/api/varreduras/${b.dataset.proximo}/proximo-lote`, {}); msg.textContent = `Lote ${lote.numero} na fila do Atlas (${lote.meta} empresas).`; msg.className = 'dica-cidade largo ok'; await atualizarTudo(); }
+  catch (e) { msg.textContent = e.message; msg.className = 'dica-cidade largo aviso'; b.removeAttribute('aria-busy'); }
 });
 $('#envios').addEventListener('click', async (ev) => {
   const b = ev.target.closest('[data-cancelar]');
