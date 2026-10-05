@@ -8,8 +8,8 @@ import { CONFIG, ROOT } from './config.mjs';
 import { abrirBanco, agora, enfileirar, lerAjustes, lerFlag, parse, salvarAjustes, salvarFlag } from './db.mjs';
 import { estatisticasDecide } from './decide/index.mjs';
 import { resumoRejeicoes } from './rejeicoes.mjs';
-import { lerEvento } from './envio/canal.mjs';
-import { avancarEstado, conversaDoLead, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
+import { canal, lerEvento } from './envio/canal.mjs';
+import { avancarEstado, conversaDoLead, registrarMensagem, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
 import { cidadesDe, ESTADOS, mensagemCidade, resolverCidade, resolverUF } from './localidades.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
@@ -390,7 +390,12 @@ rota('GET', '/api/whatsapp/qr', async () => {
 rota('POST', '/api/whatsapp/teste', async () => {
   const s = await saudeOpenwa();
   if (!s.ok || !s.telefone) throw new HttpError(409, `WhatsApp não está pronto (${s.status || s.erro || 'sem sessão'})`);
-  try { await enviarTexto(s.telefone, 'Teste do Prospector: o WhatsApp está conectado. Nenhum cliente recebeu esta mensagem.'); }
+  try {
+    const texto = 'Teste do Prospector: o WhatsApp está conectado. Nenhum cliente recebeu esta mensagem.';
+    const resp = await enviarTexto(s.telefone, texto);
+    // entra na conversa (sem lead): quando o recibo de entrega/leitura chegar pelo webhook, o estado avança e dá para conferir o caminho todo
+    registrarMensagem(db, { leadId: null, telefone: s.telefone, direcao: 'saida', origem: 'sistema', texto, waId: canal.idDaResposta(resp), status: 'enviada' });
+  }
   catch (e) { throw new HttpError(502, e.message); }
   registrar(db, 'leo', 'whatsapp', `Teste enviado para o seu próprio número (${formatarTelefone(s.telefone)})`);
   return { ok: true, telefone: s.telefone };
