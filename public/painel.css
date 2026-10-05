@@ -113,7 +113,6 @@
 .meta { font-family: var(--fonte-mono); font-size: var(--t-12); color: var(--texto-3); }
 textarea { min-height: 160px; resize: vertical; line-height: 1.6; }
 .botoes { display: flex; gap: var(--esp-2); flex-wrap: wrap; }
-.btn.ok { background: var(--ok); border-color: var(--ok); color: var(--n-950); font-weight: 600; }
 .erro-msg { color: var(--perigo); font-size: var(--t-13); margin: 0; }
 .erro-msg:empty { display: none; }
 

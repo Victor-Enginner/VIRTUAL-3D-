@@ -24,26 +24,41 @@ p { text-wrap: pretty; }
 .pular:focus { top: var(--esp-3); }
 svg.ic { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
 
-/* ---------- botões: hover, ativo, desabilitado, carregando ---------- */
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--esp-2); min-height: 40px; padding: 0 var(--esp-4); border-radius: var(--raio-controle); border: 1px solid var(--linha); background: transparent; color: var(--texto); font-weight: 500; font-size: var(--t-13); cursor: pointer; text-decoration: none; white-space: nowrap;
-  transition: background var(--dur-rapida) var(--curva-saida), border-color var(--dur-rapida) var(--curva-saida), box-shadow var(--dur-rapida) var(--curva-saida), color var(--dur-rapida), transform var(--dur-rapida) var(--curva-saida); }
-.btn { background: #050709ee; border-color: #35434e; }
-.btn:hover { background: var(--superficie-2); border-color: var(--ciano); color: var(--ciano); box-shadow: var(--brilho-ciano); }
-.btn:active { transform: translateY(1px); }
-.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; transform: none; }
-.btn.primario { background: var(--acento); border-color: var(--lima-300); color: var(--sobre-acento); font-weight: 600; box-shadow: var(--brilho-acento), inset 0 1px 0 #efffcc; }
-.btn.primario:hover { background: var(--acento-forte); border-color: var(--lima-300); color: var(--sobre-acento); box-shadow: 0 0 12px #b7ff0070, 0 0 32px #b7ff002b, inset 0 1px 0 #efffcc; }
-.btn.primario:disabled { box-shadow: none; }
-.btn.sucesso, .btn.ok { background: var(--ok); border-color: var(--ok); color: #0b1a10; font-weight: 600; }
-.btn.sucesso:hover, .btn.ok:hover { filter: brightness(1.06); background: var(--ok); }
-.btn.fantasma { background: transparent; border-color: transparent; color: var(--texto-2); }
-.btn.fantasma:hover { background: var(--superficie-2); color: var(--texto); border-color: transparent; box-shadow: none; }
-.btn.perigo { color: var(--perigo); border-color: color-mix(in oklab, var(--perigo) 35%, var(--linha)); }
-.btn.perigo:hover { background: color-mix(in oklab, var(--perigo) 10%, transparent); border-color: var(--perigo); color: var(--perigo); box-shadow: 0 0 14px #f2766a1c; }
-.btn.icone { width: 38px; padding: 0; }
+/* ---------- botões: mesma linguagem do botão avião (ui/botao-aviao.css) ----------
+   Face escura em degradê, borda fina; no hover/foco uma luz lima percorre a borda. Sem markup extra: vale para todo .btn.
+   Movimento só com o ponteiro em cima; modo calmo e "reduzir movimento" deixam a borda parada. */
+@property --giro { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.btn { --face-a: #232a34; --face-b: #161a21; --luz: var(--lima-500);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--esp-2); min-height: 40px; padding: 0 var(--esp-4); border-radius: 12px;
+  border: 1.5px solid transparent; color: var(--texto); font-weight: 500; font-size: var(--t-13); letter-spacing: -.005em; cursor: pointer; text-decoration: none; white-space: nowrap;
+  background: linear-gradient(var(--face-a), var(--face-b)) padding-box, linear-gradient(to bottom, #ffffff26, #ffffff0a) border-box;
+  box-shadow: 0 6px 14px #0000004d, 0 2px 4px #0000002e;
+  transition: transform var(--dur-base) ease, box-shadow var(--dur-base) ease, color var(--dur-rapida), filter var(--dur-rapida); }
+.btn:hover, .btn:focus-visible { transform: scale(1.02); box-shadow: 0 10px 22px #00000066, 0 2px 4px #0000002e;
+  background: linear-gradient(var(--face-a), var(--face-b)) padding-box, conic-gradient(from var(--giro), #ffffff1f 0 62%, var(--luz) 84%, #ffffff1f 100%) border-box;
+  animation: giro-borda 2.2s linear infinite; }
+.btn:focus-visible { outline: 2px solid var(--luz); outline-offset: 3px; }
+.btn:active { transform: scale(1); }
+@keyframes giro-borda { to { --giro: 360deg; } }
+.btn:disabled, .btn[aria-disabled="true"] { opacity: .45; cursor: not-allowed; transform: none; animation: none; box-shadow: none; }
+.btn.primario { --face-a: #d4ff4a; --face-b: var(--lima-500); --luz: #ffffff; color: var(--sobre-acento); font-weight: 600;
+  background: linear-gradient(var(--face-a), var(--face-b)) padding-box, linear-gradient(to bottom, #ffffff66, #ffffff1a) border-box; box-shadow: 0 6px 14px #00000059, inset 0 1px 0 #ffffff66; }
+.btn.primario:hover, .btn.primario:focus-visible { filter: brightness(1.04);
+  background: linear-gradient(var(--face-a), var(--face-b)) padding-box, conic-gradient(from var(--giro), #ffffff40 0 62%, #fff 84%, #ffffff40 100%) border-box; }
+.btn.sucesso, .btn.ok { --face-a: #5fd39426; --face-b: #5fd3941a; --luz: var(--verde-400); color: var(--verde-400); font-weight: 600; }
+.btn.sucesso:hover, .btn.ok:hover { color: var(--verde-400); }
+.btn.fantasma { --face-a: transparent; --face-b: transparent; color: var(--texto-2); box-shadow: none;
+  background: linear-gradient(transparent, transparent) padding-box, linear-gradient(transparent, transparent) border-box; }
+.btn.fantasma:hover, .btn.fantasma:focus-visible { color: var(--texto); box-shadow: none; transform: none; animation: none;
+  background: linear-gradient(#ffffff0f, #ffffff0f) padding-box, linear-gradient(#ffffff14, #ffffff14) border-box; }
+.btn.perigo { --face-a: #f2766a1f; --face-b: #f2766a12; --luz: var(--vermelho-400); color: var(--perigo); }
+.btn.perigo:hover { color: var(--perigo); }
+.btn.icone { width: 40px; padding: 0; }
 .btn[aria-busy="true"] { position: relative; color: transparent; }
 .btn[aria-busy="true"]::after { content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--texto-3); border-top-color: var(--texto); animation: girar .7s linear infinite; }
 @keyframes girar { to { transform: rotate(360deg); } }
+html[data-calmo="1"] .btn:hover, html[data-calmo="1"] .btn:focus-visible { animation: none; transform: none; }
+@media (prefers-reduced-motion: reduce) { .btn { transition: none; } .btn:hover, .btn:focus-visible { animation: none; transform: none; } }
 
 /* ---------- campos ---------- */
 .campo { display: grid; gap: var(--esp-1); font-size: var(--t-13); color: var(--texto-2); font-weight: 500; }
