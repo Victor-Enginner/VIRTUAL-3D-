@@ -38,10 +38,14 @@ function cidadeDepoisDe(texto) {
 export function extrairLiterais(texto, intencao = null) {
   if (intencao === 'cidade') return { nicho: null, fonte: 'maps', ...(cidadeDepoisDe(texto) || { cidade: null, uf: null }) };
   const t = sem(texto);
-  let nicho = null;
+  // vale o termo mais ESPECÍFICO que casar: "hotel para pets" é Pet shop, não Hospedagem
+  let nicho = null, melhor = 0;
   for (const [k, n] of Object.entries(NICHOS)) {
-    const termos = [k.replace('_', ' '), sem(n.maps), ...sem(n.rotulo).split(/\s*[&,]\s*/)];
-    if (termos.some((x) => x.length > 3 && t.includes(x.replace(/s$/, '')))) { nicho = k; break; }
+    const termos = [k.replace(/_/g, ' '), ...(n.termos || [n.maps]), ...n.rotulo.split(/\s*[&,]\s*/)].map(sem);
+    for (const x of termos) {
+      const base = x.replace(/s$/, '');
+      if (x.length > 3 && t.includes(base) && base.length > melhor) { nicho = k; melhor = base.length; }
+    }
   }
   const m = texto.match(/\bem\s+([A-Za-zÀ-ÿ' ]+?)(?:\s*[-,/]?\s*\b([A-Za-z]{2})\b)?\s*[.!?]*$/);
   let cidade = m?.[1]?.trim() || null;

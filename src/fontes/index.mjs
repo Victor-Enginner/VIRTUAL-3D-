@@ -1,13 +1,14 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { CONFIG, ROOT } from '../config.mjs';
-import { NICHOS } from '../nichos.mjs';
+import { NICHOS, TERMOS_MAPS_POR_VARREDURA } from '../nichos.mjs';
 
 // Cada fonte devolve uma lista de { nome, telefone, site, endereco, categoria, rating, avaliacoes, maps_url }.
 // Campo que a fonte não trouxe fica null.
 
-export function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
-  const termo = `${NICHOS[nicho]?.maps || nicho} em ${cidade} ${uf}`;
+// Uma busca no Maps (um termo). A varredura de um nicho chama isto uma vez por termo, em coletarMaps.
+function coletarMapsTermo({ cidade, uf, termoBase, limite, aoItem }) {
+  const termo = `${termoBase} em ${cidade} ${uf}`;
   const script = path.join(ROOT, 'src', 'fontes', 'maps_coletor.py');
   return new Promise((resolve, reject) => {
     const proc = spawn(CONFIG.python, [script, JSON.stringify({ termo, limite })], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
@@ -35,6 +36,35 @@ export function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
       resolve({ itens, aviso: fim?.aviso || null });
     });
   });
+}
+
+const chaveDe = (o) => `${String(o.nome).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()}|${String(o.telefone ?? '').replace(/\D/g, '')}`;
+
+// Nicho = pacote de termos (src/nichos.mjs). Roda os primeiros TERMOS_MAPS_POR_VARREDURA, divide o limite entre eles,
+// tira duplicados (o mesmo lugar aparece em "dentista" e em "ortodontia") e para quando o limite fecha.
+export async function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
+  const termos = (NICHOS[nicho]?.termos || [NICHOS[nicho]?.maps || nicho]).slice(0, TERMOS_MAPS_POR_VARREDURA);
+  const porTermo = Math.max(5, Math.ceil(limite / termos.length));
+  const vistos = new Set();
+  const itens = [];
+  const avisos = [];
+  const erros = [];
+  for (const termoBase of termos) {
+    if (itens.length >= limite) break;
+    try {
+      const r = await coletarMapsTermo({ cidade, uf, termoBase, limite: porTermo, aoItem: (o) => {
+        const k = chaveDe(o);
+        if (vistos.has(k) || itens.length >= limite) return;
+        vistos.add(k); itens.push(o); aoItem?.(o);
+      } });
+      if (r.aviso) avisos.push(`${termoBase}: ${r.aviso}`);
+    } catch (e) {
+      erros.push(e);
+      avisos.push(`${termoBase}: ${e.message}`);
+    }
+  }
+  if (!itens.length && erros.length === termos.length) throw erros[0]; // nenhum termo funcionou: o erro sobe, como antes
+  return { itens, aviso: avisos.length ? avisos.join(' · ') : null, termos };
 }
 
 const OVERPASS = 'https://overpass-api.de/api/interpreter';

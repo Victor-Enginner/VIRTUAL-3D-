@@ -150,3 +150,37 @@ test('comandos de voz novos pelo HTTP: quentes, aprovar o próximo, trocar a cid
   assert.equal(c.status, 200);
   assert.match(c.json.resposta, /Troquei para Batatais-SP|Não há varredura anterior/);
 });
+
+test('varredura valida a cidade pelo IBGE: corrige erro, acha a UF, recusa ambígua e inexistente', async () => {
+  const a = (await chamar('POST', '/api/varreduras', { cidade: 'Ribeirão Preot', nicho: 'odontologia', fonte: 'maps' })).json.varredura;
+  assert.deepEqual([a.cidade, a.uf, a.correcao?.de, a.uf_inferida], ['Ribeirão Preto', 'SP', 'Ribeirão Preot', true]);
+  const amb = await chamar('POST', '/api/varreduras', { cidade: 'Bom Jesus', nicho: 'odontologia', fonte: 'maps' });
+  assert.equal(amb.status, 400);
+  assert.match(amb.json.erro, /mais de um estado/);
+  const nao = await chamar('POST', '/api/varreduras', { cidade: 'Cidadeinexistentex', uf: 'SP', nicho: 'odontologia', fonte: 'maps' });
+  assert.equal(nao.status, 400);
+  assert.match(nao.json.erro, /Não achei a cidade/);
+});
+
+test('catálogo, cidades por estado, resolver e varredura em lote', async () => {
+  const c = (await chamar('GET', '/api/catalogo')).json;
+  assert.equal(c.grupos.length, 4);
+  assert.equal(c.estados.length, 27);
+  assert.equal((await chamar('GET', '/api/localidades/cidades?uf=SP')).json.cidades.length, 645);
+  assert.equal((await chamar('GET', '/api/localidades/cidades?uf=XX')).status, 400);
+  const r = (await chamar('GET', '/api/localidades/resolver?cidade=Ribeirao%20Preot')).json;
+  assert.deepEqual([r.ok, r.cidade, r.corrigido], [true, 'Ribeirão Preto', true]);
+  const lote = await chamar('POST', '/api/varreduras/lote', { cidade: 'Franca', uf: 'SP', grupo: 'urgencia' });
+  assert.equal(lote.status, 200);
+  assert.equal(lote.json.varreduras.length, 3); // grupo Urgência = 3 nichos
+  assert.equal((await chamar('POST', '/api/varreduras/lote', { cidade: 'Franca', uf: 'SP' })).status, 400);
+});
+
+test('comando de voz: erro de digitação na cidade e UF não dita', async () => {
+  const c = await chamar('POST', '/api/comando', { texto: 'varre ortodontia em Ribeirão Preot' });
+  assert.match(c.json.resposta, /Ribeirão Preto/);
+  assert.match(c.json.resposta, /SP/);
+  const amb = await chamar('POST', '/api/comando', { texto: 'varre dentista em Bom Jesus' });
+  assert.equal(amb.status, 200);
+  assert.match(amb.json.resposta, /mais de um estado/);
+});
