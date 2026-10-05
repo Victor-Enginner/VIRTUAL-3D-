@@ -10,8 +10,10 @@ import { estatisticasDecide } from './decide/index.mjs';
 import { resumoRejeicoes } from './rejeicoes.mjs';
 import { canal, lerEvento } from './envio/canal.mjs';
 import { avancarEstado, conversaDoLead, registrarMensagem, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
+import { calcularCapacidade, fraseDaCapacidade } from './capacidade.mjs';
 import { abrirLote, cobertura, META_MAXIMA, META_PADRAO } from './lotes.mjs';
-import { cidadesDe, ESTADOS, mensagemCidade, resolverCidade, resolverUF } from './localidades.mjs';
+import { cidadesDe, ESTADOS, estadosDe, mensagemCidade, PAISES_COM_LOCALIDADES, resolverLocal, resolverUF } from './localidades.mjs';
+import { codigoDoPais, PAISES } from './paises.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
@@ -178,9 +180,9 @@ rota('POST', '/api/leads/:id/reprocessar', ({ params }) => {
   return { ok: true };
 });
 
-function criarVarredura({ cidade, uf, nicho, fonte, limite }) {
+function criarVarredura({ cidade, uf, nicho, fonte, limite, pais = null }) {
   // cidade e estado vêm validados pela lista do IBGE: conserta erro de digitação/voz (Preot → Preto) e acha a UF quando só há uma
-  const achada = resolverCidade(texto(cidade, 80), texto(uf, 20) || null);
+  const achada = resolverLocal(texto(cidade, 80), { uf: texto(uf, 20) || null, pais: pais ? codigoDoPais(pais) : null });
   if (!achada.ok) throw new HttpError(400, mensagemCidade(texto(cidade, 80), texto(uf, 20) || null, achada));
   const original = texto(cidade, 80);
   cidade = achada.cidade; uf = achada.uf;
@@ -189,7 +191,7 @@ function criarVarredura({ cidade, uf, nicho, fonte, limite }) {
   const meta = Math.min(Math.max(Math.round(Number(limite)) || lerAjustes(db).varredura.limite_por_execucao, 1), META_MAXIMA);
   let v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
   if (!v) {
-    db.prepare('INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em) VALUES (?, ?, ?, ?, ?, ?)').run(cidade, uf, nicho, fonte, meta, agora());
+    db.prepare('INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em, pais) VALUES (?, ?, ?, ?, ?, ?, ?)').run(cidade, uf, nicho, fonte, meta, agora(), achada.pais || 'BR');
     v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
   }
   const lote = pedirLote(v, meta, achada.corrigido ? ` (corrigi "${original}")` : '');
@@ -208,15 +210,21 @@ function pedirLote(v, meta, nota = '') {
 }
 
 // catálogo para o formulário: 4 grupos de nichos, estados e cidades por estado (IBGE)
-rota('GET', '/api/catalogo', () => ({ grupos: catalogo(), estados: ESTADOS, fontes: FONTES, termos_maps_por_varredura: TERMOS_MAPS_POR_VARREDURA }));
+rota('GET', '/api/catalogo', () => ({
+  grupos: catalogo(), estados: ESTADOS, fontes: FONTES, termos_maps_por_varredura: TERMOS_MAPS_POR_VARREDURA,
+  paises: Object.values(PAISES).map((p) => ({ id: p.id, nome: p.nome, regiao: p.regiao, idioma: p.idioma, ddi: p.ddi })),
+  estados_por_pais: Object.fromEntries(PAISES_COM_LOCALIDADES.map((p) => [p, estadosDe(p)])),
+}));
 rota('GET', '/api/localidades/cidades', ({ url }) => {
-  const uf = resolverUF(url.searchParams.get('uf'));
+  const pais = codigoDoPais(url.searchParams.get('pais'));
+  const uf = resolverUF(url.searchParams.get('uf'), pais);
   if (!uf) throw new HttpError(400, 'estado desconhecido');
-  return { uf, cidades: cidadesDe(uf) };
+  return { pais, uf, cidades: cidadesDe(uf, pais) };
 });
 rota('GET', '/api/localidades/resolver', ({ url }) => {
   const q = texto(url.searchParams.get('cidade'), 80), uf = texto(url.searchParams.get('uf'), 20) || null;
-  const r = resolverCidade(q, uf);
+  const p = url.searchParams.get('pais');
+  const r = resolverLocal(q, { uf, pais: p ? codigoDoPais(p) : null });
   return { ...r, mensagem: r.ok ? null : mensagemCidade(q, uf, r) };
 });
 // varredura em lote: um grupo inteiro ou uma lista de nichos na mesma cidade (cada nicho vira uma varredura na fila do Atlas)
@@ -225,9 +233,10 @@ rota('POST', '/api/varreduras/lote', ({ body }) => {
   const ids = Array.isArray(body.nichos) && body.nichos.length ? body.nichos : (GRUPOS[body.grupo] ? nichosDoGrupo(body.grupo) : []);
   if (!ids.length) throw new HttpError(400, 'diga um grupo ou uma lista de nichos');
   if (ids.length > LIMITE_LOTE) throw new HttpError(400, `no máximo ${LIMITE_LOTE} nichos por vez (cada um é uma busca demorada)`);
-  const criadas = ids.map((nicho) => criarVarredura({ cidade: body.cidade, uf: body.uf, nicho, fonte: body.fonte || 'maps', limite: body.limite }));
+  const criadas = ids.map((nicho) => criarVarredura({ cidade: body.cidade, uf: body.uf, pais: body.pais, nicho, fonte: body.fonte || 'maps', limite: body.limite }));
   return { varreduras: criadas };
 });
+rota('GET', '/api/capacidade', ({ url }) => { const c = calcularCapacidade(db, { metaDia: url.searchParams.get('meta'), porLote: Number(url.searchParams.get('por_lote')) || META_PADRAO }); return { ...c, frase: fraseDaCapacidade(c) }; });
 rota('GET', '/api/cobertura', () => ({ buscas: cobertura(db).map((b) => ({ ...b, nicho_rotulo: NICHOS[b.nicho]?.rotulo || b.nicho })), meta_padrao: META_PADRAO }));
 rota('POST', '/api/varreduras/:id/proximo-lote', ({ params, body }) => {
   const v = db.prepare('SELECT * FROM varreduras WHERE id = ?').get(Number(params.id));
@@ -325,7 +334,7 @@ rota('POST', '/api/comando', async ({ body }) => {
     if (!c.nicho || !c.cidade) resposta = `Entendi que é para varrer, mas faltou ${!c.nicho ? 'o ramo' : 'a cidade'}. Ramos que conheço: ${Object.values(NICHOS).map((n) => n.rotulo).join(', ')}.`;
     else {
       try {
-        const v = criarVarredura({ cidade: c.cidade, uf: c.uf, nicho: c.nicho, fonte: c.fonte });
+        const v = criarVarredura({ cidade: c.cidade, uf: c.uf, pais: c.pais, nicho: c.nicho, fonte: c.fonte });
         resposta = `Atlas vai varrer ${NICHOS[c.nicho].rotulo} em ${v.cidade}-${v.uf}${v.correcao ? ` (entendi "${v.correcao.de}" como ${v.cidade})` : ''}${v.uf_inferida ? ` (estado ${v.uf} pelo nome da cidade)` : ''}.`;
       } catch (e) { if (!e.status) throw e; resposta = e.message; }
     }
@@ -354,11 +363,11 @@ rota('POST', '/api/comando', async ({ body }) => {
   } else if (c.intencao === 'cidade') {
     if (!c.cidade) resposta = 'Qual cidade? Diga, por exemplo: "troca a cidade para Ribeirão Preto SP".';
     else {
-      const achada = resolverCidade(c.cidade, c.uf);
+      const achada = resolverLocal(c.cidade, { uf: c.uf, pais: c.pais });
       if (!achada.ok) { resposta = mensagemCidade(c.cidade, c.uf, achada); }
       else {
-      const r = trocarCidade(db, achada.cidade, achada.uf, criarVarredura);
-      resposta = r.base ? `Troquei para ${achada.cidade}-${achada.uf}${achada.corrigido ? ` (entendi "${c.cidade}")` : ''}: ${r.criadas} varredura(s) nova(s), ${r.desativadas} antiga(s) desativada(s).` : 'Não há varredura anterior para copiar o ramo. Diga: "varre barbearias em ' + c.cidade + '".';
+      const r = trocarCidade(db, achada.cidade, achada.uf, criarVarredura, achada.pais);
+      resposta = r.base ? `Troquei para ${achada.cidade}-${achada.uf}${achada.corrigido ? ` (entendi "${c.cidade}")` : ''}: ${r.criadas} varredura(s) nova(s), ${r.desativadas} antiga(s) desativada(s).${r.bloqueadas ? ` ${r.bloqueadas} ficou(aram) de fora porque o lote anterior ainda não foi tratado.` : ''}` : 'Não há varredura anterior para copiar o ramo. Diga: "varre barbearias em ' + c.cidade + '".';
       }
     }
   }

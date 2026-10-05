@@ -99,8 +99,8 @@ test('ritmo de envio: teto, janela e intervalo', () => {
 });
 
 test('comando: literais saem do código', () => {
-  assert.deepEqual(extrairLiterais('varre barbearias em Franca SP'), { nicho: 'barbearia', cidade: 'Franca', uf: 'SP', fonte: 'maps' });
-  assert.deepEqual(extrairLiterais('procura dentista em ribeirão preto'), { nicho: 'odontologia', cidade: 'Ribeirão Preto', uf: null, fonte: 'maps' });
+  assert.deepEqual(extrairLiterais('varre barbearias em Franca SP'), { nicho: 'barbearia', cidade: 'Franca', uf: 'SP', fonte: 'maps', pais: null });
+  assert.deepEqual(extrairLiterais('procura dentista em ribeirão preto'), { nicho: 'odontologia', cidade: 'Ribeirão Preto', uf: null, fonte: 'maps', pais: null });
   assert.equal(extrairLiterais('busca pet shop em São José do Rio Preto - SP no openstreetmap').fonte, 'osm');
   assert.equal(extrairLiterais('resumo do dia').nicho, null);
 });

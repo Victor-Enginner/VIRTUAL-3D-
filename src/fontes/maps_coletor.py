@@ -39,10 +39,10 @@ def sem_rotulo(v):
     return re.sub(r"^[^:]{1,20}:\s*", "", v).strip() if v else None
 
 
-def nota_e_avaliacoes(page):
+def nota_e_avaliacoes(page, palavra="avalia"):
     # a quantidade de avaliações carrega depois da nota; sem esperar, o bloco vem só com "4,9"
     try:
-        page.wait_for_selector('div.F7nice span[aria-label*="avalia"]', timeout=2500)
+        page.wait_for_selector('div.F7nice span[aria-label*="' + palavra + '"]', timeout=2500)
     except Exception:
         pass
     bloco = texto(page, "div.F7nice")
@@ -58,11 +58,14 @@ def nota_e_avaliacoes(page):
 def main():
     args = json.loads(sys.argv[1])
     termo, limite = args["termo"], int(args.get("limite", 20))
-    url = "https://www.google.com/maps/search/" + urllib.parse.quote(termo) + "?hl=pt-BR"
+    hl = args.get("hl", "pt-BR")
+    gl = args.get("gl", "br")
+    palavra_avaliacao = args.get("avaliacao", "avalia")
+    url = "https://www.google.com/maps/search/" + urllib.parse.quote(termo) + "?hl=" + hl + "&gl=" + gl
     coletados = 0
     with sync_playwright() as p:
         nav = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
-        ctx = nav.new_context(locale="pt-BR", viewport={"width": 1280, "height": 900})
+        ctx = nav.new_context(locale=hl, viewport={"width": 1280, "height": 900})
         pagina = ctx.new_page()
         pagina.goto(url, timeout=45000, wait_until="domcontentloaded")
         try:
@@ -96,7 +99,7 @@ def main():
                 det.goto(href, timeout=45000, wait_until="domcontentloaded")
                 det.wait_for_selector("h1", timeout=15000)
                 det.wait_for_timeout(1200)
-                nota, qtd = nota_e_avaliacoes(det)
+                nota, qtd = nota_e_avaliacoes(det, palavra_avaliacao)
                 emitir({
                     "nome": texto(det, "h1") or nome,
                     "telefone": sem_rotulo(texto(det, 'button[data-item-id^="phone:tel:"]', "aria-label")),

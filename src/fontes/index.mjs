@@ -1,17 +1,20 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { CONFIG, ROOT } from '../config.mjs';
-import { NICHOS, TERMOS_MAPS_POR_VARREDURA } from '../nichos.mjs';
+import { NICHOS, TERMOS_MAPS_POR_VARREDURA, termosDoNicho } from '../nichos.mjs';
+import { paisDe } from '../paises.mjs';
 
 // Cada fonte devolve uma lista de { nome, telefone, site, endereco, categoria, rating, avaliacoes, maps_url }.
 // Campo que a fonte não trouxe fica null.
 
 // Uma busca no Maps (um termo). A varredura de um nicho chama isto uma vez por termo, em coletarMaps.
-function coletarMapsTermo({ cidade, uf, termoBase, limite, aoItem }) {
-  const termo = `${termoBase} em ${cidade} ${uf}`;
+function coletarMapsTermo({ cidade, uf, termoBase, limite, aoItem, pais = 'BR' }) {
+  const p = paisDe(pais);
+  // Brasil: "dentista em Franca SP". Outros países: "dentista em Lisboa, Portugal" (a sigla da região não ajuda o Google)
+  const termo = p.id === 'BR' ? `${termoBase} em ${cidade} ${uf}` : `${termoBase} ${p.preposicao} ${cidade}, ${p.nomeLocal || p.nome}`;
   const script = path.join(ROOT, 'src', 'fontes', 'maps_coletor.py');
   return new Promise((resolve, reject) => {
-    const proc = spawn(CONFIG.python, [script, JSON.stringify({ termo, limite })], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+    const proc = spawn(CONFIG.python, [script, JSON.stringify({ termo, limite, hl: p.maps.hl, gl: p.maps.gl, avaliacao: p.maps.avaliacao })], { env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
     const itens = [];
     let resto = '', fim = null, stderr = '';
     const timer = setTimeout(() => proc.kill(), 15 * 60_000);
@@ -42,8 +45,8 @@ const chaveDe = (o) => `${String(o.nome).normalize('NFD').replace(/[̀-ͯ]/g, ''
 
 // Nicho = pacote de termos (src/nichos.mjs). Roda os primeiros TERMOS_MAPS_POR_VARREDURA, divide o limite entre eles,
 // tira duplicados (o mesmo lugar aparece em "dentista" e em "ortodontia") e para quando o limite fecha.
-export async function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
-  const termos = (NICHOS[nicho]?.termos || [NICHOS[nicho]?.maps || nicho]).slice(0, TERMOS_MAPS_POR_VARREDURA);
+export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'BR' }) {
+  const termos = termosDoNicho(nicho, paisDe(pais).idioma).slice(0, TERMOS_MAPS_POR_VARREDURA);
   const porTermo = Math.max(5, Math.ceil(limite / termos.length));
   const vistos = new Set();
   const itens = [];
@@ -52,7 +55,7 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
   for (const termoBase of termos) {
     if (itens.length >= limite) break;
     try {
-      const r = await coletarMapsTermo({ cidade, uf, termoBase, limite: porTermo, aoItem: (o) => {
+      const r = await coletarMapsTermo({ cidade, uf, termoBase, limite: porTermo, pais, aoItem: (o) => {
         const k = chaveDe(o);
         if (vistos.has(k) || itens.length >= limite) return;
         vistos.add(k); itens.push(o); aoItem?.(o);
@@ -69,12 +72,15 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem }) {
 
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
 
-export async function coletarOsm({ cidade, nicho, limite }) {
+export async function coletarOsm({ cidade, nicho, limite, pais = 'BR' }) {
+  const p = paisDe(pais);
   const tags = NICHOS[nicho]?.osm;
   if (!tags) throw new Error(`nicho sem tags OSM: ${nicho}`);
   const nomeCidade = cidade.replace(/"/g, '');
   const filtros = tags.map(([k, v]) => `nwr["${k}"="${v}"](area.a);`).join('');
-  const q = `[out:json][timeout:60];area["name"="${nomeCidade}"]["boundary"="administrative"]["admin_level"="8"]->.a;(${filtros});out tags center ${limite};`;
+  // a cidade é procurada DENTRO do país (ISO3166-1), no nível administrativo do município daquele país (src/paises.mjs)
+  const nivel = p.osm.nivel.includes('|') ? `~"^(${p.osm.nivel})$"` : `="${p.osm.nivel}"`;
+  const q = `[out:json][timeout:60];area["ISO3166-1"="${p.osm.iso}"]->.pais;area(area.pais)["name"="${nomeCidade}"]["boundary"="administrative"]["admin_level"${nivel}]->.a;(${filtros});out tags center ${limite};`;
   const r = await fetch(OVERPASS, {
     method: 'POST', signal: AbortSignal.timeout(90_000),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'User-Agent': 'prospector/0.1 (uso local)' },

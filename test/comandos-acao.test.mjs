@@ -24,7 +24,7 @@ test('trocar cidade: copia o ramo, desativa as outras cidades e não apaga nada'
   db.prepare("INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, ativa, criado_em) VALUES ('Batatais','SP','estetica','maps',20,1,'t')").run();
   const criadas = [];
   const r = trocarCidade(db, 'Franca', 'SP', (v) => { criadas.push(v); db.prepare("INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em) VALUES (?,?,?,?,?,'t')").run(v.cidade, v.uf, v.nicho, v.fonte, v.limite); });
-  assert.deepEqual(criadas, [{ cidade: 'Franca', uf: 'SP', nicho: 'estetica', fonte: 'maps', limite: 20 }]);
+  assert.deepEqual(criadas, [{ cidade: 'Franca', uf: 'SP', pais: 'BR', nicho: 'estetica', fonte: 'maps', limite: 20 }]);
   assert.equal(r.desativadas, 1);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM varreduras').get().n, 2);
   assert.equal(db.prepare("SELECT ativa FROM varreduras WHERE cidade = 'Franca'").get().ativa, 1);

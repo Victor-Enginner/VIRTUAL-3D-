@@ -26,6 +26,14 @@ export const PERGUNTA_INTENCAO = {
   },
 };
 
+// "Lisboa Portugal", "Asunción no Paraguai": o país dito junto da cidade sai dela e vira `pais`
+const PAIS_POR_PALAVRA = { portugal: 'PT', paraguai: 'PY', paraguay: 'PY', brasil: 'BR' };
+export function separarPais(cidade) {
+  if (!cidade) return { cidade, pais: null };
+  const m = cidade.match(/\s+(?:no |na |em |de |do )?(portugal|paraguai|paraguay|brasil)$/i);
+  return m ? { cidade: cidade.slice(0, m.index).trim(), pais: PAIS_POR_PALAVRA[m[1].toLowerCase()] } : { cidade, pais: null };
+}
+
 // "trocar a cidade para Ribeirão Preto SP": a cidade vem depois de "para/pra/pro/em/:"
 function cidadeDepoisDe(texto) {
   const m = texto.match(/(?:\bpara|\bpra|\bpro|\bem|:)\s+([A-Za-zÀ-ÿ' ]+?)(?:\s*[-,/]?\s*\b([A-Za-z]{2})\b)?\s*[.!?]*$/i);
@@ -37,7 +45,7 @@ function cidadeDepoisDe(texto) {
 }
 
 export function extrairLiterais(texto, intencao = null) {
-  if (intencao === 'cidade') return { nicho: null, fonte: 'maps', ...(cidadeDepoisDe(texto) || { cidade: null, uf: null }) };
+  if (intencao === 'cidade') { const c = cidadeDepoisDe(texto) || { cidade: null, uf: null }; const sp = separarPais(c.cidade); return { nicho: null, fonte: 'maps', ...c, cidade: sp.cidade, pais: sp.pais }; }
   const t = sem(texto);
   // vale o termo mais ESPECÍFICO que casar: "hotel para pets" é Pet shop, não Hospedagem
   let nicho = null, melhor = 0;
@@ -57,7 +65,8 @@ export function extrairLiterais(texto, intencao = null) {
       .map((p, i) => (i > 0 && ['de', 'da', 'do', 'das', 'dos'].includes(p) ? p : p.charAt(0).toUpperCase() + p.slice(1))).join(' ');
   }
   const fonte = /openstreet|\bosm\b/.test(t) ? 'osm' : 'maps';
-  return { nicho, cidade, uf: uf || null, fonte };
+  const sp = separarPais(cidade);
+  return { nicho, cidade: sp.cidade, uf: uf || null, fonte, pais: sp.pais };
 }
 
 // Fato é regra: os 5 comandos têm palavras inequívocas, então a regra decide primeiro (instantâneo, sem modelo).

@@ -13,12 +13,17 @@ export const proximoCartao = (db) => db.prepare("SELECT * FROM leads WHERE etapa
 
 // "trocar a cidade": copia o ramo/fonte das varreduras ativas (ou, sem nenhuma ativa, da mais recente) para a cidade nova
 // e desativa as de outras cidades. Não apaga nada.
-export function trocarCidade(db, cidade, uf, criar) {
+export function trocarCidade(db, cidade, uf, criar, pais = 'BR') {
   let base = db.prepare('SELECT nicho, fonte, limite, cidade, uf FROM varreduras WHERE ativa = 1').all();
   if (!base.length) base = db.prepare('SELECT nicho, fonte, limite, cidade, uf FROM varreduras ORDER BY id DESC LIMIT 1').all();
   if (!base.length) return { base: 0, criadas: 0, desativadas: 0 };
-  let criadas = 0;
-  for (const b of base) { criar({ cidade, uf, nicho: b.nicho, fonte: b.fonte, limite: b.limite }); criadas++; }
+  // um pedido por ramo+fonte (a mesma busca em duas cidades antigas vira uma só na cidade nova); o portão de lotes pode recusar algum
+  const unicas = [...new Map(base.map((b) => [`${b.nicho}|${b.fonte}`, b])).values()];
+  let criadas = 0, bloqueadas = 0;
+  for (const b of unicas) {
+    try { criar({ cidade, uf, pais, nicho: b.nicho, fonte: b.fonte, limite: b.limite }); criadas++; }
+    catch (e) { if (e.status !== 409) throw e; bloqueadas++; }
+  }
   const desativadas = db.prepare('UPDATE varreduras SET ativa = 0 WHERE ativa = 1 AND NOT (cidade = ? AND uf = ?)').run(cidade, uf).changes;
-  return { base: base.length, criadas, desativadas };
+  return { base: base.length, criadas, desativadas, bloqueadas };
 }

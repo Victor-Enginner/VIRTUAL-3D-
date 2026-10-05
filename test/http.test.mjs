@@ -239,3 +239,31 @@ test('comando de voz "busca mais 50" continua a busca atual, e o portão respond
   assert.equal(r.status, 200);
   assert.match(r.json.resposta, /lote|Ainda não dá para buscar mais|Ainda não há busca/);
 });
+
+test('países: buscas em Portugal e no Paraguai, ambiguidade de país e cobertura com o país', async () => {
+  const pt = (await chamar('POST', '/api/varreduras', { cidade: 'Lisbao', pais: 'PT', nicho: 'odontologia', fonte: 'osm' })).json.varredura;
+  assert.deepEqual([pt.cidade, pt.uf, pt.pais, pt.correcao?.de], ['Lisboa', 'LIS', 'PT', 'Lisbao']);
+  const py = (await chamar('POST', '/api/varreduras', { cidade: 'Ciudad del Estre', nicho: 'restaurante', fonte: 'osm' })).json.varredura; // sem país: acha sozinho
+  assert.deepEqual([py.cidade, py.uf, py.pais], ['Ciudad del Este', 'APA', 'PY']);
+  const amb = await chamar('POST', '/api/varreduras', { cidade: 'Porto', nicho: 'academia', fonte: 'osm' });
+  assert.equal(amb.status, 400);
+  assert.match(amb.json.erro, /mais de um país/);
+  const ok = await chamar('POST', '/api/varreduras', { cidade: 'Porto', pais: 'PT', nicho: 'academia', fonte: 'osm' });
+  assert.equal(ok.json.varredura.uf, 'POR');
+  const cob = (await chamar('GET', '/api/cobertura')).json.buscas;
+  assert.equal(cob.find((b) => b.cidade === 'Lisboa').pais, 'PT');
+  const cat = (await chamar('GET', '/api/catalogo')).json;
+  assert.deepEqual(cat.paises.map((p) => p.id), ['BR', 'PT', 'PY']);
+  assert.equal(cat.estados_por_pais.PT.length, 20);
+  assert.equal((await chamar('GET', '/api/localidades/cidades?uf=LIS&pais=PT')).json.cidades.includes('Cascais'), true);
+  assert.equal((await chamar('GET', '/api/localidades/cidades?uf=SP&pais=PT')).status, 400);
+});
+
+test('comando de voz com país: "varre ... em Lisboa Portugal" e "troca a cidade para Asunción Paraguai"', async () => {
+  const a = await chamar('POST', '/api/comando', { texto: 'varre tatuagem em Lisboa Portugal' });
+  assert.match(a.json.resposta, /Lisboa-LIS/);
+  const amb = await chamar('POST', '/api/comando', { texto: 'varre pet shop em Porto' });
+  assert.match(amb.json.resposta, /mais de um país/);
+  const t = await chamar('POST', '/api/comando', { texto: 'troca a cidade para Asunción Paraguai' });
+  assert.match(t.json.resposta, /Troquei para Asunción-ASU/);
+});

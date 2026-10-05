@@ -31,6 +31,7 @@ export const MIGRACOES = [
       db.prepare('UPDATE leads SET lote_id = ? WHERE varredura_id = ? AND lote_id IS NULL').run(Number(r.lastInsertRowid), v.id);
     }
   } },
+  { v: 9, nome: 'pais em varreduras e leads (Brasil, Portugal, Paraguai); o padrão é BR', up(db) { adicionarColuna(db, 'varreduras', 'pais', "TEXT NOT NULL DEFAULT 'BR'"); adicionarColuna(db, 'leads', 'pais', "TEXT NOT NULL DEFAULT 'BR'"); } },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

@@ -449,7 +449,13 @@ function fecharGaveta() { $('#gaveta').hidden = true; leadAberto = null; if (loc
 
 // Mapa de cobertura (src/lotes.mjs): cada linha é uma busca (ramo x cidade x fonte) com o histórico dos lotes. Nada se perde.
 const FONTE_ROTULO = { maps: 'Google Maps', osm: 'OpenStreetMap' };
+async function mostrarCapacidade() {
+  const c = await api('/api/capacidade').catch(() => null);
+  const el = $('#dica-capacidade');
+  if (c && el) el.textContent = c.frase;
+}
 async function carregarVarreduras() {
+  mostrarCapacidade();
   const { buscas, meta_padrao: meta } = await api('/api/cobertura');
   $('#varreduras').innerHTML = buscas.map((b) => {
     const ult = b.lotes.at(-1);
@@ -463,7 +469,7 @@ async function carregarVarreduras() {
     const botao = prox.esgotada ? '' : `<button class="btn" data-proximo="${b.varredura_id}" ${prox.ok ? '' : 'disabled'}>Buscar mais ${esc(b.meta || meta)}</button>`;
     const motivo = prox.ok || rodando ? '' : `<small class="motivo-bloqueio">${esc(prox.esgotada ? 'A fonte não tem mais resultados para esta busca: tente outro ramo, outra cidade ou outra fonte.' : `Próximo lote bloqueado: ${prox.motivo}.`)}</small>`;
     return `<li class="busca"><div>
-      <strong>${esc(b.nicho_rotulo)}</strong> · ${esc(b.cidade)}-${esc(b.uf)}<small>${esc(FONTE_ROTULO[b.fonte] || b.fonte)}</small>
+      <strong>${esc(b.nicho_rotulo)}</strong> · ${esc(b.cidade)}-${esc(b.uf)}${b.pais && b.pais !== 'BR' ? ` (${esc(b.pais)})` : ''}<small>${esc(FONTE_ROTULO[b.fonte] || b.fonte)}</small>
       <small>${b.leads} empresas · ${b.sem_site_ou_fraco} sem site ou site fraco · ${b.enviados} enviados · ${b.responderam} responderam${abertos ? ` · ${abertos} esperando decisão` : ''}</small>
       <span class="lotes">${lotes || '<span class="lote">na fila</span>'}</span>${motivo}</div>${botao}</li>`;
   }).join('') || '<li><span class="sub">Nenhuma busca ainda. Escolha o estado, a cidade e o ramo acima, ou fale o comando. A equipe só começa quando você pede.</span></li>';
@@ -592,16 +598,28 @@ async function montarFormVarredura(estado) {
   const fallback = () => { $('#sel-nicho').innerHTML = Object.entries(estado.nichos).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join(''); };
   try {
     const cat = await api('/api/catalogo');
-    $('#sel-uf').innerHTML = cat.estados.map((e) => `<option value="${e.sigla}"${e.sigla === 'SP' ? ' selected' : ''}>${esc(e.nome)} (${e.sigla})</option>`).join('');
+    catalogoAtual = cat;
+    $('#sel-pais').innerHTML = cat.paises.map((p) => `<option value="${p.id}">${esc(p.nome)}</option>`).join('');
+    pintarRegioes();
     $('#sel-nicho').innerHTML = cat.grupos.map((g) => `<optgroup label="${esc(g.rotulo)}"><option value="grupo:${esc(g.id)}">★ Grupo inteiro (${g.nichos.length} ramos)</option>${g.nichos.map((n) => `<option value="${esc(n.id)}">${esc(n.rotulo)}</option>`).join('')}</optgroup>`).join('');
     $('#sel-nicho').value = 'odontologia';
     await carregarCidades();
   } catch { fallback(); }
 }
+// Brasil, Portugal e Paraguai: a lista de estados/distritos/departamentos muda com o país, e as mensagens saem no idioma dele
+let catalogoAtual = null;
+function pintarRegioes() {
+  const id = $('#sel-pais').value || 'BR';
+  const p = catalogoAtual.paises.find((x) => x.id === id);
+  $('#rot-uf').textContent = p.regiao;
+  const padrao = { BR: 'SP', PT: 'LIS', PY: 'CEN' }[id];
+  $('#sel-uf').innerHTML = catalogoAtual.estados_por_pais[id].map((e) => `<option value="${e.sigla}"${e.sigla === padrao ? ' selected' : ''}>${esc(e.nome)} (${e.sigla})</option>`).join('');
+  $('#dica-pais').textContent = id === 'BR' ? '' : `Mensagens em ${p.idioma === 'es-PY' ? 'espanhol (tratamento "usted")' : 'português de Portugal'}; telefone +${p.ddi}.`;
+}
 async function carregarCidades() {
   const uf = $('#sel-uf').value;
   if (!uf) return;
-  const { cidades } = await api(`/api/localidades/cidades?uf=${encodeURIComponent(uf)}`);
+  const { cidades } = await api(`/api/localidades/cidades?uf=${encodeURIComponent(uf)}&pais=${encodeURIComponent($('#sel-pais').value || 'BR')}`);
   $('#lista-cidades').innerHTML = cidades.map((c) => `<option value="${esc(c)}">`).join('');
   verCidade();
 }
@@ -611,13 +629,14 @@ function verCidade() {
   const dica = $('#dica-cidade'), q = $('#inp-cidade').value.trim();
   if (!q) { dica.textContent = ''; dica.className = 'dica-cidade largo'; return; }
   temporizadorCidade = setTimeout(async () => {
-    const r = await api(`/api/localidades/resolver?cidade=${encodeURIComponent(q)}&uf=${encodeURIComponent($('#sel-uf').value)}`).catch(() => null);
+    const r = await api(`/api/localidades/resolver?cidade=${encodeURIComponent(q)}&uf=${encodeURIComponent($('#sel-uf').value)}&pais=${encodeURIComponent($('#sel-pais').value || 'BR')}`).catch(() => null);
     if (!r) return;
     if (r.ok && r.corrigido) { dica.textContent = `Vou usar "${r.cidade}-${r.uf}" (corrigi a digitação).`; dica.className = 'dica-cidade largo ok'; }
     else if (r.ok) { dica.textContent = `${r.cidade}-${r.uf} ✓`; dica.className = 'dica-cidade largo ok'; }
     else { dica.textContent = r.mensagem; dica.className = 'dica-cidade largo aviso'; }
   }, 250);
 }
+$('#sel-pais').addEventListener('change', () => { $('#inp-cidade').value = ''; pintarRegioes(); carregarCidades(); });
 $('#sel-uf').addEventListener('change', () => { $('#inp-cidade').value = ''; carregarCidades(); });
 $('#inp-cidade').addEventListener('input', verCidade);
 

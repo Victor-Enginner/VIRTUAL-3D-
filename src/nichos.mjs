@@ -61,3 +61,61 @@ export function catalogo() {
   }));
 }
 export const nichosDoGrupo = (grupo) => Object.entries(NICHOS).filter(([, x]) => x.grupo === grupo).map(([k]) => k);
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Termos de busca por idioma. O Maps entende o idioma em que se escreve: em Portugal vale o vocabulário de Portugal
+// ("ginásio", "canalizador") e no Paraguai o espanhol. O que não está aqui usa os termos em português do Brasil acima.
+export const TERMOS_POR_IDIOMA = {
+  'pt-PT': {
+    odontologia: ['dentista', 'implantes dentários', 'ortodontia', 'clínica dentária', 'medicina dentária'],
+    clinicas_terapias: ['fisioterapia', 'psicólogo', 'nutricionista', 'quiroprático', 'terapia da fala'],
+    estetica: ['clínica de estética', 'harmonização facial', 'micropigmentação', 'depilação a laser', 'massagens'],
+    advocacia: ['escritório de advogados', 'advogado', 'gabinete de contabilidade', 'contabilista', 'despachante'],
+    educacao_cursos: ['escola de condução', 'escola de idiomas', 'centro de explicações', 'creche', 'escola de música'],
+    energia_solar: ['energia solar', 'painéis solares', 'domótica', 'ar condicionado', 'câmaras de segurança'],
+    fotografia: ['fotografia', 'fotógrafo', 'estúdio fotográfico', 'filmagem', 'sessão fotográfica'],
+    eventos_buffet: ['catering', 'quinta de eventos', 'salão de festas', 'espaço de eventos', 'decoração de festas'],
+    marcenaria: ['móveis por medida', 'carpintaria', 'serralharia', 'marmoraria', 'vidraria'],
+    moda_noivas: ['loja de noivas', 'aluguer de fatos', 'moda feminina', 'loja de roupa', 'roupa em segunda mão'],
+    salao_unhas: ['unhas de gel', 'manicure', 'design de sobrancelhas', 'cabeleireiro', 'extensão de pestanas'],
+    academia: ['ginásio', 'crossfit', 'pilates', 'personal trainer', 'estúdio de treino'],
+    restaurante: ['restaurante', 'pizzaria', 'hamburgaria', 'snack-bar', 'take-away'],
+    padaria: ['padaria', 'pastelaria', 'confeitaria', 'café', 'pastelaria artesanal'],
+    acai_lanches: ['açaí', 'gelataria', 'snack-bar', 'food truck', 'creperia'],
+    hospedagem_turismo: ['alojamento local', 'hotel', 'pensão', 'parque de campismo', 'turismo rural'],
+    pet_shop: ['loja de animais', 'tosquia de animais', 'clínica veterinária', 'veterinário', 'hotel para animais'],
+    joalheria_otica: ['joalharia', 'ótica', 'relojoaria', 'perfumaria', 'loja de presentes'],
+    oficina: ['oficina mecânica', 'pneus', 'chapa e pintura', 'peças auto', 'lavagem automóvel'],
+    construcao_reforma: ['empresa de construção', 'remodelações', 'pintor', 'eletricista', 'canalizador'],
+    casa_manutencao: ['desinfestação', 'serralheiro', 'piscinas', 'desentupimentos', 'jardinagem'],
+  },
+  'es-PY': {
+    odontologia: ['dentista', 'implantes dentales', 'ortodoncia', 'clínica odontológica', 'consultorio dental'],
+    clinicas_terapias: ['fisioterapia', 'psicólogo', 'nutricionista', 'quiropráctico', 'fonoaudiología'],
+    estetica: ['clínica de estética', 'armonización facial', 'micropigmentación', 'depilación láser', 'masajes'],
+    advocacia: ['estudio jurídico', 'abogado', 'estudio contable', 'contador', 'gestor'],
+    imobiliaria: ['inmobiliaria', 'corredor de inmuebles', 'arquitectura', 'diseño de interiores', 'ingeniería'],
+    educacao_cursos: ['autoescuela', 'escuela de idiomas', 'academia de cursos', 'jardín de infantes', 'escuela de música'],
+    energia_solar: ['energía solar', 'paneles solares', 'automatización del hogar', 'aire acondicionado', 'cámaras de seguridad'],
+    fotografia: ['fotografía', 'fotógrafo', 'estudio fotográfico', 'filmación', 'sesión de fotos'],
+    eventos_buffet: ['catering', 'salón de fiestas', 'espacio para eventos', 'quinta para eventos', 'decoración de fiestas'],
+    marcenaria: ['muebles a medida', 'carpintería', 'herrería', 'marmolería', 'vidriería'],
+    tatuagem: ['estudio de tatuajes', 'tatuador', 'piercing', 'body art'],
+    moda_noivas: ['tienda de novias', 'alquiler de trajes', 'moda femenina', 'tienda de ropa', 'ropa usada'],
+    barbearia: ['barbería', 'barber shop', 'peluquería para hombres', 'corte de pelo hombre'],
+    salao_unhas: ['salón de uñas', 'manicura', 'diseño de cejas', 'peluquería', 'extensión de pestañas'],
+    academia: ['gimnasio', 'crossfit', 'pilates', 'entrenador personal', 'estudio de entrenamiento'],
+    restaurante: ['restaurante', 'pizzería', 'hamburguesería', 'comidas rápidas', 'delivery de comida'],
+    padaria: ['panadería', 'confitería', 'cafetería', 'pastelería', 'tortas'],
+    acai_lanches: ['açaí', 'heladería', 'empanadas', 'food truck', 'crepería'],
+    hospedagem_turismo: ['hotel', 'posada', 'hostal', 'camping', 'pesquero'],
+    pet_shop: ['pet shop', 'peluquería canina', 'clínica veterinaria', 'veterinario', 'hotel para mascotas'],
+    joalheria_otica: ['joyería', 'óptica', 'relojería', 'perfumería', 'tienda de regalos'],
+    oficina: ['taller mecánico', 'auto center', 'chapería y pintura', 'repuestos', 'lavadero de autos', 'gomería'],
+    construcao_reforma: ['constructora', 'reformas', 'pintor', 'electricista', 'plomero'],
+    casa_manutencao: ['fumigación', 'cerrajero', 'piscinas', 'destapaciones', 'jardinería'],
+  },
+};
+
+// termos de busca do nicho no idioma do país; se o nicho não tem tradução, cai nos termos do Brasil
+export const termosDoNicho = (id, idioma = 'pt-BR') => TERMOS_POR_IDIOMA[idioma]?.[id] || NICHOS[id]?.termos || [NICHOS[id]?.maps || id];

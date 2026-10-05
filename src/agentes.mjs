@@ -29,6 +29,8 @@ import { CONFIG } from './config.mjs';
 import { avaliarEnvio, inicioDoDia, intervaloAleatorioMs } from './envio/politica.mjs';
 import { enviarTexto, openwaConfigurado, PEDIU_PARA_SAIR, saudeOpenwa } from './envio/openwa.mjs';
 import { canal } from './envio/canal.mjs';
+import { IDIOMAS, idiomaDoLead, remetenteDoIdioma } from './idiomas.mjs';
+import { normalizarTelefoneDoPais } from './paises.mjs';
 import { aprender, caracteristicas, contribuicoes, lerCabecas, misturar } from './aprendizado.mjs';
 import { conferirHandoff, exigirHandoff, visao } from './tocomas/grafo.mjs';
 import { prontidao, zona } from './tocomas/zonas.mjs';
@@ -100,7 +102,7 @@ async function varrer(db, job, ctx) {
     const r = salvarLead(db, item, { ...v, lote: lote.id });
     if (r === 'novo') novos++; else repetidos++;
   };
-  const args = { cidade: v.cidade, uf: v.uf, nicho: v.nicho, limite: lote.pedido };
+  const args = { cidade: v.cidade, uf: v.uf, nicho: v.nicho, limite: lote.pedido, pais: v.pais || 'BR' };
   ctx.usar?.(v.fonte === 'maps' ? 'coletor_maps' : 'overpass');
   let res;
   try {
@@ -117,8 +119,8 @@ async function varrer(db, job, ctx) {
   registrar(db, 'atlas', 'varredura_fim', `${rotulo}, lote ${lote.numero}: ${res.itens.length} encontrados, ${novos} novos${fechado.fim ? ' (a fonte não tem mais resultados para esta busca)' : ''}${res.aviso ? ` (${res.aviso})` : ''}`, { dados: resultado });
 }
 
-function salvarLead(db, item, v) {
-  const { telefone, tipo } = normalizarTelefone(item.telefone);
+export function salvarLead(db, item, v) {
+  const { telefone, tipo } = normalizarTelefoneDoPais(item.telefone, v.pais);
   const id = idDoLead(item.nome, v.cidade, v.uf);
   const existe = db.prepare('SELECT id, site, etapa FROM leads WHERE id = ?').get(id)
     || (telefone && db.prepare('SELECT id, site, etapa FROM leads WHERE telefone = ?').get(telefone));
@@ -140,7 +142,7 @@ function salvarLead(db, item, v) {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
     .run(id, item.nome, item.categoria || null, v.nicho, v.cidade, v.uf, item.endereco || null, telefone, tipo, item.site || null,
       item.rating ?? null, item.avaliacoes ?? null, item.maps_url || null, v.fonte, v.id, t, t);
-  if (v.lote) db.prepare('UPDATE leads SET lote_id = ? WHERE id = ?').run(v.lote, id);
+  if (v.lote || v.pais) db.prepare('UPDATE leads SET lote_id = COALESCE(?, lote_id), pais = ? WHERE id = ?').run(v.lote ?? null, v.pais || 'BR', id);
   passar(db, 'varrer', 'auditar', id);
   return 'novo';
 }
@@ -326,22 +328,19 @@ export function decisaoSemModelo() {
 
 // ------------------------------------------------------------------ Maia
 
-const MODELOS_FALLBACK = {
-  ser_encontrado: (l) => `quem procura ${l.categoria?.toLowerCase() || 'esse serviço'} em ${l.cidade} no Google não encontra um site da ${l.nome}`,
-  modernizar: (l, s) => `o site da ${l.nome} tem alguns pontos que afastam cliente${s[0] ? ` (${s[0]})` : ''}`,
-  independencia: (l) => `a ${l.nome} depende hoje de ${SITUACOES[l.situacao_site]?.toLowerCase().replace('só ', '') || 'plataformas de terceiros'} para aparecer online`,
-  reputacao: (l) => `a ${l.nome} tem nota ${l.rating} no Google${l.avaliacoes ? ` com ${l.avaliacoes} avaliações` : ''}, mas não tem um site à altura`,
-  recuperar: (l) => `o endereço do site da ${l.nome} não está abrindo`,
-};
-
+// A observação do ângulo sai no idioma do país do lead (src/idiomas.mjs). Para o Brasil é exatamente o texto de sempre.
 export function observacao(lead, angulo) {
   const aud = parse(lead.auditoria);
-  return (MODELOS_FALLBACK[angulo] || MODELOS_FALLBACK.ser_encontrado)(lead, aud?.sinais || []);
+  const I = idiomaDoLead(lead);
+  const sit = SITUACOES[lead.situacao_site]?.toLowerCase().replace('só ', '') || null;
+  return (I.observacoes[angulo] || I.observacoes.ser_encontrado)(lead, aud?.sinais || [], sit);
 }
 
 // Afirmações que o modelo pequeno inventou no teste ao vivo ("o site está desativado" para quem
 // nem tem site). Cada uma só é permitida quando o fato medido a sustenta.
 export function contradicoes(texto, lead, ajustes) {
+  const idioma = idiomaDoLead(lead);
+  if (idioma.contradicoes) return idioma.contradicoes(texto, lead, ajustes);
   const t = texto.toLowerCase();
   const p = [];
   if (lead.situacao_site !== 'site_fora_do_ar' && /desativad|fora do ar|n[aã]o (abre|carrega|funciona)|quebrad|caiu/.test(t)) p.push('diz que o site está fora do ar');
@@ -359,53 +358,34 @@ export function contradicoes(texto, lead, ajustes) {
 }
 
 // O texto do modelo precisa carregar a observação do ângulo; senão não disse nada concreto.
-const PALAVRAS_DO_ANGULO = {
-  ser_encontrado: /google|encontr|procura|busca/, independencia: /depend|propri|rede social|instagram|plataforma|agendamento|cardapio/,
-  modernizar: /celular|https|segur|atualiz|desatualiz|lent/, reputacao: /nota|avalia|estrela/, recuperar: /abr|funcion|endereco/,
-};
-export const carregaObservacao = (texto, angulo) => (PALAVRAS_DO_ANGULO[angulo] || /./).test(norm(texto));
+export const carregaObservacao = (texto, angulo, idioma = IDIOMAS['pt-BR']) => (idioma.palavrasDoAngulo[angulo] || /./).test(norm(texto));
 
 // Variações do texto fixo escolhidas pelo id do lead: 10 mensagens no dia não saem idênticas,
 // e o mesmo lead sempre recebe a mesma versão (reprocessar não muda o texto à toa).
-const ABERTURAS = [
-  (a, l) => `Olá! Aqui é o ${a.remetente_nome}, ${a.remetente_oferta} em ${l.cidade}.`,
-  (a) => `Oi, tudo bem? Meu nome é ${a.remetente_nome}, ${a.remetente_oferta}.`,
-  (a, l) => `Boa tarde! Sou o ${a.remetente_nome}, aqui de ${l.cidade}; ${a.remetente_oferta}.`,
-];
-const FECHOS = [
-  'Posso te mostrar em 5 minutos como ficaria?',
-  'Faz sentido eu te mandar uma ideia de como ficaria?',
-  'Topa ver um exemplo rápido, sem compromisso?',
-];
-
 export function mensagemFallback(lead, ajustes, angulo) {
+  const I = idiomaDoLead(lead);
+  const rem = remetenteDoIdioma(ajustes, I);
   const obs = observacao(lead, angulo);
   const h = parseInt(crypto.createHash('sha1').update(String(lead.id || lead.nome)).digest('hex').slice(0, 6), 16);
-  const port = ajustes.remetente_portfolio ? `\nMeus trabalhos: ${ajustes.remetente_portfolio}` : '';
-  return `${ABERTURAS[h % 3](ajustes, lead)} Vi que ${obs}. ${FECHOS[Math.floor(h / 3) % 3]}${port}\n\nSe não quiser receber mensagens, é só responder SAIR.`;
+  const port = rem.portfolio ? `\n${I.portfolio} ${rem.portfolio}` : '';
+  return `${I.aberturas[h % 3](rem, lead)} ${I.vi} ${obs}. ${I.fechos[Math.floor(h / 3) % 3]}${port}\n\n${I.sair.linha}`;
 }
 
-export function validarMensagem(texto, ajustes) {
+export function validarMensagem(texto, ajustes, idioma = IDIOMAS['pt-BR']) {
   let t = String(texto || '').trim().replace(/^["“']|["”']$/g, '').trim();
   // remove links que o modelo possa ter inventado; o único permitido é o portfólio do operador
   t = t.replace(/https?:\/\/\S+/g, (u) => (ajustes.remetente_portfolio && u.startsWith(ajustes.remetente_portfolio) ? u : '')).replace(/[ \t]{2,}/g, ' ');
-  if (!/responder SAIR/i.test(t)) t = `${t}\n\nSe não quiser receber mensagens, é só responder SAIR.`;
+  if (!idioma.sair.ja.test(t)) t = `${t}\n\n${idioma.sair.linha}`;
   const problemas = [];
   if (t.length > 700) problemas.push('longa demais');
-  if (/preparamos|preparei|já fiz|já criei|prévia pronta/i.test(t)) problemas.push('promete algo que não foi feito');
+  if (idioma.promessa.test(t)) problemas.push('promete algo que não foi feito');
   return { texto: t, problemas };
 }
 
 // Prompt da Maia. Exportado para a bancada de modelos testar exatamente o que roda em produção.
 export function promptMaia(lead, ajustes, angulo) {
-  return {
-    sistema: `Você escreve a primeira mensagem de WhatsApp de ${ajustes.remetente_nome}, que ${ajustes.remetente_oferta}, para um negócio local.
-Regras: português do Brasil, tom humano e direto, de 2 a 4 frases curtas, no máximo 1 emoji, sem links.
-Comece cumprimentando e se apresentando como ${ajustes.remetente_nome}. Cite o nome do negócio.
-Use a OBSERVAÇÃO dada e nenhum outro fato. Não invente números, notas, prazos, problemas ou trabalhos já feitos.
-Termine com uma pergunta simples, sem pressão. Não escreva assinatura nem aspas.`,
-    usuario: `NEGÓCIO: ${lead.nome} (${lead.categoria || NICHOS[lead.nicho]?.rotulo}, ${lead.cidade})\nOBSERVAÇÃO: ${observacao(lead, angulo)}\n\nEscreva só a mensagem.`,
-  };
+  const I = idiomaDoLead(lead);
+  return I.prompt(remetenteDoIdioma(ajustes, I), { ...lead, categoria: lead.categoria || NICHOS[lead.nicho]?.rotulo }, observacao(lead, angulo));
 }
 
 async function redigir(db, job, ctx) {
@@ -423,16 +403,17 @@ async function redigir(db, job, ctx) {
     try { bruto = await gerarTexto(promptMaia(lead, ajustes, angulo)); }
     catch (e) { registrarRejeicoes(db, lead, 'maia_modelo', [e.message.slice(0, 100)]); throw e; } // sem modelo / modelo fora do ar
     ctx.usar?.('checar_contradicao');
-    const v = validarMensagem(bruto, ajustes);
+    const idioma = idiomaDoLead(lead);
+    const v = validarMensagem(bruto, ajustes, idioma);
     const contra = contradicoes(v.texto, lead, ajustes);
-    const semObs = carregaObservacao(v.texto, angulo) ? [] : ['não traz a observação concreta'];
+    const semObs = carregaObservacao(v.texto, angulo, idioma) ? [] : ['não traz a observação concreta'];
     registrarRejeicoes(db, lead, 'maia_validacao', v.problemas);
     registrarRejeicoes(db, lead, 'maia_contradicao', contra);
     registrarRejeicoes(db, lead, 'maia_observacao', semObs);
     const problemas = [...v.problemas, ...contra, ...semObs];
     if (problemas.length) throw new Error(`texto do modelo recusado: ${problemas.join(', ')}`);
     const port = ajustes.remetente_portfolio && !v.texto.includes(ajustes.remetente_portfolio)
-      ? v.texto.replace(/\n\nSe não quiser/, `\nMeus trabalhos: ${ajustes.remetente_portfolio}\n\nSe não quiser`) : v.texto;
+      ? v.texto.replace(`\n\n${idioma.sair.linha}`, `\n${idioma.portfolio} ${ajustes.remetente_portfolio}\n\n${idioma.sair.linha}`) : v.texto;
     texto = port; origem = 'modelo';
   } catch (e) {
     ctx.usar?.('texto_fixo');
@@ -458,10 +439,11 @@ export function aprovarEnvio(db, leadId, texto, quem = 'operador') {
   if (ajustes.envio.so_celular && lead.telefone_tipo !== 'celular') throw new Error('telefone fixo: desligue "só celular" nos ajustes para enviar');
   const ja = db.prepare("SELECT id FROM envios WHERE telefone = ? AND status IN ('aprovado', 'enviado')").get(lead.telefone);
   if (ja) throw new Error('já existe envio para este telefone');
-  const msg = validarMensagem(texto || lead.mensagem, ajustes).texto;
+  const idioma = idiomaDoLead(lead);
+  const msg = validarMensagem(texto || lead.mensagem, ajustes, idioma).texto;
   // se você mexeu no texto ao aprovar, o original da Maia fica guardado. Compara com a versão JÁ validada: a linha do SAIR
   // e a limpeza de links são do sistema, não edição sua, e não podem sujar o dado de treino.
-  if (!igualTexto(msg, validarMensagem(lead.mensagem, ajustes).texto)) registrarEdicao(db, lead, msg);
+  if (!igualTexto(msg, validarMensagem(lead.mensagem, ajustes, idioma).texto)) registrarEdicao(db, lead, msg);
   db.prepare("INSERT INTO envios (lead_id, telefone, texto, status, criado_em) VALUES (?, ?, ?, 'aprovado', ?)").run(lead.id, lead.telefone, msg, agora());
   db.prepare("UPDATE leads SET etapa = 'aprovado', mensagem = ?, atualizado_em = ? WHERE id = ?").run(msg, agora(), lead.id);
   registrar(db, 'leo', 'aprovado', `${lead.nome} entrou na fila de envio (${quem})`, { lead_id: lead.id });
@@ -553,7 +535,7 @@ export function receberMensagem(db, { telefone, texto, deMim, waId = null }) {
   const lead = db.prepare(`SELECT * FROM leads WHERE telefone IN (${candidatos.map(() => '?').join(',')})`).get(...candidatos);
   if (!lead) return null;
   registrarMensagem(db, { leadId: lead.id, telefone: lead.telefone, direcao: 'entrada', origem: 'lead', texto, waId, status: 'recebida' });
-  registrarReacao(db, lead, { texto, sair: PEDIU_PARA_SAIR.test(texto), origem: 'whatsapp' });
+  registrarReacao(db, lead, { texto, sair: idiomaDoLead(lead).sair.pedido.test(texto), origem: 'whatsapp' });
   return lead.id;
 }
 

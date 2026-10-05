@@ -83,7 +83,7 @@ export function cobertura(db) {
       SUM(CASE WHEN etapa IN ('respondeu', 'fechado', 'perdido') THEN 1 ELSE 0 END) responderam,
       SUM(CASE WHEN etapa = 'fechado' THEN 1 ELSE 0 END) fechados
       FROM leads WHERE varredura_id = ?`).get(v.id);
-    return { varredura_id: v.id, cidade: v.cidade, uf: v.uf, nicho: v.nicho, fonte: v.fonte, meta: v.limite, criado_em: v.criado_em,
+    return { varredura_id: v.id, cidade: v.cidade, uf: v.uf, pais: v.pais || 'BR', nicho: v.nicho, fonte: v.fonte, meta: v.limite, criado_em: v.criado_em,
       lotes, ...Object.fromEntries(Object.entries(c).map(([k, n]) => [k, n || 0])), proximo: podeAbrirLote(db, v.id) };
   });
 }
