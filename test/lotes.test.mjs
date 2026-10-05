@@ -104,3 +104,15 @@ test('a migração põe a busca antiga como lote 1, sem perder histórico', () =
     assert.equal(db.prepare('SELECT COUNT(*) n FROM leads WHERE lote_id = ?').get(l.id).n, 2);
   });
 });
+
+test('o coletor decide se a fonte acabou: total menor por causa de repetidos não encerra a busca', () => {
+  const db = banco();
+  const l = abrirLote(db, 1, 20);
+  const f = concluirLote(db, l.id, { coletados: 17, novos: 17, repetidos: 0, fim: false }); // 3 termos, repetidos entre eles: 17 de 20
+  assert.equal(f.fim, 0);
+  const p = podeAbrirLote(db, 1);
+  assert.equal(p.esgotada, undefined);
+  const l2db = banco();
+  const l2 = abrirLote(l2db, 1, 20);
+  assert.equal(concluirLote(l2db, l2.id, { coletados: 9, novos: 9, repetidos: 0, fim: true }).fim, 1); // todos os termos acabaram
+});

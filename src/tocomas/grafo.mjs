@@ -68,7 +68,8 @@ export function conferirHandoff(crenca, paraJob, contexto = null) {
 
 // Fronteira de memória por domínio: o que cada um enxerga do lead.
 // A Escrita (Maia) recebe só os sinais de atraso, nunca o HTML/tecnologias medidos pela Coleta.
-const CAMPOS_ESCRITA = ['id', 'nome', 'categoria', 'nicho', 'cidade', 'uf', 'telefone', 'situacao_site', 'rating', 'avaliacoes', 'decisao', 'etapa'];
+// `pais` precisa estar aqui: é ele que decide o idioma da mensagem (Portugal, Paraguai). Sem ele a Maia tratava todo lead como brasileiro.
+const CAMPOS_ESCRITA = ['id', 'nome', 'categoria', 'nicho', 'cidade', 'uf', 'pais', 'telefone', 'situacao_site', 'rating', 'avaliacoes', 'decisao', 'etapa'];
 
 export function visao(lead, dominio) {
   if (!lead) return lead;

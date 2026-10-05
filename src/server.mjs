@@ -188,7 +188,7 @@ function criarVarredura({ cidade, uf, nicho, fonte, limite, pais = null }) {
   cidade = achada.cidade; uf = achada.uf;
   if (!NICHOS[nicho]) throw new HttpError(400, 'nicho desconhecido');
   if (!FONTES[fonte]) throw new HttpError(400, 'fonte desconhecida');
-  const meta = Math.min(Math.max(Math.round(Number(limite)) || lerAjustes(db).varredura.limite_por_execucao, 1), META_MAXIMA);
+  const meta = Math.min(Math.max(Math.round(Number(limite)) || META_PADRAO, 1), META_MAXIMA); // sem número dito (voz), o lote é o padrão de 50
   let v = db.prepare('SELECT * FROM varreduras WHERE cidade = ? AND uf = ? AND nicho = ? AND fonte = ?').get(cidade, uf, nicho, fonte);
   if (!v) {
     db.prepare('INSERT INTO varreduras (cidade, uf, nicho, fonte, limite, criado_em, pais) VALUES (?, ?, ?, ?, ?, ?, ?)').run(cidade, uf, nicho, fonte, meta, agora(), achada.pais || 'BR');

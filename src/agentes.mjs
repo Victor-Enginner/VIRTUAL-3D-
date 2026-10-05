@@ -113,7 +113,7 @@ async function varrer(db, job, ctx) {
     concluirLote(db, lote.id, { coletados: novos + repetidos, novos, repetidos, erro: e.message });
     throw e;
   }
-  const fechado = concluirLote(db, lote.id, { coletados: res.itens.length, novos, repetidos, aviso: res.aviso });
+  const fechado = concluirLote(db, lote.id, { coletados: res.itens.length, novos, repetidos, aviso: res.aviso, fim: res.fim });
   const resultado = { lote: lote.numero, coletados: res.itens.length, novos, repetidos, aviso: res.aviso, fim: Boolean(fechado.fim) };
   db.prepare('UPDATE varreduras SET ultima_execucao = ?, ultimo_resultado = ? WHERE id = ?').run(agora(), json(resultado), v.id);
   registrar(db, 'atlas', 'varredura_fim', `${rotulo}, lote ${lote.numero}: ${res.itens.length} encontrados, ${novos} novos${fechado.fim ? ' (a fonte não tem mais resultados para esta busca)' : ''}${res.aviso ? ` (${res.aviso})` : ''}`, { dados: resultado });
@@ -328,12 +328,19 @@ export function decisaoSemModelo() {
 
 // ------------------------------------------------------------------ Maia
 
+// O nome no Maps vem com propaganda ("Joana Nail Designer | Unhas de Gel, Acrílico e Verniz Gel Lisboa Centro"). Na mensagem vai só
+// o nome de verdade: o trecho antes de "|", " - " ou " – ".
+export function nomeCurto(nome) {
+  const primeiro = String(nome || '').split(/\s*[|–—]\s*|\s+-\s+/)[0].trim();
+  return primeiro.length >= 3 ? primeiro : String(nome || '').trim();
+}
+
 // A observação do ângulo sai no idioma do país do lead (src/idiomas.mjs). Para o Brasil é exatamente o texto de sempre.
 export function observacao(lead, angulo) {
   const aud = parse(lead.auditoria);
   const I = idiomaDoLead(lead);
   const sit = SITUACOES[lead.situacao_site]?.toLowerCase().replace('só ', '') || null;
-  return (I.observacoes[angulo] || I.observacoes.ser_encontrado)(lead, aud?.sinais || [], sit);
+  return (I.observacoes[angulo] || I.observacoes.ser_encontrado)({ ...lead, nome: nomeCurto(lead.nome) }, aud?.sinais || [], sit);
 }
 
 // Afirmações que o modelo pequeno inventou no teste ao vivo ("o site está desativado" para quem
@@ -385,10 +392,10 @@ export function validarMensagem(texto, ajustes, idioma = IDIOMAS['pt-BR']) {
 // Prompt da Maia. Exportado para a bancada de modelos testar exatamente o que roda em produção.
 export function promptMaia(lead, ajustes, angulo) {
   const I = idiomaDoLead(lead);
-  return I.prompt(remetenteDoIdioma(ajustes, I), { ...lead, categoria: lead.categoria || NICHOS[lead.nicho]?.rotulo }, observacao(lead, angulo));
+  return I.prompt(remetenteDoIdioma(ajustes, I), { ...lead, nome: nomeCurto(lead.nome), categoria: lead.categoria || NICHOS[lead.nicho]?.rotulo }, observacao(lead, angulo));
 }
 
-async function redigir(db, job, ctx) {
+export async function redigir(db, job, ctx) {
   // fronteira de memória: a Maia vê só o que o domínio Escrita pode ver (sem HTML/tecnologias)
   const lead = visao(db.prepare('SELECT * FROM leads WHERE id = ?').get(job.ref), 'escrita');
   if (!lead || lead.etapa !== 'qualificado') return;

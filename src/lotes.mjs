@@ -54,10 +54,13 @@ export function abrirLote(db, varreduraId, meta = META_PADRAO) {
 }
 
 // o coletor terminou: guarda o resultado. `fim` = veio menos do que o pedido (a fonte acabou) ou nada de novo.
-export function concluirLote(db, loteId, { coletados, novos, repetidos, aviso = null, erro = null }) {
+// `fim` vem do coletor quando ele sabe (cada termo devolveu menos do que o pedido); sem ele vale a conta simples pelo total.
+export function concluirLote(db, loteId, { coletados, novos, repetidos, aviso = null, erro = null, fim: fimDoColetor }) {
   const l = db.prepare('SELECT * FROM lotes WHERE id = ?').get(loteId);
   if (!l) return null;
-  const fim = !erro && (novos === 0 || coletados < Math.floor((l.pedido || coletados) * 0.9)) ? 1 : 0;
+  const semNada = novos === 0;
+  const curto = fimDoColetor === undefined ? coletados < Math.floor((l.pedido || coletados) * 0.9) : Boolean(fimDoColetor);
+  const fim = !erro && (semNada || curto) ? 1 : 0;
   db.prepare('UPDATE lotes SET status = ?, coletados = ?, novos = ?, repetidos = ?, fim = ?, aviso = ?, coletado_em = ? WHERE id = ?')
     .run(erro ? 'erro' : 'coletado', coletados, novos, repetidos, fim, erro ? String(erro).slice(0, 300) : aviso, agora(), loteId);
   return db.prepare('SELECT * FROM lotes WHERE id = ?').get(loteId);

@@ -52,6 +52,7 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'B
   const itens = [];
   const avisos = [];
   const erros = [];
+  let processados = 0, curtos = 0; // a fonte só "acabou" se TODOS os termos foram buscados e cada um devolveu menos do que se pediu a ele
   for (const termoBase of termos) {
     if (itens.length >= limite) break;
     try {
@@ -60,6 +61,8 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'B
         if (vistos.has(k) || itens.length >= limite) return;
         vistos.add(k); itens.push(o); aoItem?.(o);
       } });
+      processados++;
+      if (r.itens.length < porTermo) curtos++;
       if (r.aviso) avisos.push(`${termoBase}: ${r.aviso}`);
     } catch (e) {
       erros.push(e);
@@ -67,7 +70,7 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'B
     }
   }
   if (!itens.length && erros.length === termos.length) throw erros[0]; // nenhum termo funcionou: o erro sobe, como antes
-  return { itens, aviso: avisos.length ? avisos.join(' · ') : null, termos };
+  return { itens, aviso: avisos.length ? avisos.join(' · ') : null, termos, fim: processados === termos.length && curtos === processados };
 }
 
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
@@ -102,5 +105,5 @@ export async function coletarOsm({ cidade, nicho, limite, pais = 'BR' }) {
       maps_url: `https://www.openstreetmap.org/${e.type}/${e.id}`,
     };
   });
-  return { itens: itens.slice(0, limite), aviso: itens.length ? null : 'nenhum lugar com nome no OSM para essa cidade/nicho' };
+  return { itens: itens.slice(0, limite), aviso: itens.length ? null : 'nenhum lugar com nome no OSM para essa cidade/nicho', fim: itens.length < limite };
 }

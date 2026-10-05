@@ -120,3 +120,44 @@ test('termos de busca no idioma do país, com volta para os do Brasil quando nã
   assert.equal(termosDoNicho('academia', 'es-PY')[0], 'gimnasio');
   assert.equal(termosDoNicho('barbearia', 'pt-PT')[0], 'barbearia'); // sem tradução própria: usa o do Brasil
 });
+
+test('a Maia (redigir de verdade) escreve no idioma do país do lead: Portugal e Paraguai não saem em português do Brasil', async () => {
+  const { redigir } = await import('../src/agentes.mjs');
+  const db = abrirBanco(':memory:');
+  const ins = db.prepare("INSERT INTO leads (id, nome, categoria, nicho, cidade, uf, pais, telefone, telefone_tipo, situacao_site, etapa, decisao, fonte, criado_em, atualizado_em) VALUES (?, ?, ?, 'salao_unhas', ?, ?, ?, ?, 'celular', 'so_rede_social', 'qualificado', ?, 'maps', 't', 't')");
+  const decisao = JSON.stringify({ answers: { abordagem: { choice: 'independencia' } } });
+  ins.run('pt1', 'Glitter Nails', 'Salão de unhas', 'Lisboa', 'LIS', 'PT', '351920428898', decisao);
+  ins.run('py1', 'Uñas Bella', 'Salón de uñas', 'Asunción', 'ASU', 'PY', '595981123456', decisao);
+  ins.run('br1', 'Studio Nails', 'Salão de unhas', 'Franca', 'SP', 'BR', '5516993850531', decisao);
+  const ctx = { tarefa() {}, usar() {} };
+  for (const ref of ['pt1', 'py1', 'br1']) await redigir(db, { ref }, ctx);
+  const msg = Object.fromEntries(db.prepare('SELECT id, mensagem FROM leads').all().map((r) => [r.id, r.mensagem]));
+  assert.match(msg.pt1, /Se não pretender receber mensagens, basta responder SAIR\./);
+  assert.match(msg.pt1, /crio websites e landing pages modernos/);
+  assert.doesNotMatch(msg.pt1, /Posso te|te mostrar|Meu nome é|Se não quiser/);
+  assert.match(msg.py1, /responda SALIR\./);
+  assert.match(msg.py1, /Si no desea|creo sitios web/);
+  assert.doesNotMatch(msg.py1, /\bnão\b|\bvocê\b/);
+  assert.match(msg.br1, /Se não quiser receber mensagens, é só responder SAIR\./); // Brasil não mudou
+});
+
+test('a fronteira de memória da Maia deixa passar o país (é ele que decide o idioma)', async () => {
+  const { visao } = await import('../src/tocomas/grafo.mjs');
+  assert.equal(visao({ id: 'x', nome: 'N', pais: 'PT', html: '<b>' }, 'escrita').pais, 'PT');
+  assert.equal(visao({ id: 'x', nome: 'N', pais: 'PT', html: '<b>' }, 'escrita').html, undefined);
+});
+
+test('nome curto: a propaganda do Maps sai da mensagem, e a conferência continua aceitando o texto', async () => {
+  const { nomeCurto } = await import('../src/agentes.mjs');
+  assert.equal(nomeCurto('Joana Nail Designer | Unhas de Gel, Acrílico e Verniz Gel Lisboa Centro'), 'Joana Nail Designer');
+  assert.equal(nomeCurto('Hit Nails Beauty Salon | Unhas De Gel e Acrílico Lisboa'), 'Hit Nails Beauty Salon');
+  assert.equal(nomeCurto('Studio Bueno Lisboa - Especialista em Naturalidade'), 'Studio Bueno Lisboa');
+  assert.equal(nomeCurto('Nails Booster Studio - Nails salon Lisbon'), 'Nails Booster Studio');
+  assert.equal(nomeCurto('Barbearia do Zé'), 'Barbearia do Zé');
+  assert.equal(nomeCurto('A - B'), 'A - B'); // pedaço curto demais: mantém o nome inteiro
+  const l = lead({ pais: 'PT', nome: 'Joana Nail Designer | Unhas de Gel, Acrílico e Verniz Gel Lisboa Centro', situacao_site: 'so_rede_social' });
+  const t = mensagemFallback(l, ajustes, 'independencia');
+  assert.match(t, /a Joana Nail Designer depende hoje de/);
+  assert.doesNotMatch(t, /Unhas de Gel/);
+  assert.deepEqual(contradicoes(t, l, ajustes), []);
+});
