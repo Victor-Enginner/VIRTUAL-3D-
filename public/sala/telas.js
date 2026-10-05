@@ -34,20 +34,22 @@ export function desenharTela(tela, { nome, estado, tarefa, linhas = [], relogio 
     return;
   }
   g.fillStyle = '#0f1117'; g.fillRect(0, 0, W, H);
-  g.fillStyle = tela.cor; g.fillRect(0, 0, W, 34);
+  g.fillStyle = tela.cor; g.fillRect(0, 0, W, 38);
+  // moldura na cor do agente em volta de toda a tela: se o topo ficar escondido pela borda ou pela webcam do monitor, a cor continua à vista
+  g.strokeStyle = tela.cor; g.lineWidth = 14; g.strokeRect(7, 7, W - 14, H - 14);
   g.fillStyle = '#fff'; g.font = '600 20px system-ui, sans-serif';
-  g.fillText(`${nome} · ${estado === 'trabalhando' ? 'trabalhando' : estado === 'na_mesa' ? 'aguardando tarefa' : 'fora da mesa'}`, 14, 24);
+  g.fillText(`${nome} · ${estado === 'trabalhando' ? 'trabalhando' : estado === 'na_mesa' ? 'aguardando tarefa' : 'fora da mesa'}`, 22, 27);
 
   g.font = '600 22px system-ui, sans-serif';
   g.fillStyle = '#e8e8f0';
-  const linhasTarefa = quebrar(g, tarefa || 'Sem tarefa agora', W - 28).slice(0, 2);
-  linhasTarefa.forEach((l, i) => g.fillText(l, 14, 70 + i * 28));
+  const linhasTarefa = quebrar(g, tarefa || 'Sem tarefa agora', W - 50).slice(0, 2);
+  linhasTarefa.forEach((l, i) => g.fillText(l, 26, 74 + i * 28));
 
   g.font = '16px ui-monospace, Consolas, monospace';
   g.fillStyle = '#8fd19e';
-  linhas.slice(0, 6).forEach((l, i) => g.fillText(`> ${l}`.slice(0, 54), 14, 150 + i * 24));
+  linhas.slice(0, 6).forEach((l, i) => g.fillText(`> ${l}`.slice(0, 50), 26, 150 + i * 24));
   if (estado === 'trabalhando' && Math.floor(relogio * 2) % 2) {
-    g.fillStyle = '#8fd19e'; g.fillRect(14 + 9.6 * 2, 150 + Math.min(linhas.length, 6) * 24 - 14, 10, 18); // cursor piscando
+    g.fillStyle = '#8fd19e'; g.fillRect(26 + 9.6 * 2, 150 + Math.min(linhas.length, 6) * 24 - 14, 10, 18); // cursor piscando
   }
   tela.textura.needsUpdate = true;
 }

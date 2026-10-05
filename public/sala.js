@@ -402,7 +402,11 @@ function atualizarConversas() {
 function atualizarPostos(relogio) {
   for (const id of Object.keys(escritorio.postos)) {
     const posto = escritorio.postos[id];
-    if (!telas[id]) telas[id] = criarTela(id === 'operador' ? '#3b3b46' : estado?.agentes?.[id]?.cor || agentes[id]?.info.cor || '#555');
+    // a barra do topo da tela leva a cor do agente. A tela nasce uma vez; se os dados do agente ainda não tinham chegado,
+    // ela ficava cinza para sempre, então a cor é conferida a cada volta e a tela é redesenhada quando muda
+    const corDoAgente = id === 'operador' ? '#3b3b46' : estado?.agentes?.[id]?.cor || agentes[id]?.info.cor || '#555';
+    if (!telas[id]) telas[id] = criarTela(corDoAgente);
+    else if (telas[id].cor !== corDoAgente) { telas[id].cor = corDoAgente; telas[id].ultimo = ''; }
     // a tela do monitor só existe depois que o modelo carrega; o operador usa os monitores da Base do Mestre
     if (posto.tela && posto.tela.material !== telas[id].material) posto.tela.material = telas[id].material;
     let est, tarefa;
@@ -571,6 +575,23 @@ const som = (() => {
     },
   };
 })();
+// ocultar textos: esconde os nomes sobre os agentes e a lista de eventos, para ver só o ambiente (lembra a escolha neste navegador)
+const CHAVE_TEXTOS = 'prospector.sala.sem-textos';
+function pintarTextos(oculto) {
+  document.documentElement.dataset.semTextos = oculto ? '1' : '';
+  const b = $('#btn-textos');
+  b.textContent = oculto ? 'Mostrar textos' : 'Ocultar textos';
+  b.setAttribute('aria-pressed', String(oculto));
+}
+let textosOcultos = false;
+try { textosOcultos = localStorage.getItem(CHAVE_TEXTOS) === '1'; } catch { /* sem armazenamento: vale só nesta visita */ }
+pintarTextos(textosOcultos);
+$('#btn-textos').addEventListener('click', () => {
+  textosOcultos = !textosOcultos;
+  pintarTextos(textosOcultos);
+  try { localStorage.setItem(CHAVE_TEXTOS, textosOcultos ? '1' : '0'); } catch { /* ok */ }
+});
+
 const pintarSom = (on) => { const b = $('#btn-som'); b.textContent = on ? 'Som ligado' : 'Som desligado'; b.setAttribute('aria-pressed', String(on)); };
 $('#btn-som').addEventListener('click', () => pintarSom(som.alternar()));
 if (modoCalmo()) { const b = $('#btn-som'); b.disabled = true; b.textContent = 'Som desligado (modo calmo)'; b.title = 'O modo calmo mantém o som da sala desligado. Mude em Conforto.'; }
