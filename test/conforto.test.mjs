@@ -7,7 +7,7 @@ import path from 'node:path';
 import { movimentoReduzido, preferencias, salvar } from '../public/ui/conforto.js';
 
 const PUBLIC = path.resolve(import.meta.dirname, '..', 'public');
-const arquivos = (ext) => fs.readdirSync(PUBLIC, { recursive: true }).filter((f) => ext.some((e) => f.endsWith(e)) && !f.includes('assets')).map((f) => path.join(PUBLIC, f));
+const arquivos = (ext) => fs.readdirSync(PUBLIC, { recursive: true }).filter((f) => ext.some((e) => f.endsWith(e)) && !f.includes('assets') && !f.startsWith('ilhas')).map((f) => path.join(PUBLIC, f));
 const fonte = (f) => fs.readFileSync(f, 'utf8');
 const rel = (f) => path.relative(PUBLIC, f).split(path.sep).join('/');
 
@@ -58,4 +58,17 @@ test('toda página do menu tem ícone (senão aparece "undefined" na barra later
   const ids = [...shell.matchAll(/^\s*\['(\w+)', '\/[^']*', '[^']*', '(?:workspace|escritorio)'\]/gm)].map((m) => m[1]);
   assert.ok(ids.length >= 10, `${ids.length} páginas no menu`);
   for (const id of ids) assert.match(shell, new RegExp(String.raw`^\s+${id}: ic\(`, 'm'), `falta ícone para \"${id}\"`);
+});
+
+// As ilhas React (web/src) são compiladas para public/ilhas; o bundle tem código do React, então a regra vale no FONTE.
+test('ilhas React: fonte sem voz, sem áudio e sem animação em laço infinito', () => {
+  const WEB = path.resolve(import.meta.dirname, '..', 'web', 'src');
+  const fontes = fs.readdirSync(WEB, { recursive: true }).filter((f) => /\.(tsx?|css)$/.test(f)).map((f) => path.join(WEB, f));
+  assert.ok(fontes.length > 0);
+  for (const f of fontes) {
+    const t = fonte(f), nome = path.relative(WEB, f);
+    assert.doesNotMatch(t, /speechSynthesis|SpeechSynthesisUtterance|\.speak\(|new (webkitA|a)?AudioContext|autoplay/i, `${nome} fala ou toca`);
+    assert.doesNotMatch(t, /repeat:\s*Infinity|animation[^;]*infinite/, `${nome} anima em laço sozinho`);
+  }
+  assert.match(fonte(path.join(WEB, 'ilhas.tsx')), /reducedMotion/, 'as ilhas respeitam o modo calmo');
 });

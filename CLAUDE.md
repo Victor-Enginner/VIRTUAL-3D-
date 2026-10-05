@@ -16,6 +16,7 @@ Projeto do Victor (PT-BR). Agentes de prospecção com modelos abertos + escrit�
 ## Stack
 - Node 22.5+ sem dependências (`node:http`, `node:sqlite`, `node:test`). Python + Playwright só no coletor do Maps.
 - Front: HTML/CSS/JS puros; Three.js r170 por importmap (jsdelivr). Design system em `public/ui/`.
+- Ilhas React (shadcn/Componentry/OriginKit) só em `web/`, compiladas para `public/ilhas/` (ver `web/LEIAME.md`). O servidor segue sem dependências.
 
 ## Comandos
 ```bash
