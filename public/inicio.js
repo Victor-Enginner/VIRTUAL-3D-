@@ -20,16 +20,16 @@ pagina.innerHTML = `
     <p class="eyebrow">SEU ESCRITÓRIO. SUA PROSPECÇÃO.</p>
     <h1 id="t-hero">O que vamos prospectar hoje?</h1>
     <p class="o-sub">Do primeiro achado no Maps à resposta no WhatsApp: a equipe trabalha, você decide.</p>
+    <div class="o-linha-comando">
+    <button class="mic-voz" id="i-mic" type="button" aria-label="Falar um comando">${ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')}<span>Falar</span></button>
     <form class="o-compositor" id="f-comando">
       <label class="sr" for="i-comando">Comando para os agentes</label>
-      <div class="o-entrada">
-        <button class="mic-voz" id="i-mic" type="button" aria-label="Falar um comando">${ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')}<span>Falar</span></button>
-        <textarea id="i-comando" rows="2" maxlength="300" placeholder='Ex.: "varre barbearias em Franca SP", "resumo do dia", "pausar"'></textarea>
-      </div>
+      <textarea id="i-comando" rows="2" maxlength="300" placeholder='Ex.: "varre barbearias em Franca SP", "resumo do dia", "pausar"'></textarea>
       <div class="o-compositor-base"><span>${ICONES.agentes}Comando para a equipe <span class="o-local">· roda no seu PC</span></span>
         <button class="btn primario" type="submit">Enviar ${SETA}</button></div>
       <p class="o-resposta" id="resposta" aria-live="polite"></p>
     </form>
+    </div>
     <div class="o-atalhos" aria-label="Atalhos">
       <a class="btn" href="/?cartoes=1">${ICONES.painel}Aprovar mensagens</a>
       <a class="btn" href="/producao.html">${ICONES.producao}Abrir o quadro</a>

@@ -294,15 +294,15 @@
 .o-ilha-envios { display: flex; justify-content: center; margin: var(--esp-6) 0; }
 .o-ilha-envios:empty { display: none; }
 
-/* comando de voz no Início (ui/voz.js): microfone grande à esquerda do campo, com a palavra "Falar"; parado, só muda de cor ao escutar */
-.o-entrada { display: flex; align-items: center; gap: var(--esp-4); }
-.o-entrada textarea { flex: 1; min-width: 0; }
-.mic-voz { flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; width: 64px; height: 64px; border-radius: 16px; cursor: pointer; font: 600 11px/1 var(--fonte); letter-spacing: .04em; text-transform: uppercase; color: var(--lima-500);
-  background: linear-gradient(#1f2a14, #121a0b); border: 1.5px solid #b7ff0066; box-shadow: 0 6px 14px #0000004d; transition: transform var(--dur-base) ease, box-shadow var(--dur-base) ease, border-color var(--dur-rapida); }
-.mic-voz svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.mic-voz:hover { transform: scale(1.04); border-color: var(--lima-500); box-shadow: 0 8px 20px #00000066, 0 0 0 1px #b7ff0033; }
+/* comando de voz no Início (ui/voz.js): microfone pequeno FORA da caixa, à esquerda do campo; parado, só muda de cor ao escutar */
+.o-linha-comando { display: flex; align-items: center; gap: var(--esp-3); width: min(840px, 100%); }
+.o-linha-comando .o-compositor { flex: 1; min-width: 0; width: auto; }
+.mic-voz { flex: none; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; width: 48px; height: 48px; border-radius: 14px; cursor: pointer; font: 600 9px/1 var(--fonte); letter-spacing: .05em; text-transform: uppercase; color: var(--lima-500);
+  background: linear-gradient(#1f2a14, #121a0b); border: 1.5px solid #b7ff0066; box-shadow: 0 4px 10px #0000004d; transition: transform var(--dur-base) ease, box-shadow var(--dur-base) ease, border-color var(--dur-rapida); }
+.mic-voz svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.mic-voz:hover { transform: scale(1.05); border-color: var(--lima-500); box-shadow: 0 6px 16px #00000066, 0 0 0 1px #b7ff0033; }
 .mic-voz:focus-visible { outline: 2px solid var(--lima-500); outline-offset: 3px; }
 .mic-voz:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 .mic-voz.ouvindo { color: #0b1200; background: var(--lima-500); border-color: var(--lima-300); }
 html[data-calmo="1"] .mic-voz:hover { transform: none; }
-@media (max-width: 480px) { .mic-voz { width: 56px; height: 56px; } .o-entrada { gap: var(--esp-3); } }
+@media (max-width: 480px) { .o-linha-comando { gap: var(--esp-2); } .mic-voz { width: 44px; height: 44px; } }
