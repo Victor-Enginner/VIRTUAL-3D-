@@ -293,3 +293,9 @@
 /* ilha React: cartão de envios do dia (web/src/ilhas/cartao-envios.tsx) */
 .o-ilha-envios { display: flex; justify-content: center; margin: var(--esp-6) 0; }
 .o-ilha-envios:empty { display: none; }
+
+/* comando de voz no Início (ui/voz.js): parado, sem animação; só muda de cor enquanto escuta */
+.o-acoes-compositor { display: flex; align-items: center; gap: var(--esp-2); }
+.mic-voz { width: 44px; height: 44px; }
+.mic-voz svg { width: 20px; height: 20px; }
+.mic-voz.ouvindo { --luz: var(--lima-500); color: var(--lima-500); box-shadow: 0 0 0 2px var(--lima-500), 0 6px 14px #00000059; }

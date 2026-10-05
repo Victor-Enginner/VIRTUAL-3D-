@@ -15,7 +15,8 @@ test('ninguém fala: nenhum arquivo do front usa voz sintetizada (só o microfon
   for (const f of arquivos(['.js', '.html'])) {
     assert.doesNotMatch(fonte(f), /speechSynthesis|SpeechSynthesisUtterance|\.speak\(/, `${rel(f)} faz algo falar`);
   }
-  assert.match(fonte(path.join(PUBLIC, 'app.js')), /SpeechRecognition/, 'o comando de voz (microfone) continua');
+  assert.match(fonte(path.join(PUBLIC, 'ui', 'voz.js')), /SpeechRecognition/, 'o comando de voz (microfone) continua');
+  for (const tela of ['app.js', 'inicio.js']) assert.match(fonte(path.join(PUBLIC, tela)), /ligarVoz\(/, `${tela} tem o microfone`);
 });
 
 test('nada toca sozinho: sem autoplay e AudioContext só na Sala, atrás do botão de som', () => {

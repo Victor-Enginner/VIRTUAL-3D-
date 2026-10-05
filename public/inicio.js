@@ -3,6 +3,7 @@ import { montarShell, atualizarShell, ICONES, ic } from './ui/shell.js';
 import { api, esc, dois, quando, aCada, vazio } from './ui/util.js';
 import { montarGlobo } from './ui/globo.js';
 import { vestirAviao } from './ui/botao-aviao.js';
+import { ligarVoz } from './ui/voz.js';
 
 const SETA = ic('<path d="M5 12h14M13 6l6 6-6 6"/>');
 const DIAGONAL = ic('<path d="M7 17L17 7M8 7h9v9"/>');
@@ -23,7 +24,10 @@ pagina.innerHTML = `
       <label class="sr" for="i-comando">Comando para os agentes</label>
       <textarea id="i-comando" rows="2" maxlength="300" placeholder='Ex.: "varre barbearias em Franca SP", "resumo do dia", "pausar"'></textarea>
       <div class="o-compositor-base"><span>${ICONES.agentes}Comando para a equipe <span class="o-local">· roda no seu PC</span></span>
-        <button class="btn primario" type="submit">Enviar ${SETA}</button></div>
+        <div class="o-acoes-compositor">
+          <button class="btn icone mic-voz" id="i-mic" type="button" aria-label="Falar um comando">${ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')}</button>
+          <button class="btn primario" type="submit">Enviar ${SETA}</button>
+        </div></div>
       <p class="o-resposta" id="resposta" aria-live="polite"></p>
     </form>
     <div class="o-atalhos" aria-label="Atalhos">
@@ -51,6 +55,13 @@ pagina.innerHTML = `
   </div>`;
 pagina.removeAttribute('aria-busy');
 vestirAviao($('#f-comando button[type=submit]'), { texto: 'Enviar' }).classList.add('compacto');
+// comando de voz: o microfone só liga quando você clica; ao terminar de falar, o comando é enviado como se você tivesse digitado
+ligarVoz($('#i-mic'), {
+  aoMudar: (ouvindo) => { if (ouvindo) $('#resposta').textContent = 'Ouvindo… fale o comando.'; },
+  aoParcial: (t) => { $('#i-comando').value = t; },
+  aoFinal: () => $('#f-comando').requestSubmit(),
+  aoErro: (m) => { $('#resposta').textContent = m; },
+});
 try { window.Ilhas?.montar('cartao-envios', $('#ilha-envios')); } catch { /* sem a ilha o Início funciona igual */ }
 const globo = montarGlobo($('#globo'), { lado: 280 }); // pulsa como coração só quando os agentes estão trabalhando
 

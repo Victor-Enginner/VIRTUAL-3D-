@@ -2,6 +2,7 @@
 // títulos de sites), então todo valor passa por esc() antes de entrar no HTML.
 import { montarShell, atualizarShell } from './ui/shell.js';
 import { abrirCartoes } from './cartoes.js';
+import { ligarVoz } from './ui/voz.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -491,25 +492,10 @@ async function executarComando(texto) {
 }
 
 function prepararVoz() {
-  const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-  const mic = $('#mic');
-  if (!Rec) { mic.title = 'Este navegador não tem reconhecimento de voz (use Chrome ou Edge) — digite o comando'; mic.disabled = true; return; }
-  // Aviso honesto: no Chrome/Edge o áudio é processado pelo serviço do navegador (Google/Microsoft), não localmente.
-  mic.title = 'Falar um comando (o reconhecimento é do navegador: no Chrome o áudio vai para o Google)';
-  let rec = null;
-  mic.addEventListener('click', () => {
-    if (rec) { rec.stop(); return; }
-    rec = new Rec();
-    rec.lang = 'pt-BR'; rec.interimResults = true; rec.maxAlternatives = 1;
-    mic.classList.add('ouvindo');
-    rec.onresult = (ev) => {
-      const t = [...ev.results].map((r) => r[0].transcript).join(' ');
-      $('#comando').value = t;
-      if (ev.results[ev.results.length - 1].isFinal) executarComando(t);
-    };
-    rec.onerror = (ev) => { $('#resposta-comando').textContent = ev.error === 'not-allowed' ? 'Permissão de microfone negada.' : `Voz: ${ev.error}`; };
-    rec.onend = () => { mic.classList.remove('ouvindo'); rec = null; };
-    rec.start();
+  ligarVoz($('#mic'), {
+    aoParcial: (t) => { $('#comando').value = t; },
+    aoFinal: (t) => executarComando(t),
+    aoErro: (m) => { $('#resposta-comando').textContent = m; },
   });
 }
 
