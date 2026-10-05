@@ -2,6 +2,7 @@
 import { montarShell, atualizarShell, ICONES, ic } from './ui/shell.js';
 import { api, esc, dois, quando, aCada, vazio } from './ui/util.js';
 import { montarGlobo } from './ui/globo.js';
+import { vestirAviao } from './ui/botao-aviao.js';
 
 const SETA = ic('<path d="M5 12h14M13 6l6 6-6 6"/>');
 const DIAGONAL = ic('<path d="M7 17L17 7M8 7h9v9"/>');
@@ -49,6 +50,7 @@ pagina.innerHTML = `
     </section>
   </div>`;
 pagina.removeAttribute('aria-busy');
+vestirAviao($('#f-comando button[type=submit]'), { texto: 'Enviar' }).classList.add('compacto');
 try { window.Ilhas?.montar('cartao-envios', $('#ilha-envios')); } catch { /* sem a ilha o Início funciona igual */ }
 const globo = montarGlobo($('#globo'), { lado: 280 }); // pulsa como coração só quando os agentes estão trabalhando
 

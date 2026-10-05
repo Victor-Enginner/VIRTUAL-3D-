@@ -12,7 +12,7 @@ const letras = (t) => [...t].map((c, i) => `<span class="l" style="--i:${i}">${c
 export function vestirAviao(botao, { texto, pronto = null, icone = 'aviao', manter = false } = {}) {
   if (!botao || botao.classList.contains('btn-aviao')) return botao;
   texto = texto ?? botao.textContent.trim();
-  botao.classList.remove('btn', 'primario', 'fantasma', 'perigo');
+  botao.classList.remove('btn', 'primario', 'fantasma'); // 'perigo' fica: muda a cor do acento
   botao.classList.add('btn-aviao');
   botao.innerHTML = `<span class="luz"></span>
     <span class="estado normal"><span class="icone">${ICONES[icone] || ICONES.aviao}</span><p aria-hidden="true">${letras(texto)}</p><span class="oculto">${esc(texto)}</span></span>

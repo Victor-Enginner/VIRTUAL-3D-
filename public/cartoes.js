@@ -189,6 +189,7 @@ export async function abrirCartoes({ motivos, avisar, aoFechar }) {
       $('#c-contagem').textContent = `${msg.value.length} caracteres${textos.has(l.id) ? ' · editada' : ''}`;
     });
     vestirAviao($('#c-aprovar'), { texto: 'Aprovar', icone: 'aviao' });
+    vestirAviao($('#c-descartar'), { texto: 'Descartar', icone: 'x' });
     $('#c-aprovar').addEventListener('click', () => aprovar(l));
     $('#c-pular').addEventListener('click', () => pular(l));
     $('#c-descartar').addEventListener('click', (ev) => abrirMotivos(ev.currentTarget));
