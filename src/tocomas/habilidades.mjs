@@ -77,7 +77,9 @@ function aprovados(db) {
   return db.prepare('SELECT DISTINCT l.* FROM leads l JOIN envios e ON e.lead_id = l.id').all();
 }
 
-const linha = (r) => ({ ...r, condicao: parse(r.condicao), efeito: parse(r.efeito), evidencias: parse(r.evidencias, []) });
+// B9 (2609.38143): "usar" diz o que os agentes passam a FAZER e deixa claro de quem é a decisão
+export const usarDe = (fornecer, estado) => (estado === 'ativa' ? `Em uso, por decisão sua: ${fornecer}` : `Só passa a valer se você aceitar: ${fornecer}`);
+const linha = (r) => ({ ...r, condicao: parse(r.condicao), efeito: parse(r.efeito), evidencias: parse(r.evidencias, []), usar: usarDe(r.fornecer, r.estado) });
 
 export function listar(db, estado = null) {
   const rows = estado ? db.prepare('SELECT * FROM habilidades WHERE estado = ? ORDER BY criado_em DESC').all(estado)
@@ -91,7 +93,10 @@ export function propor(db, quando = agora()) {
     .map((e) => ({ id: e.id, dados: parse(e.dados, {}) })).filter((e) => e.dados.motivo && e.dados.retrato);
   const contra = aprovados(db);
   const novas = [];
-  for (const c of candidatos(descartes)) {
+  // uma mudança por vez (B9): se vários candidatos ficaram prontos, propõe o que cita o descarte mais recente; o resto espera a próxima chamada
+  const recente = (c) => Math.max(...c.ids);
+  for (const c of candidatos(descartes).sort((a, b) => recente(b) - recente(a))) {
+    if (novas.length) break;
     if (c.efeito.tipo !== 'evitar_angulo' && contra.some((l) => casa(c.condicao, l))) continue; // você aprovou um igual
     const id = idDe(c.condicao, c.efeito);
     const ja = db.prepare('SELECT estado FROM habilidades WHERE id = ?').get(id);
@@ -99,7 +104,7 @@ export function propor(db, quando = agora()) {
     if (ja) { db.prepare('UPDATE habilidades SET evidencias = ?, atualizado_em = ? WHERE id = ?').run(json(h.evidencias), quando, id); continue; }
     db.prepare(`INSERT INTO habilidades (id, motivo, quando, fornecer, condicao, efeito, evidencias, estado, criado_em, atualizado_em)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'proposta', ?, ?)`).run(id, h.motivo, h.quando, h.fornecer, json(h.condicao), json(h.efeito), json(h.evidencias), quando, quando);
-    novas.push(h);
+    novas.push({ ...h, usar: usarDe(h.fornecer, 'proposta') });
   }
   return novas;
 }

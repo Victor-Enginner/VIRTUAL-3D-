@@ -431,6 +431,10 @@
         "fornecer": {
           "type": "string"
         },
+        "usar": {
+          "type": "string",
+          "description": "o que os agentes passam a fazer e de quem é a decisão (sempre sua)"
+        },
         "evidencias": {
           "type": "array",
           "items": {

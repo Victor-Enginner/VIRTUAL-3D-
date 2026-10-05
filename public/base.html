@@ -162,7 +162,7 @@
     if (!lista?.length) return '<p class="vazio-regras">Quando você descartar leads pelo mesmo motivo, os agentes propõem regras aqui.</p>';
     return `<h3>Regras aprendidas</h3><ul class="regras">${lista.map((h) => `<li>
       <p><span class="estado e-${h.estado}">${ESTADO[h.estado]}</span> Quando <b>${esc(h.quando)}</b> → ${esc(h.fornecer)}</p>
-      <small>${h.evidencias.length} descarte(s) seu(s) como evidência${h.aplicada ? ` · aplicada ${h.aplicada}×` : ''}</small>
+      <small>${esc(h.usar || '')} · ${h.evidencias.length} descarte(s) seu(s) como evidência${h.aplicada ? ` · aplicada ${h.aplicada}×` : ''}</small>
       <div>${(BOTOES[h.estado] || []).map(([a, r, c]) => `<button class="btn ${c}" data-regra="${esc(h.id)}" data-acao="${a}">${r}</button>`).join('')}</div></li>`).join('')}</ul>`;
   }
   // B13: por que o texto da Maia foi recusado e caiu no modelo fixo (componente + causa, mais frequentes primeiro)

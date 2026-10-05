@@ -63,7 +63,7 @@ test('negócio grande rebaixa a partir do menor nº de avaliações descartado; 
   descartar(lead('2', 'restaurante', 'Franca', { avaliacoes: 400 }), 'grande');
   descartar(lead('3', 'oficina', 'Franca', { angulo: 'reputacao' }), 'mensagem');
   descartar(lead('4', 'oficina', 'Franca', { angulo: 'reputacao' }), 'mensagem');
-  const hs = propor(db);
+  const hs = [...propor(db), ...propor(db)]; // B9: uma proposta por chamada
   assert.equal(hs.length, 2);
   for (const h of hs) mudarEstado(db, h.id, 'aceitar');
   const r = aplicar(db, lead('5', 'oficina', 'Franca', { avaliacoes: 450 }), ['independencia', 'reputacao']);
@@ -76,4 +76,21 @@ test('motivo "outro" nunca vira regra', () => {
   const { db, lead, descartar } = banco();
   for (const id of ['1', '2', '3']) descartar(lead(id, 'pet_shop', 'Franca'), 'outro');
   assert.equal(propor(db).length, 0);
+});
+
+test('B9: cada regra diz o que vai usar e que a decisão é sua; uma proposta por chamada, citando evidência real', () => {
+  const { db, lead, descartar } = banco();
+  descartar(lead('1', 'academia', 'Franca'), 'nicho'); descartar(lead('2', 'academia', 'Franca'), 'nicho');
+  descartar(lead('3', 'padaria', 'Franca'), 'nicho'); descartar(lead('4', 'padaria', 'Franca'), 'nicho');
+  const primeira = propor(db);
+  assert.equal(primeira.length, 1, 'uma mudança por vez');
+  assert.match(primeira[0].usar, /Só passa a valer se você aceitar/);
+  assert.match(primeira[0].quando, /Padaria|padaria/i); // a que cita o descarte mais recente
+  const ids = db.prepare("SELECT id FROM eventos WHERE tipo = 'descartado'").all().map((e) => e.id);
+  assert.ok(primeira[0].evidencias.every((e) => ids.includes(e)));
+  const segunda = propor(db);
+  assert.equal(segunda.length, 1);
+  assert.match(segunda[0].quando, /Academia/i);
+  mudarEstado(db, primeira[0].id, 'aceitar');
+  assert.match(listar(db, 'ativa')[0].usar, /Em uso, por decisão sua/);
 });
