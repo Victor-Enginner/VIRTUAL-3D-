@@ -145,7 +145,7 @@ async function decidirJev(state, questions) {
 }
 
 // `papel` escolhe o modelo em modelos.json: decisao (Nova, padrão) ou comando (Alva). `perfil` força um modelo (bancada).
-export async function decide({ state, questions, papel = 'decisao', perfil = null }) {
+async function decidirSemMedir({ state, questions, papel = 'decisao', perfil = null }) {
   const erro = validarPerguntas(questions);
   if (erro) throw new Error(erro);
   perfil = perfil || CONFIG.modelos[papel];
@@ -165,4 +165,27 @@ export async function decide({ state, questions, papel = 'decisao', perfil = nul
     model: CONFIG.decideBackend === 'jev' ? 'typesafe/jev-1.13' : perfil.modelo,
     latency_ms: Math.round(performance.now() - t0),
   };
+}
+
+// B14 (gateway do JEV Showcase): custo e latência por papel/modelo, em memória (zera ao reiniciar). /api/decide/stats
+const medidas = new Map();
+const JANELA = 200;
+export function estatisticasDecide() {
+  return [...medidas].map(([chave, m]) => {
+    const l = [...m.latencias].sort((a, b) => a - b);
+    return { chave, chamadas: m.chamadas, erros: m.erros, p50_ms: l.length ? l[Math.floor((l.length - 1) / 2)] : null, p95_ms: l.length ? l[Math.floor((l.length - 1) * 0.95)] : null, max_ms: l.length ? l.at(-1) : null, ultima_em: m.ultima_em, ultimo_erro: m.ultimo_erro };
+  });
+}
+export const zerarEstatisticasDecide = () => medidas.clear();
+
+export async function decide(args) {
+  const papel = args.papel || 'decisao';
+  const chave = `${papel}:${args.perfil?.modelo || CONFIG.modelos[papel]?.modelo || CONFIG.decideBackend}`;
+  const m = medidas.get(chave) || { chamadas: 0, erros: 0, latencias: [], ultima_em: null, ultimo_erro: null };
+  medidas.set(chave, m);
+  m.chamadas += 1; m.ultima_em = new Date().toISOString();
+  const t0 = performance.now();
+  try { return await decidirSemMedir(args); }
+  catch (e) { m.erros += 1; m.ultimo_erro = String(e.message).slice(0, 120); throw e; }
+  finally { m.latencias.push(Math.round(performance.now() - t0)); if (m.latencias.length > JANELA) m.latencias.shift(); }
 }

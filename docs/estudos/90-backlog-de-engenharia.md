@@ -18,7 +18,7 @@ Prospector agora (modelos locais pequenos, 10 envios/dia, você aprova tudo).
 | **B11** | Nova **aconselha ou se abstém** sobre o texto da Maia | pipeline T3→T4 | 2609.38142 (padrão AdviSD) | só quando houver modelo ≥ 4B |
 | **B4** | Controlador com **Propor (sem orçamento) → Avaliar (com orçamento)** | `src/tocomas/controlador.mjs` | 2609.38147 | só com modelo maior; com orçamento pequeno o paper mostra que regra vence |
 | **B8** | Verificar **ordem** dos passos de planos com vários passos | `fidelidade.mjs` | 2609.38108 | quando existir plano multi-passo |
-| **B14** | **Gateway de decisões** com orçamento, cache e estatística de custo/latência (estilo JEV Showcase) | `src/decide/` | JEV Showcase `gateway/` | `/api/decide/stats` |
+| **B14** ✅ 05/10 (só estatística; cache e orçamento não valem aqui) | **Gateway de decisões** com orçamento, cache e estatística de custo/latência (estilo JEV Showcase) | `src/decide/` | JEV Showcase `gateway/` | `/api/decide/stats` |
 | **B15** ✅ 04/10 | Revisar o fetch do Atlas contra vazamento pela web: URL só vem do Maps/OSM, nunca de texto gerado por modelo | `src/auditoria.mjs` | 2610.01768 | teste: URL vinda de texto livre é recusada. Feito também: IP validado no `lookup` da conexão (fecha DNS rebinding, item 71) — `test/b15.test.mjs` |
 | **B16** ✅ 04/10 | **Fixo com "só celular":** a Maia escreve para lead de telefone fixo que nunca pode ser aprovado (5 de 17 em 04/10). Qualificar deve parar antes de T4 com motivo, e reabrir se você desligar "só celular" | `qualificar()` + portão de T4 | achado no teste dos cartões | lead fixo não chega a "mensagem" com "só celular" ligado |
 

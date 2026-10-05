@@ -59,7 +59,7 @@ test('todas as respostas levam CSP, nosniff e Referrer-Policy', async () => {
 });
 
 test('leitura: páginas e rotas GET do painel', async () => {
-  for (const rota of ['/', '/sala.html', '/base.html', '/api/estado', '/api/leads', '/api/leads?etapa=mensagem', '/api/leads?q=Fechou', '/api/leads/R1', '/api/aprendizado', '/api/calibracao', '/api/habilidades', '/api/varreduras', '/api/envios', '/api/eventos', '/api/eventos?agente=nova', '/api/grafo', '/api/nichos', '/api/rejeicoes']) {
+  for (const rota of ['/', '/sala.html', '/base.html', '/api/estado', '/api/leads', '/api/leads?etapa=mensagem', '/api/leads?q=Fechou', '/api/leads/R1', '/api/aprendizado', '/api/calibracao', '/api/habilidades', '/api/varreduras', '/api/envios', '/api/eventos', '/api/eventos?agente=nova', '/api/grafo', '/api/nichos', '/api/rejeicoes', '/api/decide/stats']) {
     const r = await chamar('GET', rota);
     assert.equal(r.status, 200, rota);
   }
