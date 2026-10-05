@@ -12,6 +12,8 @@ pnpm dlx shadcn@latest add @componentry/<nome> # registro do Componentry já est
 pnpm dlx originkit@latest add <nome>           # exige login no OriginKit (originkit login)
 ```
 
+**Situação (05/10/2026):** nenhuma ilha está em uso no painel. O cartão de voo do Componentry (envios do dia) foi tirado do Início a pedido do Victor e `public/ilhas/` foi apagado; o código continua em `src/ilhas/cartao-envios.tsx` e `pnpm build` gera os arquivos de novo.
+
 Uso no painel: `window.Ilhas.montar("cartao-envios", elemento)`. Para criar uma ilha nova: arquivo em `src/ilhas/`, registrar em `src/ilhas.tsx`.
 
 Regras: sem laço de animação infinito, sem áudio e sem voz (`test/conforto.test.mjs` confere o fonte); `MotionConfig` desliga o

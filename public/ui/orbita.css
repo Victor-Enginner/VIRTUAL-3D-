@@ -290,9 +290,6 @@
 #corpo { display: grid; gap: var(--esp-4); }
 @media (max-width: 900px) { .o-linha-prod { grid-template-columns: minmax(0, 1fr); } .o-grade-itens { grid-template-columns: minmax(0, 1fr); } .o-contador { justify-items: start; text-align: left; } }
 
-/* ilha React: cartão de envios do dia (web/src/ilhas/cartao-envios.tsx) */
-.o-ilha-envios { display: flex; justify-content: center; margin: var(--esp-6) 0; }
-.o-ilha-envios:empty { display: none; }
 
 /* comando de voz no Início (ui/voz.js): microfone pequeno FORA da caixa, à esquerda do campo; parado, só muda de cor ao escutar */
 .o-linha-comando { display: flex; align-items: center; gap: var(--esp-3); width: min(840px, 100%); }

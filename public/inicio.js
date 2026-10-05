@@ -37,7 +37,6 @@ pagina.innerHTML = `
     </div>
   </section>
   <a class="o-engine" href="/engine.html"><span class="simbolo">${ESTRELA}</span><div><p class="eyebrow">TOCOMAS ENGINE</p><h2>Um lead. Oito passos com portões.</h2><p>Crença, controlador, calibração e regras aprendidas no mesmo motor.</p></div><span class="btn">${SETA}Abrir o motor</span></a>
-  <div class="o-ilha-envios" id="ilha-envios"></div>
   <div class="o-stats" id="stats"></div>
   <div class="o-duas">
     <section>
@@ -62,7 +61,6 @@ ligarVoz($('#i-mic'), {
   aoFinal: () => $('#f-comando').requestSubmit(),
   aoErro: (m) => { $('#resposta').textContent = m; },
 });
-try { window.Ilhas?.montar('cartao-envios', $('#ilha-envios')); } catch { /* sem a ilha o Início funciona igual */ }
 const globo = montarGlobo($('#globo'), { lado: 280 }); // pulsa como coração só quando os agentes estão trabalhando
 
 $('#f-comando').addEventListener('submit', async (ev) => {
