@@ -86,12 +86,14 @@
         <section>
           <h2>Nova varredura</h2>
           <form id="form-varredura" class="form-varredura">
-            <label class="campo">Cidade<input name="cidade" required placeholder="Franca" autocomplete="address-level2"></label>
-            <label class="campo">UF<input name="uf" required maxlength="2" value="SP"></label>
+            <label class="campo largo">Estado<select name="uf" id="sel-uf"></select></label>
+            <label class="campo largo">Cidade<input name="cidade" id="inp-cidade" list="lista-cidades" required placeholder="Digite ou escolha" autocomplete="off"><datalist id="lista-cidades"></datalist></label>
+            <p class="dica-cidade largo" id="dica-cidade" aria-live="polite"></p>
             <label class="campo largo">Ramo<select name="nicho" id="sel-nicho"></select></label>
             <label class="campo">Fonte<select name="fonte" id="sel-fonte"></select></label>
             <label class="campo">Limite<input name="limite" type="number" min="1" max="60" value="20"></label>
             <button class="btn primario largo">Colocar na fila do Atlas</button>
+            <p class="dica-cidade largo" id="msg-varredura" aria-live="polite"></p>
           </form>
           <ul class="lista" id="varreduras"></ul>
         </section>

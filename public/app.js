@@ -36,7 +36,7 @@ async function carregarEstado() {
   desenharAbas();
   $('#btn-pausa').textContent = estado.pausado ? 'Retomar agentes' : 'Pausar agentes';
   if (!$('#sel-nicho').options.length) {
-    $('#sel-nicho').innerHTML = Object.entries(estado.nichos).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
+    montarFormVarredura(estado); // estado, cidade e ramo vêm do catálogo (IBGE + 4 grupos); cai no formato antigo se a API não responder
     $('#sel-fonte').innerHTML = Object.entries(estado.fontes).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('');
   }
 }
@@ -579,10 +579,56 @@ $('#linhas').addEventListener('click', (ev) => { const tr = ev.target.closest('t
 $('#gaveta').addEventListener('click', (ev) => { if (ev.target.closest('[data-fechar]')) fecharGaveta(); });
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !$('#gaveta').hidden) fecharGaveta(); });
 $('#form-comando').addEventListener('submit', (ev) => { ev.preventDefault(); executarComando($('#comando').value); });
+// ---- formulário de varredura: estado → cidades (IBGE) → ramo (4 grupos), com correção de digitação
+async function montarFormVarredura(estado) {
+  const fallback = () => { $('#sel-nicho').innerHTML = Object.entries(estado.nichos).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join(''); };
+  try {
+    const cat = await api('/api/catalogo');
+    $('#sel-uf').innerHTML = cat.estados.map((e) => `<option value="${e.sigla}"${e.sigla === 'SP' ? ' selected' : ''}>${esc(e.nome)} (${e.sigla})</option>`).join('');
+    $('#sel-nicho').innerHTML = cat.grupos.map((g) => `<optgroup label="${esc(g.rotulo)}"><option value="grupo:${esc(g.id)}">★ Grupo inteiro (${g.nichos.length} ramos)</option>${g.nichos.map((n) => `<option value="${esc(n.id)}">${esc(n.rotulo)}</option>`).join('')}</optgroup>`).join('');
+    $('#sel-nicho').value = 'odontologia';
+    await carregarCidades();
+  } catch { fallback(); }
+}
+async function carregarCidades() {
+  const uf = $('#sel-uf').value;
+  if (!uf) return;
+  const { cidades } = await api(`/api/localidades/cidades?uf=${encodeURIComponent(uf)}`);
+  $('#lista-cidades').innerHTML = cidades.map((c) => `<option value="${esc(c)}">`).join('');
+  verCidade();
+}
+let temporizadorCidade = null;
+function verCidade() {
+  clearTimeout(temporizadorCidade);
+  const dica = $('#dica-cidade'), q = $('#inp-cidade').value.trim();
+  if (!q) { dica.textContent = ''; dica.className = 'dica-cidade largo'; return; }
+  temporizadorCidade = setTimeout(async () => {
+    const r = await api(`/api/localidades/resolver?cidade=${encodeURIComponent(q)}&uf=${encodeURIComponent($('#sel-uf').value)}`).catch(() => null);
+    if (!r) return;
+    if (r.ok && r.corrigido) { dica.textContent = `Vou usar "${r.cidade}-${r.uf}" (corrigi a digitação).`; dica.className = 'dica-cidade largo ok'; }
+    else if (r.ok) { dica.textContent = `${r.cidade}-${r.uf} ✓`; dica.className = 'dica-cidade largo ok'; }
+    else { dica.textContent = r.mensagem; dica.className = 'dica-cidade largo aviso'; }
+  }, 250);
+}
+$('#sel-uf').addEventListener('change', () => { $('#inp-cidade').value = ''; carregarCidades(); });
+$('#inp-cidade').addEventListener('input', verCidade);
+
 $('#form-varredura').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const d = Object.fromEntries(new FormData(ev.target));
-  try { await api('/api/varreduras', d); await atualizarTudo(); } catch (e) { alert(e.message); }
+  const msg = $('#msg-varredura');
+  try {
+    if (String(d.nicho).startsWith('grupo:')) {
+      const r = await api('/api/varreduras/lote', { ...d, grupo: d.nicho.slice(6), nichos: undefined });
+      msg.textContent = `${r.varreduras.length} varreduras do grupo entraram na fila do Atlas em ${r.varreduras[0].cidade}-${r.varreduras[0].uf}.`;
+    } else {
+      const { varredura: v } = await api('/api/varreduras', d);
+      msg.textContent = `Na fila: ${v.cidade}-${v.uf}${v.correcao ? ` (corrigi "${v.correcao.de}")` : ''}.`;
+    }
+    msg.className = 'dica-cidade largo ok';
+    $('#inp-cidade').value = '';
+    await atualizarTudo();
+  } catch (e) { msg.textContent = e.message; msg.className = 'dica-cidade largo aviso'; }
 });
 $('#varreduras').addEventListener('click', async (ev) => {
   const b = ev.target.closest('[data-varredura]');

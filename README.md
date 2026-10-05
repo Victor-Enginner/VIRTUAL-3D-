@@ -42,6 +42,12 @@ O servidor só escuta em `127.0.0.1`. Quem usa o próprio PC entra direto; acess
 sessão assinada por 7 dias, 5 tentativas erradas por IP a cada 10 min). Sem `ACESSO_SENHA`, o acesso remoto fica desligado. O Ollama é opcional: sem ele, a decisão e a
 escrita das mensagens ficam indisponíveis e o painel mostra isso; o resto funciona.
 
+## Prospecção ampla (`src/nichos.mjs`, `src/localidades.mjs`)
+- **24 nichos em 4 grupos** (decisão cara, vende mostrando, agendamento e cardápio, urgência), cada um com 4 a 6 termos de busca. O Atlas roda até 3 termos por varredura no Maps (o limite de leads se divide e os repetidos caem) e todas as tags no OpenStreetMap.
+- **IBGE:** 27 estados e 5.571 municípios em `src/dados/localidades.json`. Toda varredura valida a cidade: corrige erro de digitação ou de voz ("Ribeirão Preot" → "Ribeirão Preto"), acha o estado quando só há uma cidade com aquele nome e pede o estado quando há várias ("Bom Jesus").
+- API: `GET /api/catalogo`, `GET /api/localidades/cidades?uf=SP`, `GET /api/localidades/resolver?cidade=…`, `POST /api/varreduras/lote` (um grupo inteiro, até 8 nichos).
+- Fonte dos nichos e das tags: o Repass AI (`backend/osm_engine.py`, `src/views/LeadsView.jsx`), só lido, nunca alterado.
+
 ## Interface
 
 As três telas são um app só: a mesma barra lateral (`public/ui/shell.js`) mostra navegação e a equipe

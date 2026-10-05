@@ -70,6 +70,9 @@
 .lado section + section { padding-top: var(--esp-6); border-top: 1px solid var(--linha-suave); }
 .form-varredura { display: grid; grid-template-columns: 1fr 64px; gap: var(--esp-3); }
 .form-varredura .largo { grid-column: 1 / -1; }
+.dica-cidade { margin: 0; min-height: 1.2em; font-size: var(--t-12); color: var(--texto-3); }
+.dica-cidade.ok { color: var(--verde-400); }
+.dica-cidade.aviso { color: var(--amarelo-400); }
 .lista { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .lista li { display: flex; justify-content: space-between; align-items: center; gap: var(--esp-3); font-size: var(--t-13); padding: var(--esp-2) 0; border-bottom: 1px solid var(--linha-suave); }
 .lista li:last-child { border-bottom: 0; }
