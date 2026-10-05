@@ -27,6 +27,7 @@ cp .env.example .env      # tudo é opcional
 npm start                 # http://127.0.0.1:4300
 npm test                  # 212 testes (node:test), inclusive o de integração HTTP (test/http.test.mjs)
 npm run verificar         # testes + sintaxe + páginas + servidor de verdade; tem que passar antes de commit
+npm run exportar-treino  # data/treino/*.jsonl anonimizado (edições, aprovações, respostas, fechamentos)
 npm run estado -- "nota"  # salva um estado de produção (tag + cópia do banco)
 ```
 
