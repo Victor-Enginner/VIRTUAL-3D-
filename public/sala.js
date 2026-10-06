@@ -600,15 +600,15 @@ if (modoCalmo()) { const b = $('#btn-som'); b.disabled = true; b.textContent = '
 let fichaAberta = null;
 async function abrirFicha(id, rolar = true) {
   fichaAberta = id;
-  const info = id === 'operador' ? { nome: 'Você', papel: 'Operador', funcao: 'Aprova mensagens e ensina os agentes' } : estado.agentes[id] || agentes[id]?.info;
+  const info = id === 'operador' ? { nome: 'Você', papel: 'Operador', funcao: 'Aprova mensagens e ensina os agentes', cor: '#b7ff00' } : estado.agentes[id] || agentes[id]?.info;
   const { eventos } = await api('/api/eventos');
   const meus = eventos.filter((e) => (id === 'operador' ? ['aprovado', 'descartado', 'aprendizado'].includes(e.tipo) : e.agente === id)).slice(0, 8);
   let extra = '';
   if (id === 'nova' || id === 'operador') {
     const { cabecas } = await api('/api/aprendizado');
     const max = Math.max(0.001, ...Object.values(cabecas).flatMap((c) => c.pesos.map((w) => Math.abs(w.peso))));
-    const bloco = (titulo, c) => `<section class="bloco"><h3>${esc(titulo)}</h3>
-      <p>${c.exemplos} exemplo(s), ${c.positivos} positivo(s) · peso na prioridade: ${Math.round(c.alfa * 100)}%</p>
+    const bloco = (titulo, c) => `<section class="vidro"><h3>${esc(titulo)}</h3>
+      <p class="resumo">${c.exemplos} exemplo(s), ${c.positivos} positivo(s) · peso na prioridade: ${Math.round(c.alfa * 100)}%</p>
       ${c.pesos.length ? `<div class="pesos">${c.pesos.map((w) => {
         const largura = (Math.abs(w.peso) / max) * 50;
         const estilo = w.peso >= 0 ? `left:50%;width:${largura}%;background:var(--ok)` : `right:50%;width:${largura}%;background:var(--perigo)`;
@@ -617,14 +617,16 @@ async function abrirFicha(id, rolar = true) {
     extra = bloco('Aprendeu o seu gosto (aprovação)', cabecas.aprovacao) + bloco('Aprendeu quem responde', cabecas.resposta);
   }
   const a = agentes[id];
+  $('#ficha').style.setProperty('--cor', info.cor || '#888');
   $('#ficha-conteudo').innerHTML = `
-    <h2>${esc(info.nome)}</h2><p class="papel">${esc(info.papel)} — ${esc(info.funcao)}</p>
-    ${a ? `<p class="agora">Agora: <b>${esc(a.el.querySelector('.tarefa')?.textContent || a.estado)}</b></p>` : ''}
-    ${a?.plano ? `<section class="bloco"><h3>Agenda de hoje</h3><ol class="agenda">${a.plano.map((b) => `<li class="${a.bloco === b ? 'agora' : ''}"><time>${esc(b.das)}–${esc(b.ate)}</time><span>${esc(b.rotulo)}</span></li>`).join('')}</ol>
+    <div class="cabeca"><div class="avatar" aria-hidden="true">${esc(String(info.nome || '?').charAt(0).toUpperCase())}</div><div><h2>${esc(info.nome)}</h2><p class="papel">${esc(info.papel)}</p></div></div>
+    <p class="funcao">${esc(info.funcao)}</p>
+    ${a ? `<span class="estado"><i></i>${esc(a.el.querySelector('.tarefa')?.textContent || a.estado)}</span>` : ''}
+    ${a?.plano ? `<section class="vidro"><h3>Agenda de hoje</h3><ol class="agenda">${a.plano.map((b) => `<li class="${a.bloco === b ? 'agora' : ''}"><time>${esc(b.das)}–${esc(b.ate)}</time><span>${esc(b.rotulo)}</span></li>`).join('')}</ol>
       <p class="nota-agenda">Trabalho real passa na frente do plano: se chegar um lead, ${esc(info.nome)} volta para a mesa.</p></section>` : ''}
     ${id === 'operador' && estado.funil.mensagem ? `<a class="btn primario" href="/">Abrir ${estado.funil.mensagem} mensagem(ns) para aprovar</a>` : ''}
     ${extra}
-    <section class="bloco"><h3>Últimos eventos</h3><ol class="feed">${meus.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>Nada ainda.</span></li>'}</ol></section>`;
+    <section class="vidro"><h3>Últimos eventos</h3><ol class="feed">${meus.map((e) => `<li><time>${esc(hora(e.ts))}</time><span>${esc(e.msg)}</span></li>`).join('') || '<li><span>Nada ainda.</span></li>'}</ol></section>`;
   $('#ficha').hidden = false;
   if (rolar) $('#ficha').scrollTop = 0;
   if (a && rolar) controles.target.lerp(a.p.grupo.position.clone().setY(0.8), 0.6);
