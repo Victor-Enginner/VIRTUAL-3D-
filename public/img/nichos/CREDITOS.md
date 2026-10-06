@@ -1,0 +1,25 @@
+# Créditos das fotos de nichos (Unsplash, licença Unsplash: uso livre, atribuição é opcional mas fica registrada)
+- odontologia: https://unsplash.com/photos/e7MJLM5VGjY
+- clinicas_terapias: https://unsplash.com/photos/ZG7raWjUTmw
+- estetica: https://unsplash.com/photos/Pe9IXUuC6QU
+- advocacia: https://unsplash.com/photos/yWwob8kwOCk
+- imobiliaria: https://unsplash.com/photos/_TPTXZd9mOo
+- educacao_cursos: https://unsplash.com/photos/iQPr1XkF5F0
+- energia_solar: https://unsplash.com/photos/2SfssudtyIA
+- fotografia: https://unsplash.com/photos/o2DVsV2PnHE
+- eventos_buffet: https://unsplash.com/photos/SiwrpBnxDww
+- marcenaria: https://unsplash.com/photos/GfYA6q5ESLI
+- tatuagem: https://unsplash.com/photos/hxNiXP498UI
+- moda_noivas: https://unsplash.com/photos/1Bs2sZ9fD2Q
+- barbearia: https://unsplash.com/photos/EW_rqoSdDes
+- salao_unhas: https://unsplash.com/photos/gb6gtiTZKB8
+- academia: https://unsplash.com/photos/CQfNt66ttZM
+- restaurante: https://unsplash.com/photos/poI7DelFiVA
+- padaria: https://unsplash.com/photos/go3DT3PpIw4
+- acai_lanches: https://unsplash.com/photos/NI8MeJiAN3I
+- hospedagem_turismo: https://unsplash.com/photos/vmIWr0NnpCQ
+- pet_shop: https://unsplash.com/photos/N04FIfHhv_k
+- joalheria_otica: https://unsplash.com/photos/UsALNdok2m4
+- oficina: https://unsplash.com/photos/Fd6osyVbtG4
+- construcao_reforma: https://unsplash.com/photos/Te48TPzdcU8
+- casa_manutencao: https://unsplash.com/photos/wzIjLL4KB-4

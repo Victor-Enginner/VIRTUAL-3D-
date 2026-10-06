@@ -191,7 +191,7 @@
     const n = estado.funil?.mensagem || 0, b = estado.briefing || {};
     if (n !== pendentes) { pendentes = n; atualizarMestre(); }
     document.querySelector('#resumo').innerHTML = `<h2>Sua fila</h2>
-      <p class="essencial"><b>${n}</b> mensagem(ns) esperando sua aprovação · <b>${b.responderam ?? 0}</b> responderam · <b>${b.enviados_hoje ?? 0}/${b.limite ?? 10}</b> envios hoje</p>
+      <div class="essencial metricas"><div class="m-lima"><strong>${n}</strong><span>para aprovar</span></div><div><strong>${b.responderam ?? 0}</strong><span>responderam</span></div><div><strong>${b.enviados_hoje ?? 0}<small>/${b.limite ?? 10}</small></strong><span>envios hoje</span></div></div>
       <p>Os agentes aprenderam com <b>${cabecas.aprovacao.exemplos}</b> decisão(ões) suas.</p>
       ${tocomas(estado.tocomas, estado.nichos)}
       ${n ? `<a class="btn primario" href="/">Aprovar no Painel</a>` : ''}

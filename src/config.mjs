@@ -44,6 +44,7 @@ export const CONFIG = {
     sessionId: env('OPENWA_SESSION_ID'),
   },
   webhookToken: env('WEBHOOK_TOKEN'),
+  espectadorSenha: env('ESPECTADOR_SENHA'), // senha de quem só assiste pelo túnel (somente leitura, telefones mascarados)
   acessoSenha: env('ACESSO_SENHA'), // vazio = sem acesso remoto (só o próprio PC)
   python: env('PYTHON', 'python'),
   // DEMO=1: versão pública de demonstração (src/demo.mjs) — dados fictícios, simulador, sem senha

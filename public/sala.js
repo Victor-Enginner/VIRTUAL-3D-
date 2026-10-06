@@ -9,7 +9,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { criarEscritorio } from './sala/cena.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
 import { buscarCaminho } from './sala/caminhos.js';
-import { proximoEstado, sortearPonto, escolherArea, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS } from './sala/comportamento.js';
+import { proximoEstado, sortearPonto, escolherArea, PERSONALIDADE, APRESENTACAO_MS, TEMPO_NO_PONTO_MS, CAFE_DURACAO_MS, CAFE_INTERVALO_MS, CAFE_PRIMEIRO_MS } from './sala/comportamento.js';
 import { criarMultidao, entrar, seguir, fixar, passo, velocidade } from './sala/multidao.js';
 import { criarVagas, reservar, liberarVaga, livresEm, roda, grupos, quemFala } from './sala/vagas.js';
 import { planoDoDia, blocoAgora, proximoBloco, diaDe } from './sala/rotina.js';
@@ -143,8 +143,7 @@ escritorio.pronto.then(() => {
   vagas = criarVagas({
     // copa: lugares no balcão (fazendo café) + uma roda de conversa no meio da copa
     copa: [...P.copa, ...roda(G, 9.6, -0.4, 4)],
-    lounge: [...roda(G, -1, 4.0, 4, 0.85)],
-    janela: P.janela, biblioteca: P.biblioteca, sofa: P.sofa, tv: P.tv,
+    tv: P.tv, // só café (copa) e reuniões: ninguém mais sai da mesa para o lounge, a janela ou a biblioteca
     reuniao: [...P.reuniao, ...roda(G, -10, -6, 6, 1.45).map(({ roda: _r, ...l }) => l)], // cadeiras primeiro; quem sobra fica em pé
   });
 });
@@ -201,7 +200,7 @@ function criarAgente(id, info) {
   p.grupo.add(r);
   const a = {
     id, info, p, el, estado: 'na_mesa', destino: 'mesa', ponto: assento, caminho: null, sentado: false, alturaY: 0,
-    ultimaAtividade: volta?.ultimaAtividade ?? Date.now(), pontoDePausa: volta?.pontoDePausa ?? sortearPonto(id), ultimaArea: volta?.ultimaArea ?? undefined, trocaPontoEm: 0, ritmo: PERSONALIDADE[id]?.ritmo || 1,
+    ultimaAtividade: volta?.ultimaAtividade ?? Date.now(), pontoDePausa: volta?.pontoDePausa ?? sortearPonto(id), ultimaArea: volta?.ultimaArea ?? undefined, trocaPontoEm: 0, cafeBloqueadoAte: Date.now() + sortear(CAFE_PRIMEIRO_MS), cafeFimEm: null, ritmo: PERSONALIDADE[id]?.ritmo || 1,
     emCaminho: false,
   };
   // ritmo pessoal pequeno (0,9–1,1): ninguém "corre", mas cada um tem seu passo
@@ -263,6 +262,7 @@ function irPara(a, ponto) {
   a.p.tocar('walk');
 }
 
+const sortear = ([a, b]) => a + Math.random() * (b - a);
 const giroAlvo = new THREE.Quaternion(), eixoY = new THREE.Vector3(0, 1, 0);
 let ultimaAtividadeEquipe = cenaSalva?.equipe ?? -Infinity; // última vez que QUALQUER agente estava trabalhando
 function atualizarAgente(a, dt, agoraMs) {
@@ -276,8 +276,13 @@ function atualizarAgente(a, dt, agoraMs) {
   a.bloco = blocoAgora(a.plano, hoje);
   const dec = proximoEstado({
     trabalhando, pausadoGlobal: estado?.pausado, ultimaAtividade: a.ultimaAtividade, ultimaAtividadeEquipe,
-    apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa, bloco: a.bloco,
+    apresentarAte: a.apresentarAte, chamadoAteMs: a.chamadoAteMs, pontoDePausa: a.pontoDePausa, bloco: a.bloco, cafeBloqueadoAte: a.cafeBloqueadoAte,
   }, agoraMs);
+  // o café é um passeio curto e raro: 1–2 min na copa e de volta à mesa, com 12–20 min até o próximo
+  if (dec.estado === 'pausa') {
+    if (!a.cafeFimEm) a.cafeFimEm = agoraMs + sortear(CAFE_DURACAO_MS);
+    else if (agoraMs > a.cafeFimEm) { a.cafeFimEm = null; a.cafeBloqueadoAte = agoraMs + sortear(CAFE_INTERVALO_MS); dec.estado = 'na_mesa'; dec.destino = 'mesa'; }
+  } else if (a.cafeFimEm) { a.cafeFimEm = null; a.cafeBloqueadoAte = agoraMs + sortear(CAFE_INTERVALO_MS); }
   // na pausa, de tempos em tempos troca de lugar (copa → janela → biblioteca), no ritmo do agente
   if (dec.estado === 'pausa' && agoraMs > a.trocaPontoEm && !a.emCaminho && vagas) {
     a.ultimaArea = a.destino !== 'mesa' ? a.destino : a.ultimaArea;
@@ -432,7 +437,7 @@ function atualizarRotulos() {
     const txt = {
       trabalhando: info.tarefas?.map((t) => t.texto).join(' · ') || 'Trabalhando', na_mesa: info.fila ? `${info.fila} na fila` : 'Na mesa, aguardando',
       pausa: { copa: 'Tomando um café', janela: 'Olhando pela janela', biblioteca: 'Na biblioteca', lounge: 'No lounge' }[a.destino] || 'Em pausa',
-      conversando: 'Conversando', apresentando: a.bloco?.atividade === 'reuniao' ? 'Conduz a reunião diária' : 'Apresentando o resumo', desligado: 'Pausado (no sofá)',
+      conversando: 'Conversando', apresentando: a.bloco?.atividade === 'reuniao' ? 'Conduz a reunião diária' : 'Apresentando o resumo', desligado: 'Pausado (na mesa)',
       rotina: a.bloco?.rotulo || 'Pausa', reuniao: 'Na reunião diária',
     }[a.estado] || '';
     // TOCOMAS: quem o controlador segurou mostra o motivo; a Alva mostra os leads que saíram da fila

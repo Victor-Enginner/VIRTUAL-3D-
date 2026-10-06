@@ -37,11 +37,11 @@ test('máquina de estados segue o estado real da API', () => {
   const t = 1_000_000;
   assert.deepEqual(proximoEstado({ trabalhando: true, ultimaAtividade: 0 }, t), { estado: 'trabalhando', destino: 'mesa' });
   assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: t - 1000 }, t).estado, 'na_mesa');
-  assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: t - PAUSA_APOS_MS - 1, pontoDePausa: 'janela' }, t).destino, 'janela');
+  assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: t - PAUSA_APOS_MS - 1, pontoDePausa: 'copa' }, t).destino, 'copa');
   assert.equal(proximoEstado({ trabalhando: true, pausadoGlobal: true }, t).estado, 'desligado');
   assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: 0, apresentarAte: t + 5 }, t).destino, 'tv');
   assert.equal(proximoEstado({ trabalhando: false, ultimaAtividade: 0, chamadoAteMs: t + 5 }, t).destino, 'mesa');
-  assert.ok(['biblioteca', 'janela', 'copa'].includes(sortearPonto('atlas', () => 0.5)));
+  assert.equal(sortearPonto('atlas', () => 0.5), 'copa'); // só saem para o café
 });
 
 test('equipe ocupada: quem não está trabalhando espera na mesa, não sai passear (defeito visto em 04/10)', () => {
@@ -58,8 +58,8 @@ test('equipe ocupada: quem não está trabalhando espera na mesa, não sai passe
 
 test('equipe parada há tempo: a vida da sala volta (pausa e rotina)', () => {
   const t = 5_000_000;
-  const parado = { trabalhando: false, ultimaAtividade: 0, pontoDePausa: 'janela', ultimaAtividadeEquipe: t - EQUIPE_OCUPADA_MS - 1 };
-  assert.deepEqual(proximoEstado(parado, t), { estado: 'pausa', destino: 'janela' });
+  const parado = { trabalhando: false, ultimaAtividade: 0, pontoDePausa: 'copa', ultimaAtividadeEquipe: t - EQUIPE_OCUPADA_MS - 1 };
+  assert.deepEqual(proximoEstado(parado, t), { estado: 'pausa', destino: 'copa' });
   const cafe = { atividade: 'cafe', area: 'copa', rotulo: 'Café' };
   assert.equal(proximoEstado({ ...parado, bloco: cafe }, t).estado, 'rotina');
   assert.ok(PAUSA_APOS_MS >= 60_000 && EQUIPE_OCUPADA_MS >= PAUSA_APOS_MS, 'ninguém passeia em menos de 1 min nem antes de a equipe parar');

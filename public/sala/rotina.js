@@ -22,13 +22,14 @@ export const diaDe = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padSt
 
 // o "jeito" de cada um muda o plano: quem é sociável almoça no lounge, quem é focado toma café rápido
 const JEITO = {
-  alva: { cafe: 'copa', almoco: 'copa', tarde: 'janela', madrugador: 0 },
-  atlas: { cafe: 'copa', almoco: 'lounge', tarde: 'biblioteca', madrugador: -10 },
-  nova: { cafe: 'janela', almoco: 'lounge', tarde: 'biblioteca', madrugador: 5 },
+  // fora a reunião, o plano do dia só tira o agente da mesa para a copa (café, almoço, café da tarde)
+  alva: { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: 0 },
+  atlas: { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: -10 },
+  nova: { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: 5 },
   maia: { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: 10 },
-  leo: { cafe: 'copa', almoco: 'lounge', tarde: 'lounge', madrugador: -5 },
+  leo: { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: -5 },
 };
-const PADRAO = { cafe: 'copa', almoco: 'lounge', tarde: 'janela', madrugador: 0 };
+const PADRAO = { cafe: 'copa', almoco: 'copa', tarde: 'copa', madrugador: 0 };
 
 // reunião diária da Alva (fixa: é compromisso, todos vão)
 export const REUNIAO = { inicio: min(9, 0), fim: min(9, 15) };
@@ -47,7 +48,7 @@ export function planoDoDia(id, dia) {
     { inicio: cafe, fim: cafe + durCafe, atividade: 'cafe', area: j.cafe, rotulo: 'Café da manhã' },
     { inicio: REUNIAO.inicio, fim: REUNIAO.fim, atividade: 'reuniao', area: id === 'alva' ? 'tv' : 'reuniao', rotulo: id === 'alva' ? 'Conduz a reunião diária' : 'Reunião diária com a Alva' },
     { inicio: almoco, fim: almoco + 45 + var5(10), atividade: 'almoco', area: j.almoco, rotulo: 'Almoço' },
-    { inicio: tarde, fim: tarde + 10 + var5(3), atividade: 'cafe_tarde', area: j.tarde, rotulo: j.tarde === 'copa' ? 'Café da tarde' : 'Pausa da tarde' },
+    { inicio: tarde, fim: tarde + 10 + var5(3), atividade: 'cafe_tarde', area: j.tarde, rotulo: 'Café da tarde' },
   ];
   return blocos.sort((a, b) => a.inicio - b.inicio).map((b) => ({ ...b, das: hhmm(b.inicio), ate: hhmm(b.fim) }));
 }

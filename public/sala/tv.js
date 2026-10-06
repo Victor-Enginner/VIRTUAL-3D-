@@ -7,6 +7,9 @@ import { lerLinkFamelack, streamValido } from './tv-canal.js';
 export { lerLinkFamelack, streamValido };
 
 const DADOS = 'https://raw.githubusercontent.com/famelack/famelack-data/main/tv/compressed/countries/';
+const ATUALIZA_MS = 66; // textura da TV: ~15 quadros por segundo
+const LIMITAR_QUALIDADE = false; // ligar só depois de liberar connect-src https: no servidor (src/server.mjs)
+const ALTURA_MAX = 360; // qualidade máxima do vídeo na TV (pixels de altura)
 const HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.mjs'; // versão fixa: nada muda sozinho
 const CHAVE = 'prospector-tv:v1';
 export const CANAL_PADRAO = { nome: 'Aratu On', pagina: 'https://famelack.com/tv/br/lua1c7mx0j9rv8', stream: 'https://cdn.live.br1.jmvstream.com/w/LVW-9359/LVW9359_XSyReL0QVf/playlist.m3u8' };
@@ -53,6 +56,11 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {} }) {
   video.playsInline = true; video.muted = true; video.preload = 'none';
   const textura = new THREE.VideoTexture(video);
   textura.colorSpace = THREE.SRGBColorSpace;
+  textura.generateMipmaps = false; textura.minFilter = THREE.LinearFilter; // sem mipmap: não regera a pirâmide a cada quadro
+  // menos lag: a TV é pequena na tela, 15 quadros por segundo bastam e cortam metade do envio de imagem para a placa de vídeo
+  let ultimoEnvio = 0;
+  Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; const t = performance.now(); if (t - ultimoEnvio < ATUALIZA_MS) return; ultimoEnvio = t; this.version++; } });
+  video.disablePictureInPicture = true; video.disableRemotePlayback = true;
   const desligada = new THREE.MeshBasicMaterial({ toneMapped: false });
   const ligada = new THREE.MeshBasicMaterial({ map: textura, toneMapped: false });
   const telas = [];
@@ -85,11 +93,23 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {} }) {
     erro = ''; carregando = true; aoMudar(estado());
     try {
       if (hls) { hls.destroy(); hls = null; }
-      if (video.canPlayType('application/vnd.apple.mpegurl')) video.src = canal.stream; // HLS nativo (Safari, Android)
-      else {
-        const { default: Hls } = await import(HLS_JS); // só baixa o leitor de HLS quando a TV liga
-        if (!Hls.isSupported()) throw new Error('este navegador não toca HLS');
-        hls = new Hls({ liveDurationInfinity: true, lowLatencyMode: false, maxBufferLength: 20 });
+      // hls.js deixa limitar a qualidade (360p), mas ele baixa o sinal por fetch e a política de segurança do servidor (connect-src)
+      // só libera hls.js se o Victor autorizar; sem isso usa o HLS nativo do navegador, que escolhe a qualidade sozinho
+      const usarHlsJs = LIMITAR_QUALIDADE || !video.canPlayType('application/vnd.apple.mpegurl');
+      const Hls = usarHlsJs ? (await import(HLS_JS)).default : null;
+      if (!Hls || !Hls.isSupported()) {
+        if (!video.canPlayType('application/vnd.apple.mpegurl')) throw new Error('este navegador não toca HLS');
+        video.src = canal.stream; // HLS nativo (Safari, Chrome, Edge atuais)
+      } else {
+        // qualidade baixa de propósito: a TV ocupa uma parte pequena da tela 3D, então 360p parece igual e pesa muito menos
+        hls = new Hls({ liveDurationInfinity: true, lowLatencyMode: false, startLevel: 0, capLevelToPlayerSize: true, maxBufferLength: 8, maxMaxBufferLength: 12, backBufferLength: 4, enableWorker: true });
+        hls.on(Hls.Events.MANIFEST_PARSED, (_e, d) => {
+          const niveis = d.levels || [];
+          let teto = 0;
+          niveis.forEach((n, i) => { if ((n.height || 0) <= ALTURA_MAX && (n.height || 0) >= (niveis[teto]?.height || 0)) teto = i; });
+          hls.autoLevelCapping = teto;
+          hls.currentLevel = teto;
+        });
         // sinal caiu: tenta se recuperar sozinho (padrão do hls.js), até 3 vezes com espera crescente
         let tentativas = 0;
         hls.on(Hls.Events.FRAG_LOADED, () => { tentativas = 0; });

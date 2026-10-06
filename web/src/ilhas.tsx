@@ -4,10 +4,12 @@ import * as React from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { MotionConfig } from "framer-motion"
 import { CartaoEnvios } from "@/ilhas/cartao-envios"
+import { Integracoes } from "@/ilhas/integracoes"
 import "@/estilo.css"
 
 const ILHAS: Record<string, React.ComponentType<any>> = {
   "cartao-envios": CartaoEnvios,
+  integracoes: Integracoes,
 }
 
 const raizes = new WeakMap<Element, Root>()

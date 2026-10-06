@@ -1,0 +1,60 @@
+/* Painel no mesmo vidro do Início e do trilho: receita única (gradiente translúcido + blur + aro de luz). */
+.cabecalho { background: transparent; border-bottom: 0; }
+
+.comando, .etapa, .foco, .lado > section, .lado > div, .tabela-wrap, .gaveta-corpo, .dlg {
+  position: relative; isolation: isolate; border: 0;
+  background: linear-gradient(160deg, rgb(255 255 255 / .11), rgb(255 255 255 / .03) 40%, rgb(255 255 255 / .05)), rgb(14 17 25 / .5);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .05), 0 18px 44px rgb(0 0 0 / .4);
+}
+.comando { border-radius: 999px; padding: 6px 10px; }
+.etapa { border-radius: 24px; padding: var(--esp-4) var(--esp-5); }
+.foco, .tabela-wrap, .lado > section, .lado > div { border-radius: 26px; }
+.gaveta-corpo { background-color: rgb(12 15 23 / .9); border-radius: 28px 0 0 28px; }
+.gaveta-fundo { background: rgb(3 5 9 / .55); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.dlg { background-color: rgb(12 15 23 / .94); border-radius: 28px; }
+.comando::before, .etapa::before, .foco::before, .lado > section::before, .lado > div::before, .tabela-wrap::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: -1;
+  background: linear-gradient(150deg, rgb(255 255 255 / .44), rgb(255 255 255 / .06) 35%, rgb(255 255 255 / .02) 60%, rgb(255 255 255 / .2));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.tabela-wrap { padding: 6px 10px; }
+.aba { border-radius: 999px; }
+label.busca { border-radius: 999px; background: rgb(255 255 255 / .08); border-color: rgb(255 255 255 / .14); }
+.mic { border-radius: 20px; }
+.foco { padding: var(--esp-6) var(--esp-8); } .foco-texto { padding: 0; }
+.lado > section { padding: 22px 22px 18px; } .lado > section > h2 { margin: 0 0 12px; } .lado .lista, .lado .envio-status { margin-top: 4px; }
+
+/* "Suas buscas" (lista de lotes no lado): era .busca igual à caixa de pesquisa e virou círculo; agora é um cartão claro */
+li.busca { display: flex; flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px; border-radius: 20px; border: 0; width: auto; max-width: 100%;
+  background: rgb(255 255 255 / .06); box-shadow: inset 0 1px 0 rgb(255 255 255 / .14); }
+li.busca > div { min-width: 0; display: grid; gap: 4px; flex: 1; }
+li.busca strong { font-size: 15px; }
+li.busca small { display: block; color: rgb(245 245 247 / .62); font-size: 12.5px; line-height: 1.45; }
+li.busca > .btn { flex: none; align-self: flex-start; }
+li.busca .lotes { display: flex; flex-wrap: wrap; gap: 6px; }
+li.busca .motivo-bloqueio { color: #ffd479; }
+.lado .lista:has(> li.busca), .lado ul:has(> li.busca) { display: grid; gap: 10px; }
+/* espaço vazio da dica de cidade: some quando não há texto */
+.dica-cidade:empty { display: none; }
+
+/* Nova varredura: faixa horizontal de largura total, logo abaixo do funil (antes ficava no fim da coluna da direita) */
+.varrer { margin: var(--esp-6) var(--esp-8) 0; padding: 22px 24px 20px; border-radius: 28px; position: relative; isolation: isolate;
+  background: linear-gradient(160deg, rgb(255 255 255 / .11), rgb(255 255 255 / .03) 40%, rgb(255 255 255 / .05)), rgb(14 17 25 / .5);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(255 255 255 / .05), 0 18px 44px rgb(0 0 0 / .4); }
+.varrer > h2 { margin: 0 0 14px; font-size: 18px; letter-spacing: -.01em; }
+.varrer .form-varredura { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 12px 14px; align-items: end; }
+.varrer .form-varredura .largo { grid-column: span 3; }
+.varrer .form-varredura .campo:not(.largo) { grid-column: span 2; }
+.varrer .form-varredura button.largo { grid-column: span 4; align-self: end; min-height: 44px; }
+.varrer .form-varredura p.largo { grid-column: 1 / -1; margin: 0; }
+.varrer #varreduras { margin-top: 18px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; list-style: none; padding: 0; }
+.varrer #varreduras:empty { display: none; }
+.varrer li.busca { height: 100%; }
+@media (max-width: 1100px) { .varrer .form-varredura .largo { grid-column: span 6; } .varrer .form-varredura .campo:not(.largo) { grid-column: span 3; } .varrer .form-varredura button.largo { grid-column: span 6; } }
+@media (max-width: 640px) { .varrer { margin: var(--esp-5) var(--esp-4) 0; padding: 18px; } .varrer .form-varredura .largo, .varrer .form-varredura .campo:not(.largo), .varrer .form-varredura button.largo { grid-column: 1 / -1; } }
+.varrer .form-varredura p.largo { order: 9; }
+.varrer .form-varredura button.largo { grid-column: span 8; }
+@media (max-width: 1100px) { .varrer .form-varredura button.largo { grid-column: span 6; } }
+@media (max-width: 640px) { .varrer .form-varredura button.largo { grid-column: 1 / -1; } }

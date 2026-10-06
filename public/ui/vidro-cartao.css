@@ -1,0 +1,69 @@
+/* Cartão de aprovação em vidro (acrílico): o mesmo vidro da ficha do agente, aplicado ao fluxo que mais se usa no Painel.
+   Fundo que borra a tela, aro de luz, chips e bolha da mensagem como peças de vidro. Movimento só nas ações do Victor (arrastar, abrir, aprovar). */
+
+/* o pano de fundo ganha duas luzes frias (lima e ciano) para o vidro ter o que borrar */
+.cartoes-fundo {
+  background:
+    radial-gradient(55% 45% at 18% 12%, rgb(183 255 0 / .14), transparent 62%),
+    radial-gradient(50% 45% at 86% 88%, rgb(0 237 255 / .13), transparent 62%),
+    rgb(3 5 9 / .84);
+  -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%);
+}
+
+.cartao {
+  --vidro-a: rgb(255 255 255 / .14); --vidro-b: rgb(255 255 255 / .04);
+  isolation: isolate; border: 0; border-radius: 30px; padding: 24px 22px 20px; gap: 18px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", Inter, system-ui, sans-serif;
+  background: linear-gradient(160deg, var(--vidro-a), var(--vidro-b) 40%, rgb(255 255 255 / .06)), rgb(16 19 27 / .5);
+  -webkit-backdrop-filter: blur(30px) saturate(190%); backdrop-filter: blur(30px) saturate(190%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .28), inset 0 -1px 0 rgb(255 255 255 / .05), inset 0 0 0 1px rgb(255 255 255 / .06), 0 30px 70px rgb(0 0 0 / .55), 0 4px 14px rgb(0 0 0 / .35);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .cartao { background: rgb(18 21 30 / .96); } }
+/* aro de luz: pega luz no canto de cima e some embaixo */
+.cartao::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: -1;
+  background: linear-gradient(150deg, rgb(255 255 255 / .55), rgb(255 255 255 / .08) 35%, rgb(255 255 255 / .02) 60%, rgb(255 255 255 / .28));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+.cartao header { gap: 8px; }
+.cartao h2 { font-size: 27px; font-weight: 650; letter-spacing: -.02em; line-height: 1.12; color: #f5f5f7; }
+.cartao .sub { color: #f5f5f79e; font-size: 14px; }
+.cartao-porque { font-size: 13px; color: #f5f5f7b8; }
+.cartao-porque span { color: #f5f5f77a; }
+
+/* chips (situação do site, prioridade, telefone) viram pílulas de vidro */
+.cartao .g-resumo { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.cartao .g-resumo > li, .cartao .g-resumo > * {
+  border: 0; border-radius: 999px; padding: 6px 12px; font-size: 13px; color: #f5f5f7e0;
+  background: rgb(255 255 255 / .1); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2);
+}
+
+/* a mensagem: bolha de WhatsApp em vidro verde */
+.cartao .balao-wa {
+  border: 0; border-radius: 22px; padding: 4px;
+  background: linear-gradient(160deg, rgb(52 211 120 / .2), rgb(52 211 120 / .08)), rgb(10 30 20 / .3);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(120 255 180 / .12);
+}
+.cartao .balao-wa textarea { background: transparent; border: 0; box-shadow: none; color: #f2fff7; font-size: 15px; line-height: 1.55; min-height: 128px; padding: 14px 16px 6px; }
+.cartao .balao-wa textarea:focus-visible { outline: 2px solid rgb(120 255 180 / .5); outline-offset: -2px; border-radius: 18px; }
+.cartao .balao-rodape { padding: 0 16px 10px; color: #d8f5e4a0; font-size: 12px; }
+
+.cartao .motivos { border: 0; border-radius: 20px; background: rgb(255 255 255 / .07); box-shadow: inset 0 1px 0 rgb(255 255 255 / .14); padding: 14px; }
+.cartao-dica { color: #f5f5f773; }
+
+/* barra de cima e aviso de desfazer */
+.cartoes-pos { color: #f5f5f799; }
+.cartoes-progresso { height: 4px; background: rgb(255 255 255 / .12); box-shadow: inset 0 1px 2px rgb(0 0 0 / .4); }
+.cartoes-progresso i { background: linear-gradient(90deg, var(--lima-500), #e6ff8a); box-shadow: 0 0 10px #b7ff0066; }
+.cartoes-desfazer {
+  border: 0; border-radius: 999px; background: rgb(22 25 34 / .62);
+  -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 14px 36px rgb(0 0 0 / .45);
+}
+
+/* envio guiado: quatro ações na mesma linha, a principal em lima */
+.cartao-acoes-envio { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+.cartao-acoes-envio .btn { flex: 1 1 auto; text-align: center; text-decoration: none; }
+.cartao-acoes-envio #e-abrir, .cartao-acoes-envio #e-feito { flex: 2 1 160px; }
+.cartao .balao-wa textarea[readonly] { cursor: default; resize: none; }

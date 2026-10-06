@@ -33,7 +33,8 @@ import { semearDemo, criarSimulador, BLOQUEADAS_NA_DEMO } from './demo.mjs';
 import { ARESTAS, NOS, REQUISITOS } from './tocomas/grafo.mjs';
 import { prontidao } from './tocomas/zonas.mjs';
 import { MOTIVOS, listar as listarHabilidades, mudarEstado, propor, retrato } from './tocomas/habilidades.mjs';
-import { LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
+import { permitido, mascarar } from './espectador.mjs';
+import { COOKIE_ESPECTADOR, LIVRES, cookieSair, cookieSessao, criarLimitador, criarSessao, ehLocal, iguais, ipDe, lerCookie, sessaoValida } from './acesso.mjs';
 
 // demonstração: banco em memória com empresas fictícias e simulador no lugar dos agentes reais
 const db = abrirBanco(CONFIG.demo ? ':memory:' : CONFIG.dataDir);
@@ -438,11 +439,17 @@ rota('POST', '/api/whatsapp/teste', async () => {
 
 const limitador = criarLimitador();
 rota('POST', '/api/entrar', ({ req, res, body }) => {
-  if (!CONFIG.acessoSenha) throw new HttpError(403, 'acesso remoto desligado (defina ACESSO_SENHA no .env)');
+  if (!CONFIG.acessoSenha && !CONFIG.espectadorSenha) throw new HttpError(403, 'acesso remoto desligado (defina ACESSO_SENHA no .env)');
   const ip = ipDe(req);
   if (limitador.bloqueado(ip)) throw new HttpError(429, 'muitas tentativas; espere 10 minutos');
-  if (!iguais(String(body.senha ?? ''), CONFIG.acessoSenha)) { limitador.errou(ip); throw new HttpError(401, 'senha incorreta'); }
-  res.setHeader('Set-Cookie', cookieSessao(criarSessao(CONFIG.acessoSenha), req.headers['x-forwarded-proto'] === 'https'));
+  const https = req.headers['x-forwarded-proto'] === 'https';
+  const senha = String(body.senha ?? '');
+  if (CONFIG.espectadorSenha && CONFIG.espectadorSenha.length >= 8 && iguais(senha, CONFIG.espectadorSenha)) {
+    res.setHeader('Set-Cookie', cookieSessao(criarSessao(CONFIG.espectadorSenha), https, COOKIE_ESPECTADOR));
+    return { ok: true, espectador: true };
+  }
+  if (!iguais(senha, CONFIG.acessoSenha)) { limitador.errou(ip); throw new HttpError(401, 'senha incorreta'); }
+  res.setHeader('Set-Cookie', cookieSessao(criarSessao(CONFIG.acessoSenha), https));
   return { ok: true };
 });
 rota('POST', '/api/sair', ({ res }) => { res.setHeader('Set-Cookie', cookieSair()); return { ok: true }; });
@@ -455,6 +462,16 @@ function barrarRemoto(req, res, url) {
   res.setHeader('Referrer-Policy', 'no-referrer');
   if (LIVRES.has(url.pathname) || url.pathname.startsWith('/webhooks/')) return false;
   if (CONFIG.acessoSenha && sessaoValida(CONFIG.acessoSenha, lerCookie(req))) return false;
+  // espectador: só leitura, em lista fechada, com telefones mascarados (src/espectador.mjs)
+  if (CONFIG.espectadorSenha?.length >= 8 && sessaoValida(CONFIG.espectadorSenha, lerCookie(req, COOKIE_ESPECTADOR))) {
+    if (!permitido(req.method, url.pathname)) {
+      res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify({ erro: 'modo espectador: só dá para olhar' }));
+      return true;
+    }
+    req.espectador = true;
+    if (url.pathname === '/api/stream') { const w = res.write.bind(res); res.write = (c, ...r) => w(typeof c === 'string' ? mascarar(c) : c, ...r); }
+    return false;
+  }
   if (req.method === 'GET' && !url.pathname.startsWith('/api/')) {
     res.writeHead(302, { Location: `/entrar.html?volta=${encodeURIComponent(url.pathname)}` }).end();
   } else {
@@ -499,7 +516,7 @@ function arquivo(req, res, p) {
 }
 
 // CSP: o front usa <script>/<style> inline e Three.js via jsDelivr, então 'unsafe-inline' fica; o resto é fechado
-const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' blob: data: https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' blob: data: https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   res.setHeader('Content-Security-Policy', CSP);
@@ -520,7 +537,7 @@ const servidor = http.createServer(async (req, res) => {
     const body = req.method === 'POST' ? await lerCorpo(req, limite) : {};
     const out = await r.fn({ req, res, url, body, params: url.pathname.match(r.re).groups || {} });
     if (out === SEM_RESPOSTA) return;
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(out));
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(req.espectador ? mascarar(JSON.stringify(out)) : JSON.stringify(out));
   } catch (e) {
     const status = e.status || 500;
     if (status === 500) console.error(e);

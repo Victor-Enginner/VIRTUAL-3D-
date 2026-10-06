@@ -39,6 +39,9 @@ export const MEDIDAS = {
   'cadeira-avulsa': { eixo: 'y', m: 0.8 },
   'cadeira-branca': { eixo: 'y', m: 0.78 },
   tapete: { eixo: 'x', m: 2.41 },
+  'planta-rizoma': { eixo: 'y', m: 1.25 }, // plantas reais (CC-BY): no lugar das plantinhas de blocos
+  'planta-vaso': { eixo: 'y', m: 0.55 },
+  'delica-couch': { eixo: 'x', m: 3.0 }, // sofá de design (CC-BY, Visthétique): 3 m de largura
 };
 
 const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);

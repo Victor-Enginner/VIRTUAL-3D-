@@ -1,0 +1,44 @@
+/* Sala 3D e Base do Mestre no vidro do resto do sistema. A cena 3D não muda: só a camada de interface por cima dela. */
+:root { --v-fundo: linear-gradient(160deg, rgb(255 255 255 / .12), rgb(255 255 255 / .035) 40%, rgb(255 255 255 / .06)), rgb(12 15 23 / .55);
+  --v-sombra: inset 0 1px 0 rgb(255 255 255 / .24), inset 0 0 0 1px rgb(255 255 255 / .05), 0 18px 44px rgb(0 0 0 / .45); }
+.sala .cabecalho { position: relative; z-index: 6; background: transparent; border-bottom: 0; }
+
+/* botões do topo, abas de câmera e botões da ficha: pílulas de vidro (o lima fica só no botão principal) */
+.sala .acoes .btn:not(.primario), .vistas .btn, .tv-painel .btn:not(.primario), .ficha-agente .btn:not(.primario), .resumo-base .btn:not(.primario) {
+  border: 0; border-radius: 999px; background: rgb(255 255 255 / .1); color: var(--texto); box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), 0 6px 16px rgb(0 0 0 / .3);
+  -webkit-backdrop-filter: blur(18px) saturate(170%); backdrop-filter: blur(18px) saturate(170%); animation: none;
+}
+.sala .acoes .btn:not(.primario):hover, .vistas .btn:hover, .tv-painel .btn:not(.primario):hover, .ficha-agente .btn:not(.primario):hover, .resumo-base .btn:not(.primario):hover { background: rgb(255 255 255 / .17); }
+.btn[aria-pressed="true"], #btn-tv.ativo { background: rgb(183 255 0 / .16) !important; color: var(--acento) !important; box-shadow: inset 0 1px 0 rgb(255 255 255 / .22), inset 0 0 0 1px rgb(183 255 0 / .35) !important; }
+.vistas { padding: 6px; border-radius: 999px; background: var(--v-fundo); box-shadow: var(--v-sombra); -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%); }
+.vistas .btn { min-height: 34px; background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.vistas .btn:hover { background: rgb(255 255 255 / .12); }
+
+/* painéis flutuantes */
+.tv-painel, .resumo-base, .palco .carregando, .trilha li, .rotulo .cartao {
+  border: 0; background: var(--v-fundo); box-shadow: var(--v-sombra); -webkit-backdrop-filter: blur(24px) saturate(180%); backdrop-filter: blur(24px) saturate(180%);
+}
+.tv-painel { border-radius: 26px; padding: 18px; }
+.tv-painel header strong { font-size: 16px; letter-spacing: -.01em; }
+.tv-painel input { border: 0; border-radius: 999px; background: rgb(255 255 255 / .08); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16), inset 0 0 0 1px rgb(255 255 255 / .06); }
+.palco .carregando { border-radius: 999px; padding: 8px 16px; }
+.trilha li { border-radius: 16px; }
+.rotulo .cartao { border-radius: 16px; }
+.rotulo.trabalhando .cartao { box-shadow: var(--v-sombra), 0 0 0 1.5px color-mix(in oklab, var(--cor) 70%, transparent); }
+
+/* Base do Mestre: cartão da fila */
+.palco .resumo-base { border-radius: 28px; padding: 22px 22px 20px; width: min(380px, calc(100% - 24px)); gap: 12px; }
+.resumo-base h2 { font-size: 22px; letter-spacing: -.02em; margin: 0; }
+.resumo-base h3 { text-transform: uppercase; letter-spacing: .09em; font-size: 11.5px; color: rgb(245 245 247 / .6); margin-top: 8px; }
+.resumo-base p { color: rgb(245 245 247 / .78); line-height: 1.5; }
+.resumo-base > div:not(.essencial), .resumo-base .motivo, .resumo-base .regras li { border-radius: 16px; }
+.resumo-base .btn.primario { justify-self: stretch; text-align: center; border-radius: 999px; min-height: 46px; }
+.resumo-base::-webkit-scrollbar { width: 0; }
+.metricas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.metricas > div { display: grid; gap: 2px; padding: 12px 10px; border-radius: 18px; background: rgb(255 255 255 / .08); box-shadow: inset 0 1px 0 rgb(255 255 255 / .16); text-align: center; }
+.metricas strong { font-size: 28px; font-weight: 750; letter-spacing: -.03em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.metricas strong small { font-size: 14px; font-weight: 500; color: rgb(245 245 247 / .55); }
+.metricas span { font-size: 11.5px; color: rgb(245 245 247 / .65); }
+.metricas .m-lima strong { color: var(--acento); text-shadow: 0 0 22px #b7ff0050; }
+.resumo-base .regras li { border: 0; background: rgb(255 255 255 / .07); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12); }
+.resumo-base .estado { border-radius: 999px; padding: 2px 9px; background: rgb(255 255 255 / .12); }

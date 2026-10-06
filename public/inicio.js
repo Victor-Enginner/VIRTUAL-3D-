@@ -1,8 +1,7 @@
 // Início — a "Visão geral" do Órbita com os dados reais do Prospector (nada simulado).
 import { montarShell, atualizarShell, ICONES, ic } from './ui/shell.js';
 import { api, esc, dois, quando, aCada, vazio } from './ui/util.js';
-import { montarGlobo } from './ui/globo.js';
-import { vestirAviao } from './ui/botao-aviao.js';
+import { montarErosao } from './ui/erosao.js';
 import { ligarVoz } from './ui/voz.js';
 
 const SETA = ic('<path d="M5 12h14M13 6l6 6-6 6"/>');
@@ -14,30 +13,46 @@ montarShell('inicio');
 const $ = (s) => document.querySelector(s);
 const pagina = $('#pagina');
 
+document.body.classList.add('v-inicio'); // vidro só aqui por enquanto (public/ui/inicio-vidro.css)
+const MODOS = [
+  ['/#varredura', 'Varrer', '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>'],
+  ['/?cartoes=1', 'Aprovar', '<path d="M5 12l5 5 9-10"/>', 'selo-aprovar'],
+  ['/?enviar=1', 'Enviar', '<path d="M4 12l16-8-6 16-3-6.5z"/><path d="M11 13.5L20 4"/>', 'selo-enviar'],
+  ['/producao.html', 'Quadro', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 4v16"/>'],
+  ['/agentes.html', 'Equipe', '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>'],
+  ['/nichos.html', 'Nichos', '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'],
+  ['/sala.html', 'Sala 3D', '<path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/>'],
+];
 pagina.innerHTML = `
-  <section class="o-hero" aria-labelledby="t-hero">
+  <section class="v-hero" aria-labelledby="t-hero">
     <div class="o-globo" id="globo" aria-hidden="true"></div>
     <p class="eyebrow">SEU ESCRITÓRIO. SUA PROSPECÇÃO.</p>
-    <h1 id="t-hero">O que vamos prospectar hoje?</h1>
-    <p class="o-sub">Do primeiro achado no Maps à resposta no WhatsApp: a equipe trabalha, você decide.</p>
+    <h1 id="t-hero">O que vamos <em>prospectar</em> hoje?</h1>
+    <p class="o-sub">Do primeiro achado no mapa à resposta no WhatsApp: a equipe trabalha, você decide.</p>
     <div class="o-linha-comando">
-    <button class="mic-voz" id="i-mic" type="button" aria-label="Falar um comando">${ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')}<span>Falar</span></button>
-    <form class="o-compositor" id="f-comando">
-      <label class="sr" for="i-comando">Comando para os agentes</label>
-      <textarea id="i-comando" rows="2" maxlength="300" placeholder='Ex.: "varre barbearias em Franca SP", "resumo do dia", "pausar"'></textarea>
-      <div class="o-compositor-base"><span>${ICONES.agentes}Comando para a equipe <span class="o-local">· roda no seu PC</span></span>
-        <button class="btn primario" type="submit">Enviar ${SETA}</button></div>
-      <p class="o-resposta" id="resposta" aria-live="polite"></p>
-    </form>
+      <button class="mic-voz" id="i-mic" type="button" aria-label="Falar um comando">${ic('<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>')}<span>Falar</span></button>
+      <form class="o-compositor" id="f-comando">
+        <label class="sr" for="i-comando">Comando para a equipe</label>
+        <input id="i-comando" type="text" maxlength="300" autocomplete="off" placeholder='Ex.: "varre dentistas em Lisboa Portugal", "busca mais 50", "resumo do dia"'>
+        <button class="btn primario" type="submit">Enviar ${SETA}</button>
+      </form>
     </div>
-    <div class="o-atalhos" aria-label="Atalhos">
-      <a class="btn" href="/?cartoes=1">${ICONES.painel}Aprovar mensagens</a>
-      <a class="btn" href="/producao.html">${ICONES.producao}Abrir o quadro</a>
-      <a class="btn" href="/sala.html">${ICONES.sala}Entrar na Sala 3D</a>
-    </div>
+    <p class="o-resposta" id="resposta" aria-live="polite"></p>
+    <nav class="v-modos" aria-label="Atalhos">
+      ${MODOS.map(([href, rot, d, selo]) => `<a class="v-modo" href="${href}"><span class="bola"><svg viewBox="0 0 24 24" aria-hidden="true">${d}</svg></span>${selo ? `<b class="selo" id="${selo}"></b>` : ''}${rot}</a>`).join('')}
+    </nav>
   </section>
-  <a class="o-engine" href="/engine.html"><span class="simbolo">${ESTRELA}</span><div><p class="eyebrow">TOCOMAS ENGINE</p><h2>Um lead. Oito passos com portões.</h2><p>Crença, controlador, calibração e regras aprendidas no mesmo motor.</p></div><span class="btn">${SETA}Abrir o motor</span></a>
-  <div class="o-stats" id="stats"></div>
+
+  <section class="v-sec">
+    <div class="o-secao"><div><h2>Hoje</h2><p>O resumo do escritório, com os números do seu banco.</p></div></div>
+    <div class="o-stats" id="stats"></div>
+  </section>
+
+  <section class="v-sec">
+    <div class="o-secao"><div><h2>Suas buscas</h2><p>Cada cidade e ramo, com o que já foi tratado. Nada se perde.</p></div><a class="o-link" href="/#varredura">Nova busca ${SETA}</a></div>
+    <div class="v-buscas" id="buscas"></div>
+  </section>
+
   <div class="o-duas">
     <section>
       <div class="o-secao"><div><h2>Sua equipe</h2><p>Cada agente, uma etapa do pipeline.</p></div><a class="o-link" href="/agentes.html">Ver equipe ${SETA}</a></div>
@@ -51,9 +66,10 @@ pagina.innerHTML = `
       <ol class="o-atividade" id="atividade"></ol>
       <p class="o-dica">${ic('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')}<span>Tudo aqui vem do seu banco local e dos agentes rodando no PC. Nenhum número é demonstração.</span></p>
     </section>
-  </div>`;
+  </div>
+
+  <a class="o-engine" href="/engine.html"><span class="simbolo">${ESTRELA}</span><div><p class="eyebrow">TOCOMAS ENGINE</p><h2>Um lead. Oito passos com portões.</h2><p>Crença, controlador, calibração e regras aprendidas no mesmo motor.</p></div><span class="btn">Abrir o motor ${SETA}</span></a>`;
 pagina.removeAttribute('aria-busy');
-vestirAviao($('#f-comando button[type=submit]'), { texto: 'Enviar' }).classList.add('compacto');
 // comando de voz: o microfone só liga quando você clica; ao terminar de falar, o comando é enviado como se você tivesse digitado
 ligarVoz($('#i-mic'), {
   aoMudar: (ouvindo) => { if (ouvindo) $('#resposta').textContent = 'Ouvindo… fale o comando.'; },
@@ -61,7 +77,7 @@ ligarVoz($('#i-mic'), {
   aoFinal: () => $('#f-comando').requestSubmit(),
   aoErro: (m) => { $('#resposta').textContent = m; },
 });
-const globo = montarGlobo($('#globo'), { lado: 280 }); // pulsa como coração só quando os agentes estão trabalhando
+const globo = montarErosao($('#globo'), { lado: 340 }); // pulsa como coração só quando os agentes estão trabalhando
 
 $('#f-comando').addEventListener('submit', async (ev) => {
   ev.preventDefault();
@@ -78,13 +94,12 @@ $('#f-comando').addEventListener('submit', async (ev) => {
   } catch (e) { $('#resposta').textContent = `Não deu: ${e.message}`; }
   btn?.removeAttribute('aria-busy');
 });
-$('#i-comando').addEventListener('keydown', (ev) => { if (ev.key === 'Enter' && !ev.shiftKey) { ev.preventDefault(); $('#f-comando').requestSubmit(); } });
 
 const NO_FLUXO = ['descoberto', 'auditado', 'qualificado', 'mensagem', 'aprovado'];
 
 async function atualizar() {
-  const [estado, { eventos }, { leads }, { varreduras }] = await Promise.all([
-    api('/api/estado'), api('/api/eventos?limite=8'), api('/api/leads?etapa=mensagem'), api('/api/varreduras'),
+  const [estado, { eventos }, { leads }, { varreduras }, { buscas }] = await Promise.all([
+    api('/api/estado'), api('/api/eventos?limite=8'), api('/api/leads?etapa=mensagem'), api('/api/varreduras'), api('/api/cobertura'),
   ]);
   atualizarShell(estado);
   const ags = Object.entries(estado.agentes);
@@ -99,6 +114,18 @@ async function atualizar() {
     ['violeta', 'Leads no fluxo', dois(noFluxo), `${estado.funil?.qualificado || 0} com a Maia · ${estado.funil?.aprovado || 0} na fila do Leo`, ICONES.producao, '/producao.html'],
     ['lima', 'Pedem seu olhar', dois(n), n ? 'mensagens esperando aprovação' : 'nada esperando você', ICONES.engine, '/?cartoes=1'],
   ].map(([cor, rot, v, sub, icone, href]) => `<a class="o-stat ${cor}" href="${href}"><span class="rot">${rot}${icone}</span><strong>${v}</strong><small class="o-cap">${esc(sub)}${DIAGONAL}</small></a>`).join('');
+
+  $('#selo-aprovar').textContent = n ? String(n) : '';
+  $('#selo-enviar').textContent = estado.envio?.na_fila ? String(estado.envio.na_fila) : '';
+  const PAIS = { BR: 'Brasil', PT: 'Portugal', PY: 'Paraguai' };
+  $('#buscas').innerHTML = buscas.map((b) => {
+    const total = b.lotes.reduce((t, l) => t + l.novos, 0) || b.leads || 1;
+    const abertos = b.lotes.reduce((t, l) => t + (l.pendentes || 0), 0);
+    const p = Math.round((100 * (total - abertos)) / total);
+    return `<a class="v-busca" href="/#varredura"><div class="cab"><div><h3>${esc(b.nicho_rotulo)}</h3><p class="onde">${esc(b.cidade)}-${esc(b.uf)} · ${esc(PAIS[b.pais] || b.pais)}</p></div>
+      <div class="v-anel" style="--p:${p}" title="${p}% tratado"><i></i>${p}%</div></div>
+      <div class="v-chips"><span class="v-chip">${b.leads} empresas</span><span class="v-chip">${b.sem_site_ou_fraco} sem site ou fraco</span><span class="v-chip ${abertos ? 'aberto' : 'ok'}">${abertos ? `${abertos} em aberto` : 'tratado ✓'}</span></div></a>`;
+  }).join('') || vazio('Nenhuma busca ainda', 'Diga um comando, por exemplo "varre dentistas em Lisboa Portugal". A equipe só começa quando você pede.');
 
   $('#equipe').innerHTML = ags.map(([id, a]) => {
     const on = a.status === 'trabalhando', pausa = estado.pausado;

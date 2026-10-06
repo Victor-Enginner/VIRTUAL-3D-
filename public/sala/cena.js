@@ -115,9 +115,9 @@ export function criarEscritorio(cena, cores) {
   const KIT = {
     atlas: { teclado: 'teclado-mecanico-azul', celular: 'celular-xiaomi', som: 'caixas-som', extras: ['lata-monster', 'airpods'] },
     nova: { teclado: 'teclado-vortex', celular: 'celular-xiaomi', som: 'caixas-razer', extras: ['airpods'] },
-    maia: { teclado: 'teclado-mecanico-azul', celular: 'celular-iphone-nc', som: 'caixas-som', extras: ['planta'] },
+    maia: { teclado: 'teclado-mecanico-azul', celular: 'celular-iphone-nc', som: 'caixas-som', extras: [] },
     leo: { teclado: 'teclado-vortex', celular: 'celular-xiaomi', som: 'caixas-razer', extras: ['lata-monster'] },
-    alva: { teclado: 'teclado-vortex', celular: 'celular-iphone-nc', som: null, extras: ['airpods', 'planta'] },
+    alva: { teclado: 'teclado-vortex', celular: 'celular-iphone-nc', som: null, extras: ['airpods'] },
     padrao: { teclado: 'teclado-vortex', celular: 'celular-iphone-nc', som: 'caixas-som', extras: [] },
   };
   const TAMPO = 0.75;
@@ -179,8 +179,6 @@ export function criarEscritorio(cena, cores) {
   posto('leo', 4.6, -4.4, Math.PI);
   posto('alva', 9.4, 6.6, -Math.PI / 2);
   por('sideTableDrawers', -6.4, -6.6, 0);
-  por('pottedPlant', 6.0, -8.2, 0);
-  por('pottedPlant', -6.3, -8.2, 0);
 
   // ---------------- área de espera (canto do fundo à direita) ----------------
   // a Base do Mestre agora é um lugar à parte (/base.html); aqui fica a recepção de visitas
@@ -190,7 +188,6 @@ export function criarEscritorio(cena, cores) {
   porModelo('cadeira-avulsa', X1 - 4.4, Z0 + 3.7, Math.PI / 1.7, { folga: 0.1 });
   porModelo('cadeira-branca', X1 - 1.6, Z0 + 2.4, -Math.PI / 2.4, { folga: 0.1 });
   porModelo('cadeira-branca', X1 - 1.6, Z0 + 3.7, -Math.PI / 1.7, { folga: 0.1 });
-  por('pottedPlant', X1 - 0.6, Z0 + 0.6, 0);
   por('bookcaseClosedWide', X1 - 3.0, Z0 + 0.35, 0);
   // o "operador" (você) não tem mesa no escritório: o que vai para você sai pela porta, rumo à Base
   postos.operador = { assento: { x: X1 - 1.2, z: PORTA_Z, rot: -Math.PI / 2 }, mesa: new THREE.Vector3(X1 + 0.6, 0, PORTA_Z), tela: null, luz: null, cadeira: null };
@@ -225,12 +222,10 @@ export function criarEscritorio(cena, cores) {
   cena.add(soundbar, telaSom);
   porModelo('mesa-principal', -1, 5.3, Math.PI / 2);
   porModelo('caixa-jbl', -1.55, 2.62, 0.5, { y: 0.76, obstaculo: false });
-  por('loungeSofa', -2.1, 7.2, Math.PI);
-  por('loungeSofa', 0.1, 7.2, Math.PI);
-  por('loungeChair', -4.2, 5.2, Math.PI / 2);
-  por('loungeChair', 2.2, 5.2, -Math.PI / 2);
-  por('pottedPlant', -5.4, 8.2, 0);
-  por('pottedPlant', 3.4, 8.2, 0);
+  porModelo('delica-couch', -1, 6.7, Math.PI); // sofá de design virado para a TV (substitui os sofás rosas)
+  // plantas reais (arquivos seus): altas nos cantos e na recepção, baixas ao lado do sofá
+  for (const [x, z] of [[6.0, -8.2], [-6.3, -8.2], [X1 - 0.6, Z0 + 0.6], [X1 - 0.6, 8.3]]) porModelo('planta-rizoma', x, z, Math.random() * Math.PI * 2, { obstaculo: false });
+  for (const [x, z] of [[-3.4, 7.2], [1.4, 7.2]]) porModelo('planta-vaso', x, z, Math.random() * Math.PI * 2, { obstaculo: false });
   por('lampSquareFloor', 3.4, 6.6, 0);
 
   // ---------------- copa (direita) ----------------
@@ -240,24 +235,17 @@ export function criarEscritorio(cena, cores) {
   por('kitchenFridge', X1 - 0.55, -2.55, -Math.PI / 2);
   por('kitchenCoffeeMachine', X1 - 0.7, 0.1, -Math.PI / 2, { y: 0.9, obstaculo: false });
   por('kitchenMicrowave', X1 - 0.65, 1.3, -Math.PI / 2, { y: 0.9, obstaculo: false });
-  por('tableRound', 9, 0.6, 0);
-  for (const [dx, dz, r] of [[0, -0.95, 0], [0, 0.95, Math.PI], [-0.95, 0, Math.PI / 2]]) por('stoolBar', 9 + dx, 0.6 + dz, r, { obstaculo: false });
   por('trashcan', X1 - 0.6, 3.55, 0, { escala: 0.7 });
   porModelo('caixa-bluetooth', X1 - 0.6, -0.74, -Math.PI / 2, { y: 0.9, obstaculo: false });
-  porModelo('lata-monster', 9.1, 0.5, 0, { y: 0.74, obstaculo: false });
 
   // recepção: plantas e cabideiro perto da porta
   por('coatRackStanding', X1 - 0.6, 4.2, 0);
-  por('pottedPlant', X1 - 0.6, 8.3, 0);
 
   // pontos de interesse onde os agentes param (posição + direção do olhar)
   const pontos = {
     copa: [{ x: X1 - 1.7, z: 0.1, rot: Math.PI / 2 }, { x: X1 - 1.7, z: 1.2, rot: Math.PI / 2 }, { x: 8.2, z: 1.5, rot: Math.PI * 0.75 }, { x: 9.8, z: 1.6, rot: -Math.PI * 0.75 }],
     janela: [{ x: -2.8, z: Z0 + 1.0, rot: Math.PI }, { x: 2.8, z: Z0 + 1.0, rot: Math.PI }, { x: X0 + 1.0, z: 6.8, rot: -Math.PI / 2 }],
     biblioteca: [{ x: X0 + 1.6, z: -0.4, rot: -Math.PI / 2 }, { x: X0 + 1.6, z: 2.8, rot: -Math.PI / 2 }],
-    lounge: [{ x: -3.2, z: 4.0, rot: Math.PI * 0.7 }, { x: 1.2, z: 4.0, rot: -Math.PI * 0.7 }],
-    sofa: [{ x: -2.6, z: 7.15, rot: Math.PI, senta: true }, { x: -1.6, z: 7.15, rot: Math.PI, senta: true }, { x: -0.4, z: 7.15, rot: Math.PI, senta: true },
-      { x: 0.6, z: 7.15, rot: Math.PI, senta: true }, { x: -4.2, z: 5.2, rot: Math.PI / 2, senta: true }],
     tv: [{ x: -8.6, z: -7.9, rot: Math.PI * 0.15 }],
     reuniao: [[-0.45, -0.85, 0], [0.45, -0.85, 0], [-0.45, 0.85, Math.PI], [0.45, 0.85, Math.PI]].map(([dx, dz, rot]) => ({ x: -10 + dx, z: -6 + dz, rot, senta: true })),
   };
@@ -294,28 +282,39 @@ export function criarEscritorio(cena, cores) {
 
   // ---------------- OfficeBot: patrulha a sala entre os pontos de interesse ----------------
   const robo = { grupo: null, caminho: null, espera: 2, passo: 0 };
-  porModelo('officebot-nc', X1 - 2.2, 4.6, -Math.PI / 2, { obstaculo: false, aoCarregar: (_n, grupo) => { robo.grupo = grupo; } });
-  const ROTA_ROBO = [...pontos.copa, ...pontos.lounge, ...pontos.biblioteca, ...pontos.janela, { x: 0, z: -1.6 }, { x: X1 - 2.2, z: 4.6 }];
+  porModelo('officebot-nc', X1 - 2.2, 4.6, -Math.PI / 2, { obstaculo: false, aoCarregar: (_n, grupo) => { robo.grupo = grupo; grupo.visible = false; } });
+  // o robô fica perto da doca (disco de recarga junto à parede): de vez em quando dá uns passos de lado, nunca atravessa a sala
+  const DOCA = { x: X1 - 2.2, z: 4.6 }, ROTA_ROBO = [{ x: X1 - 2.2, z: 4.6 }, { x: X1 - 2.2, z: 5.6 }];
+  const doca = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.012, 32), new THREE.MeshStandardMaterial({ color: 0x1b1d23, roughness: 0.6, metalness: 0.4 }));
+  doca.position.set(DOCA.x, 0.007, DOCA.z);
+  const anelDoca = new THREE.Mesh(new THREE.RingGeometry(0.46, 0.5, 40), new THREE.MeshBasicMaterial({ color: 0x00edff, transparent: true, opacity: 0.6 }));
+  anelDoca.rotation.x = -Math.PI / 2; anelDoca.position.set(DOCA.x, 0.015, DOCA.z);
+  cena.add(doca, anelDoca);
+  robo.espera = 6;
   const giroRobo = new THREE.Quaternion(), eixoY = new THREE.Vector3(0, 1, 0);
   function atualizar(dt, t) {
     const g = robo.grupo;
     if (!g) return;
+    if (!robo.pronto) { g.position.set(DOCA.x, 0, DOCA.z); g.visible = true; robo.pronto = true; } // aparece já em pé na doca, não sobe do chão
+    g.position.y = Math.max(0, g.position.y);
     if (robo.espera > 0) {
       robo.espera -= dt;
       g.rotation.z = Math.sin(t * 1.3) * 0.015; // parado, "respira"
       return;
     }
     if (!robo.caminho) {
-      const alvo = ROTA_ROBO[Math.floor(Math.random() * ROTA_ROBO.length)];
-      robo.caminho = buscarCaminho(grade, [g.position.x, g.position.z], [alvo.x + 0.8, alvo.z + 0.8]);
-      if (!robo.caminho) { robo.espera = 2; return; }
+      // só dois pontos vizinhos: vai para o que está mais longe, por um caminho curto e livre
+      const alvo = ROTA_ROBO.reduce((m, p) => (Math.hypot(p.x - g.position.x, p.z - g.position.z) > Math.hypot(m.x - g.position.x, m.z - g.position.z) ? p : m));
+      const c = buscarCaminho(grade, [g.position.x, g.position.z], [alvo.x, alvo.z]);
+      if (!c || c.length > 4) { robo.espera = 12; return; }
+      robo.caminho = c;
     }
     const [tx, tz] = robo.caminho[0];
-    const dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz), vel = 0.75 * dt;
+    const dx = tx - g.position.x, dz = tz - g.position.z, dist = Math.hypot(dx, dz), vel = 0.5 * dt;
     if (dist <= vel) {
       g.position.x = tx; g.position.z = tz;
       robo.caminho.shift();
-      if (!robo.caminho.length) { robo.caminho = null; robo.espera = 3 + Math.random() * 6; }
+      if (!robo.caminho.length) { robo.caminho = null; robo.espera = 14 + Math.random() * 16; g.position.y = 0; }
       return;
     }
     g.position.x += (dx / dist) * vel; g.position.z += (dz / dist) * vel;

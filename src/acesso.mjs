@@ -10,7 +10,9 @@ const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
 // Sem eles e vindo do loopback = alguém no próprio PC.
 export function ehLocal(req) {
   const h = req.headers;
-  return LOOPBACK.has(req.socket.remoteAddress) && !h['cf-connecting-ip'] && !h['cf-ray'] && !h['x-forwarded-for'];
+  // o túnel chega pelo loopback, mas com o endereço público no Host: se o Host não é o do próprio PC, é remoto
+  const hostLocal = !h.host || /^(127\.0\.0\.1|localhost|\[::1\])(:\d+)?$/i.test(h.host);
+  return LOOPBACK.has(req.socket.remoteAddress) && hostLocal && !h['cf-connecting-ip'] && !h['cf-ray'] && !h['x-forwarded-for'];
 }
 
 export const ipDe = (req) => String(req.headers['cf-connecting-ip'] || req.socket.remoteAddress || '?');
@@ -45,8 +47,9 @@ export function lerCookie(req, nome = COOKIE) {
   return null;
 }
 
-export function cookieSessao(valor, https) {
-  return `${COOKIE}=${valor}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${DURACAO_S}${https ? '; Secure' : ''}`;
+export const COOKIE_ESPECTADOR = 'prospector_espectador';
+export function cookieSessao(valor, https, nome = COOKIE) {
+  return `${nome}=${valor}; Path=/; HttpOnly; SameSite=Strict; Max-Age=${DURACAO_S}${https ? '; Secure' : ''}`;
 }
 export const cookieSair = () => `${COOKIE}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0`;
 

@@ -40,7 +40,7 @@ test('prioridade: trabalho real e você chamando passam na frente do plano', () 
   const bloco = { atividade: 'almoco', area: 'lounge', rotulo: 'Almoço' };
   assert.equal(proximoEstado({ trabalhando: true, bloco }, 0).destino, 'mesa');
   assert.equal(proximoEstado({ chamadoAteMs: 10, bloco }, 0).destino, 'mesa');
-  assert.equal(proximoEstado({ pausadoGlobal: true, bloco }, 0).destino, 'sofa');
+  assert.equal(proximoEstado({ pausadoGlobal: true, bloco }, 0).destino, 'mesa');
   assert.deepEqual(proximoEstado({ bloco, ultimaAtividade: 0 }, 0), { estado: 'rotina', destino: 'lounge', rotulo: 'Almoço' });
   assert.equal(proximoEstado({ bloco: { atividade: 'reuniao', area: 'reuniao' } }, 0).estado, 'reuniao');
   assert.equal(proximoEstado({ bloco: { atividade: 'reuniao', area: 'tv' } }, 0).estado, 'apresentando');

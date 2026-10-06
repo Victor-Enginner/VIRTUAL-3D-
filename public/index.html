@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="/ui/base.css">
 <link rel="stylesheet" href="/ui/botao-aviao.css">
 <link rel="stylesheet" href="/painel.css">
+<link rel="stylesheet" href="/ui/painel-vidro.css">
+<link rel="stylesheet" href="/ui/vidro-cartao.css">
 <!-- prévia do link (WhatsApp, Instagram, LinkedIn, X): imagem em public/og.jpg, fonte em docs/producao/og/ -->
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Prospector">
@@ -57,6 +59,24 @@
 
     <section class="funil" id="kpis" aria-label="Funil de prospecção"></section>
 
+    <section class="varrer" id="varredura" aria-labelledby="t-varrer">
+      <h2 id="t-varrer">Nova varredura</h2>
+      <form id="form-varredura" class="form-varredura">
+        <label class="campo largo">País<select name="pais" id="sel-pais"></select></label>
+        <label class="campo largo"><span id="rot-uf">Estado</span><select name="uf" id="sel-uf"></select></label>
+        <label class="campo largo">Cidade<input name="cidade" id="inp-cidade" list="lista-cidades" required placeholder="Digite ou escolha" autocomplete="off"><datalist id="lista-cidades"></datalist></label>
+        <p class="dica-cidade largo" id="dica-cidade" aria-live="polite"></p>
+        <p class="dica-cidade largo" id="dica-pais"></p>
+        <label class="campo largo">Ramo<select name="nicho" id="sel-nicho"></select></label>
+        <label class="campo">Fonte<select name="fonte" id="sel-fonte"></select></label>
+        <label class="campo">Por lote<input name="limite" type="number" min="1" max="100" value="50" title="Quantas empresas o Atlas busca de cada vez. O próximo lote só abre depois que você trata todos os leads deste."></label>
+        <button class="btn primario largo">Colocar na fila do Atlas</button>
+        <p class="dica-cidade largo" id="msg-varredura" aria-live="polite"></p>
+        <p class="dica-cidade largo" id="dica-capacidade"></p>
+      </form>
+      <ul class="lista" id="varreduras"></ul>
+    </section>
+
     <div class="grade">
       <section class="leads" aria-labelledby="t-leads">
         <div class="leads-cab">
@@ -82,23 +102,6 @@
           <h2>Fila de envio</h2>
           <div id="envio-status" class="envio-status"></div>
           <ul class="lista" id="envios"></ul>
-        </section>
-        <section>
-          <h2>Nova varredura</h2>
-          <form id="form-varredura" class="form-varredura">
-            <label class="campo largo">País<select name="pais" id="sel-pais"></select></label>
-            <label class="campo largo"><span id="rot-uf">Estado</span><select name="uf" id="sel-uf"></select></label>
-            <label class="campo largo">Cidade<input name="cidade" id="inp-cidade" list="lista-cidades" required placeholder="Digite ou escolha" autocomplete="off"><datalist id="lista-cidades"></datalist></label>
-            <p class="dica-cidade largo" id="dica-cidade" aria-live="polite"></p>
-            <p class="dica-cidade largo" id="dica-pais"></p>
-            <label class="campo largo">Ramo<select name="nicho" id="sel-nicho"></select></label>
-            <label class="campo">Fonte<select name="fonte" id="sel-fonte"></select></label>
-            <label class="campo">Por lote<input name="limite" type="number" min="1" max="100" value="50" title="Quantas empresas o Atlas busca de cada vez. O próximo lote só abre depois que você trata todos os leads deste."></label>
-            <button class="btn primario largo">Colocar na fila do Atlas</button>
-            <p class="dica-cidade largo" id="msg-varredura" aria-live="polite"></p>
-            <p class="dica-cidade largo" id="dica-capacidade"></p>
-          </form>
-          <ul class="lista" id="varreduras"></ul>
         </section>
         <section>
           <h2>Atividade</h2>

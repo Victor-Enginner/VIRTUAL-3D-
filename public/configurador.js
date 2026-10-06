@@ -107,6 +107,23 @@ const ETAPAS_CONVITE = [
   ['Aprendizado', 'com que frequência revisa o que aprendeu'], ['Revisão', 'você confere a ficha e ativa'],
 ];
 
+// card "O que está ligado ao Prospector": ilha React carregada só aqui (public/ilhas, gerada por web/)
+function mostrarIntegracoes(secao) {
+  const alvo = document.createElement('div');
+  alvo.style.marginTop = '28px';
+  secao.append(alvo);
+  const montar = () => window.Ilhas?.montar('integracoes', alvo);
+  if (window.Ilhas) return montar();
+  if (!document.querySelector('link[href="/ilhas/ilhas.css"]')) {
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = '/ilhas/ilhas.css';
+    document.head.append(l);
+  }
+  const sc = document.createElement('script');
+  sc.src = '/ilhas/ilhas.js'; sc.onload = montar;
+  document.head.append(sc);
+}
+
 function desenharChat() {
   const chat = $('#chat');
   if (!dados) {

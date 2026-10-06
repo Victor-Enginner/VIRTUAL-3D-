@@ -34,7 +34,7 @@ before(async () => {
   db.close();
   const porta = await portaLivre();
   base = `http://127.0.0.1:${porta}`;
-  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', ATLAS_DESLIGADO: '1', WEBHOOK_TOKEN: 'token-de-teste-1234567890', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
+  srv = spawn(process.execPath, ['src/server.mjs'], { cwd: RAIZ, env: { ...process.env, PORT: String(porta), DATA_DIR: tmp, ACESSO_SENHA: '', ESPECTADOR_SENHA: '', ATLAS_DESLIGADO: '1', WEBHOOK_TOKEN: 'token-de-teste-1234567890', OPENWA_URL: 'http://127.0.0.1:1', OLLAMA_URL: 'http://127.0.0.1:1' }, stdio: 'ignore' });
   for (let i = 0; i < 80; i++) { try { if ((await fetch(base + '/api/saude')).ok) break; } catch { /* ainda subindo */ } await new Promise((r) => setTimeout(r, 150)); }
   inicial = (await chamar('GET', '/api/saude')).json; // a equipe SEMPRE sobe em espera
   await chamar('POST', '/api/agentes/pausar', {}); // nenhum agente mexe nos leads durante o teste

@@ -1,0 +1,74 @@
+/* Trilho lateral de vidro (computador): ícones grandes com o nome embaixo, no lugar da barra larga.
+   As mesmas peças de antes (navegação, contadores, status, equipe, cartão do operador) continuam existindo:
+   a equipe e o cartão ficam no painel que abre pelo "Mais". No celular nada muda (barra de baixo + gaveta). */
+
+.mais-painel { display: contents; }          /* celular: os filhos se comportam como antes dentro da gaveta */
+.rail-mais, .rot-curto { display: none; }
+.rot-longo { display: inline; }
+
+@media (min-width: 721px) {
+  .app { grid-template-columns: 112px minmax(0, 1fr); }
+  .principal { grid-column: 2; }
+  .abrir-menu { display: none; }
+  .lateral { transform: none; transition: none; }
+
+  .lateral {
+    position: fixed; left: 14px; top: 14px; bottom: 14px; width: 84px; height: auto; z-index: 30;
+    padding: 14px 8px 12px; align-items: center; overflow: visible; border: 0; border-radius: 30px;
+    background: linear-gradient(160deg, rgb(255 255 255 / .12), rgb(255 255 255 / .035) 40%, rgb(255 255 255 / .06)), rgb(12 15 23 / .55);
+    -webkit-backdrop-filter: blur(26px) saturate(180%); backdrop-filter: blur(26px) saturate(180%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 0 0 1px rgb(255 255 255 / .05), 0 24px 60px rgb(0 0 0 / .5);
+  }
+  .lateral::before { content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+    background: linear-gradient(150deg, rgb(255 255 255 / .5), rgb(255 255 255 / .06) 35%, rgb(255 255 255 / .02) 60%, rgb(255 255 255 / .25));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+
+  /* marca: só o logotipo, com o ponto de estado embaixo (o texto do estado vai para o título do ponto) */
+  .marca { padding: 0; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .marca svg { width: 46px; height: 46px; border-radius: 15px; box-shadow: 0 8px 22px #b7ff0040; }
+  .marca > div { display: grid; justify-items: center; }
+  .marca strong { display: none; }
+  .marca small { font-size: 0; gap: 0; }
+  .marca small .ponto { width: 9px; height: 9px; }
+
+  .navegacao { display: flex; flex-direction: column; align-items: center; gap: 3px; width: 100%; padding: 0; border: 0; overflow-y: auto; scrollbar-width: none; min-height: 0; }
+  .navegacao::-webkit-scrollbar { display: none; }
+  .nav-grupo { font-size: 0; height: 1px; width: 36px; margin: 7px 0; padding: 0; background: rgb(255 255 255 / .16); }
+  .nav-grupo:first-child { display: none; }
+  .navegacao a, .rail-mais {
+    position: relative; width: 68px; min-height: 60px; padding: 9px 0 7px; margin: 0; flex-direction: column; justify-content: center; gap: 4px;
+    border: 0; border-radius: 18px; color: rgb(245 245 247 / .7); font-size: 11px; line-height: 1.1; text-align: center; box-shadow: none; background: none;
+    transition: background .15s ease, color .15s ease;
+  }
+  .navegacao a svg, .rail-mais svg { width: 22px; height: 22px; }
+  .navegacao a:hover, .rail-mais:hover { background: rgb(255 255 255 / .12); color: var(--texto); }
+  .navegacao a[aria-current="page"] {
+    background: rgb(183 255 0 / .14); color: var(--acento); box-shadow: inset 0 1px 0 rgb(255 255 255 / .2), inset 0 0 0 1px rgb(183 255 0 / .25);
+  }
+  .navegacao a[aria-current="page"] svg { color: var(--acento); filter: none; }
+  .rot-longo { display: none; }
+  .rot-curto { display: inline; }
+  .navegacao .contador { position: absolute; top: 4px; right: 7px; margin: 0; font-size: 10.5px; font-weight: 700; }
+  .navegacao .contador:not(:empty) { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--acento); color: var(--sobre-acento); display: grid; place-items: center; }
+  /* "26 p/ aprovar" do Painel vira só o número */
+  .navegacao .contador .txt { display: none; }
+  .navegacao .contador b { font-weight: 700; }
+
+  .rail-mais { display: grid; justify-items: center; margin-top: auto; cursor: pointer; font-family: inherit; }
+  .app.rail-mais .rail-mais { background: rgb(255 255 255 / .16); color: var(--texto); }
+
+  /* painel do "Mais": equipe e cartão do operador, em vidro, ao lado do trilho */
+  .mais-painel {
+    display: none; position: absolute; left: calc(100% + 12px); bottom: 0; width: 320px; max-height: calc(100dvh - 40px);
+    flex-direction: column; overflow: hidden; border-radius: 28px;
+    /* quase opaco: um vidro dentro do vidro do trilho não consegue borrar a página que está atrás dele */
+    background: linear-gradient(160deg, rgb(255 255 255 / .1), rgb(255 255 255 / .03) 40%, rgb(255 255 255 / .05)), rgb(13 16 24 / .97);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / .26), inset 0 0 0 1px rgb(255 255 255 / .06), 0 24px 60px rgb(0 0 0 / .6);
+  }
+  .app.rail-mais .mais-painel { display: flex; }
+  .mais-painel .equipe { padding: 16px 10px 8px; flex: 1; min-height: 0; }
+  .mais-painel .membro:hover { background: rgb(255 255 255 / .1); }
+  .mais-painel .rodape-lateral { border-top: 1px solid rgb(255 255 255 / .12); }
+  .mais-painel .extra { max-height: 240px; overflow: auto; }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: reduce) { .navegacao a, .rail-mais { transition: none; } }

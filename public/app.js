@@ -2,6 +2,7 @@
 // títulos de sites), então todo valor passa por esc() antes de entrar no HTML.
 import { montarShell, atualizarShell } from './ui/shell.js';
 import { abrirCartoes } from './cartoes.js';
+import { abrirEnvio } from './enviar.js';
 import { ligarVoz } from './ui/voz.js';
 
 const $ = (s) => document.querySelector(s);
@@ -58,6 +59,11 @@ async function desenharFoco() {
     html = `<div class="foco-texto"><h2><b>${n}</b> ${n === 1 ? 'mensagem esperando' : 'mensagens esperando'} você</h2>
       <p>${topo ? `A mais promissora agora: <strong>${esc(topo.nome)}</strong> · prioridade ${esc(topo.score)}${topo.situacao_rotulo ? ` · ${esc(topo.situacao_rotulo.toLowerCase())}` : ''}` : 'Revise e aprove para entrarem na fila de envio.'}</p>${aoVivo}</div>
       <div class="foco-acao"><button class="btn primario magnetico" id="foco-comecar">Começar a aprovar</button><span class="sub">um cartão por vez · A aprova · D descarta · <button class="link" id="foco-gaveta">ver na lista</button></span></div>`;
+  } else if (estado.envio?.na_fila) {
+    const q = estado.envio.na_fila;
+    html = `<div class="foco-texto"><h2><b>${q}</b> ${q === 1 ? 'mensagem aprovada espera' : 'mensagens aprovadas esperam'} o envio</h2>
+      <p>${estado.envio.so_escuta ? 'O WhatsApp está em modo só escuta: você envia, um lead por vez, e o sistema registra.' : 'O Leo envia no ritmo seguro quando o WhatsApp estiver conectado.'}</p>${aoVivo}</div>
+      <div class="foco-acao"><button class="btn primario magnetico" id="foco-enviar">Começar a enviar</button><span class="sub">abre o WhatsApp com a mensagem pronta · O abre · J já enviei</span></div>`;
   } else if (vivos.length) {
     html = `<div class="foco-texto"><h2>Os agentes estão trabalhando</h2><p>Nada para você aprovar ainda. As mensagens aparecem aqui assim que a Maia terminar.</p>${aoVivo}</div>`;
   } else {
@@ -69,6 +75,7 @@ async function desenharFoco() {
   $('#foco').innerHTML = html;
   // a fila em cartões é o caminho rápido; a gaveta continua para quem quer ver tudo do lead
   $('#foco-comecar')?.addEventListener('click', () => abrirCartoes({ motivos: MOTIVOS, avisar, aoFechar: atualizarTudo }));
+  $('#foco-enviar')?.addEventListener('click', () => abrirEnvio({ avisar, aoFechar: atualizarTudo }));
   $('#foco-gaveta')?.addEventListener('click', async () => {
     etapaAtual = 'mensagem'; soFraco = false; desenharAbas(); desenharFunil();
     await carregarLeads();
@@ -481,7 +488,9 @@ async function carregarEnvios() {
   $('#envio-status').innerHTML = `
     <div>${s.enviados_hoje} de ${s.limite} hoje · ${s.na_fila} na fila · ${esc(prox)}</div>
     <div class="medidor"><i style="width:${Math.min(100, (100 * s.enviados_hoje) / s.limite)}%"></i></div>
+    ${s.na_fila ? '<button class="btn primario" id="btn-enviar-fila">Enviar em sequência</button>' : ''}
     ${s.openwa ? '' : '<div class="aviso">OpenWA não configurado: nada sai sozinho. Aprove e use "Abrir no WhatsApp" para enviar à mão, ou configure o OpenWA no .env.</div>'}`;
+  $('#btn-enviar-fila')?.addEventListener('click', () => abrirEnvio({ avisar, aoFechar: atualizarTudo }));
   const rot = { aprovado: 'na fila', enviado: 'enviado', erro: 'erro', cancelado: 'cancelado' };
   $('#envios').innerHTML = envios.slice(0, 15).map((e) => `<li><div><strong>${esc(e.nome)}</strong><small>${esc(e.telefone_fmt)} · ${esc(rot[e.status] || e.status)}${e.enviado_em ? ` ${esc(dataHora(e.enviado_em))}` : e.agendado_para ? ` · ${esc(dataHora(e.agendado_para))}` : ''}${e.resposta?.erro ? ` · ${esc(e.resposta.erro)}` : ''}</small></div>
     ${e.status === 'aprovado' ? `<button class="btn" data-cancelar="${e.id}">Cancelar</button>` : ''}</li>`).join('');
@@ -682,6 +691,10 @@ function seguirLink() {
   if (location.hash === '#ajustes') abrirAjustes();
   else if (location.hash.startsWith('#lead=')) abrirLead(decodeURIComponent(location.hash.slice(6))).catch(() => avisar('Lead não encontrado'));
   else if (location.hash === '#varredura') { const f = $('#form-varredura'); f?.scrollIntoView({ block: 'center' }); f?.querySelector('input, select')?.focus(); }
+  if (new URLSearchParams(location.search).get('enviar') === '1') {
+    history.replaceState(null, '', location.pathname + location.hash);
+    abrirEnvio({ avisar, aoFechar: atualizarTudo });
+  }
   if (new URLSearchParams(location.search).get('cartoes') === '1') {
     history.replaceState(null, '', location.pathname + location.hash);
     abrirCartoes({ motivos: MOTIVOS, avisar, aoFechar: atualizarTudo });

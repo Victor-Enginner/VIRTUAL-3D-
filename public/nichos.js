@@ -25,7 +25,7 @@ function universo(n, i) {
   const barras = ETAPAS.map(([id, rot, dono]) => [rot, dono, n.etapas[id] || 0]).filter(([, , v]) => v);
   const fora = (n.etapas.descartado || 0) + (n.etapas.sem_contato || 0);
   return `<article class="o-universo">
-    <div class="o-capa ${cor}"><span class="aneis" aria-hidden="true"></span><span class="palavra">${esc(n.rotulo)}</span><span class="monograma ${cor}">${esc(iniciais(n.rotulo))}</span><span class="selo-o">${n.varreduras.some((v) => v.ativa) ? 'EM VARREDURA' : 'PARADO'}</span></div>
+    <div class="o-capa ${cor}"><img class="foto" src="/img/nichos/${esc(n.id)}.jpg" alt="" loading="lazy" decoding="async"><span class="aneis" aria-hidden="true"></span><span class="palavra">${esc(n.rotulo)}</span><span class="monograma ${cor}">${esc(iniciais(n.rotulo))}</span><span class="selo-o">${n.varreduras.some((v) => v.ativa) ? 'EM VARREDURA' : 'PARADO'}</span></div>
     <div class="o-universo-corpo">
       <div class="o-universo-titulo"><div><h2>${esc(n.rotulo)}</h2><p>${total} lead(s)${fora ? ` · ${fora} fora do fluxo` : ''}</p></div><a class="btn icone" href="/producao.html?nicho=${encodeURIComponent(n.id)}" aria-label="Ver ${esc(n.rotulo)} no quadro" title="Ver no quadro">${SETA}</a></div>
       <div class="o-funil-mini" role="img" aria-label="Leads por etapa: ${barras.map(([r, , v]) => `${r} ${v}`).join(', ') || 'nenhum'}">${barras.map(([rot, dono, v]) => `<span data-agente="${dono}" style="flex:${v}" title="${esc(rot)}: ${v}"></span>`).join('') || '<span class="vazio"></span>'}</div>
@@ -45,3 +45,5 @@ async function atualizar() {
   $('#livres').innerHTML = nichos.filter((n) => !n.usado).map((n) => `<a class="selo-o" href="/#varredura">${esc(n.rotulo)}</a>`).join('') || '<span class="o-texto">Todos os ramos já têm varredura.</span>';
 }
 aCada(8000, atualizar);
+// foto do ramo é opcional: sem o arquivo em public/img/nichos/<id>.jpg a capa fica só com o degradê
+document.addEventListener('error', (e) => { if (e.target.matches?.('.o-capa .foto')) e.target.remove(); }, true);

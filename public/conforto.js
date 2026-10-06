@@ -15,7 +15,7 @@ function desenhar() {
       <h2 id="h-calmo">Modo calmo</h2>
       <label class="check"><input type="checkbox" id="calmo" ${p.calmo ? 'checked' : ''}> Ligar o modo calmo neste navegador</label>
       <ul>
-        <li>Sem animação decorativa (o fundo de rede neural, transições, confete).</li>
+        <li>Sem animação decorativa (o fundo de letras que seguem o cursor, transições, confete).</li>
         <li>Agentes na Sala 3D vão direto aos lugares, sem multidão andando.</li>
         <li>Sem som da sala (digitação e envelopes) e sem mascotes.</li>
       </ul>

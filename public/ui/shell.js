@@ -1,7 +1,7 @@
 // Barra lateral única das três telas. Mostra a equipe com o status REAL de /api/estado.
 import './conforto.js'; // aplica o modo calmo (data-calmo) em toda página, antes de qualquer animação
 import { iniciarMascotes } from './mascotes.js'; // desligados por padrão; ver docs/ACESSIBILIDADE.md
-import { montarNeural } from './neural.js';
+import { montarAsciiFluid } from './ascii-fluid.js'; // fundo: tinta de letras que segue o cursor (a rede neural antiga fica em neural.js)
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export const ic = (d) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
@@ -17,6 +17,7 @@ export const ICONES = {
   agentes: ic('<rect x="5" y="8" width="14" height="11" rx="3"/><path d="M12 8V5M9 13h.01M15 13h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1"/>'),
   nichos: ic('<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'),
   engine: ic('<path d="M12 3l1.8 5.4L19 10l-5.2 1.6L12 17l-1.8-5.4L5 10l5.2-1.6z"/><path d="M19 17l.7 1.8 1.8.7-1.8.7L19 22l-.7-1.8-1.8-.7 1.8-.7z"/>'),
+  fluxos: ic('<circle cx="5" cy="6" r="2"/><circle cx="19" cy="12" r="2"/><circle cx="5" cy="18" r="2"/><path d="M7 6h4a4 4 0 014 4v0M7 18h4a4 4 0 004-4v0M15 12h2"/>'),
   conforto: ic('<path d="M3 12s3.5-6 9-6 9 6 9 6-3.5 6-9 6-9-6-9-6z"/><circle cx="12" cy="12" r="2.5"/>'),
   mais: ic('<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>'),
 };
@@ -25,35 +26,47 @@ const MARCA = `<svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" heig
 let neural = null; // rede do fundo (não nas telas que já têm cena 3D)
 
 // Workspace (as abas no estilo do Órbita) e o Escritório (o que já existia, nada removido)
+// 5º item = nome curto, que cabe embaixo do ícone no trilho de vidro (o nome inteiro continua no celular e nos títulos)
 const PAGINAS = [
-  ['inicio', '/inicio.html', 'Visão geral', 'workspace'],
-  ['painel', '/', 'Painel', 'workspace'],
-  ['producao', '/producao.html', 'Produção', 'workspace'],
-  ['agentes', '/agentes.html', 'Agentes', 'workspace'],
-  ['nichos', '/nichos.html', 'Nichos', 'workspace'],
-  ['engine', '/engine.html', 'Engine', 'workspace'],
-  ['sala', '/sala.html', 'Sala 3D', 'escritorio'],
-  ['base', '/base.html', 'Base do Mestre', 'escritorio'],
-  ['configurador', '/configurador.html', 'Configurador', 'escritorio'],
-  ['conforto', '/conforto.html', 'Conforto', 'workspace'],
+  ['inicio', '/inicio.html', 'Visão geral', 'workspace', 'Início'],
+  ['painel', '/', 'Painel', 'workspace', 'Painel'],
+  ['producao', '/producao.html', 'Produção', 'workspace', 'Produção'],
+  ['agentes', '/agentes.html', 'Agentes', 'workspace', 'Agentes'],
+  ['nichos', '/nichos.html', 'Nichos', 'workspace', 'Nichos'],
+  ['engine', '/engine.html', 'Engine', 'workspace', 'Engine'],
+  ['sala', '/sala.html', 'Sala 3D', 'escritorio', 'Sala 3D'],
+  ['base', '/base.html', 'Base do Mestre', 'escritorio', 'Base'],
+  ['configurador', '/configurador.html', 'Configurador', 'escritorio', 'Config.'],
+  ['fluxos', '/fluxos.html', 'Fluxos', 'workspace', 'Fluxos'],
+  ['conforto', '/conforto.html', 'Conforto', 'workspace', 'Conforto'],
 ];
 const GRUPOS = { workspace: 'Workspace', escritorio: 'Escritório' };
 // celular: 4 destinos + "Mais" (abre a barra lateral com o resto)
 const NO_POLEGAR = ['inicio', 'painel', 'producao', 'sala'];
 
 export function montarShell(ativa, { extra = false, fundoNeural = true } = {}) {
-  if (fundoNeural) neural = montarNeural();
+  // trilho de vidro (computador): folha de estilo própria, para a barra larga de antes continuar valendo no celular
+  for (const href of ['/ui/trilho.css', '/ui/vidro-paginas.css', ...(['sala', 'base'].includes(ativa) ? ['/ui/vidro-sala.css'] : [])]) {
+    if (document.querySelector(`link[href="${href}"]`)) continue;
+    const l = document.createElement('link');
+    l.rel = 'stylesheet'; l.href = href;
+    document.head.append(l);
+  }
+  if (fundoNeural) montarAsciiFluid();
   if (!['sala', 'base'].includes(ativa)) iniciarMascotes(); // a Sala 3D já tem os agentes dela
   const lateral = document.querySelector('#lateral');
   lateral.innerHTML = `
     <div class="marca">${MARCA}<div><strong>Prospector</strong><small id="shell-status"><span class="ponto"></span>conectando…</small></div></div>
     <nav class="navegacao" aria-label="Seções">
-      ${Object.entries(GRUPOS).map(([g, rot]) => `<p class="nav-grupo">${rot}</p>${PAGINAS.filter((p) => p[3] === g).map(([id, href, r]) => `<a href="${href}" data-sec="${id}" ${id === ativa ? 'aria-current="page"' : ''}>${ICONES[id]}${r}${id === 'painel' ? '<span class="contador" id="shell-aprovar"></span>' : id === 'agentes' ? '<span class="contador" id="shell-agentes"></span>' : ''}</a>`).join('')}`).join('')}
+      ${Object.entries(GRUPOS).map(([g, rot]) => `<p class="nav-grupo">${rot}</p>${PAGINAS.filter((p) => p[3] === g).map(([id, href, r, , curto]) => `<a href="${href}" data-sec="${id}" ${id === ativa ? 'aria-current="page"' : ''}>${ICONES[id]}<span class="rot"><span class="rot-longo">${r}</span><span class="rot-curto">${curto}</span></span>${id === 'painel' ? '<span class="contador" id="shell-aprovar"></span>' : id === 'agentes' ? '<span class="contador" id="shell-agentes"></span>' : ''}</a>`).join('')}`).join('')}
     </nav>
-    ${extra ? '<div class="extra" id="shell-extra"></div>' : ''}
-    <div class="equipe" id="shell-equipe" aria-live="polite"></div>
-    <div class="rodape-lateral"><div><span id="shell-operador">Operador</span><small>dono da conta</small><small>Feito por Victor Borsari</small></div>
-      <a class="btn icone fantasma" href="/#ajustes" title="Ajustes" aria-label="Ajustes">${ICONES.ajustes}</a></div>`;
+    <button type="button" class="rail-mais" data-rail-mais aria-expanded="false" aria-controls="mais-painel">${ICONES.mais}<span>Mais</span></button>
+    <div class="mais-painel" id="mais-painel">
+      ${extra ? '<div class="extra" id="shell-extra"></div>' : ''}
+      <div class="equipe" id="shell-equipe" aria-live="polite"></div>
+      <div class="rodape-lateral"><div><span id="shell-operador">Operador</span><small>dono da conta</small><small>Feito por Victor Borsari</small></div>
+        <a class="btn icone fantasma" href="/#ajustes" title="Ajustes" aria-label="Ajustes">${ICONES.ajustes}</a></div>
+    </div>`;
   // celular: as 4 telas numa barra embaixo, ao alcance do polegar (o menu lateral fica para a equipe)
   if (!document.querySelector('.nav-inferior')) {
     const curto = { inicio: 'Início', painel: 'Painel', producao: 'Produção', sala: 'Sala' };
@@ -66,6 +79,13 @@ export function montarShell(ativa, { extra = false, fundoNeural = true } = {}) {
     document.body.append(nav);
     document.body.classList.add('com-nav-inferior');
   }
+  // trilho (computador): o "Mais" abre o painel de vidro com a equipe e o cartão do operador
+  const app = document.querySelector('.app');
+  const botaoMais = document.querySelector('[data-rail-mais]');
+  const fecharMais = () => { app.classList.remove('rail-mais'); botaoMais?.setAttribute('aria-expanded', 'false'); };
+  botaoMais?.addEventListener('click', (e) => { e.stopPropagation(); const aberto = app.classList.toggle('rail-mais'); botaoMais.setAttribute('aria-expanded', String(aberto)); });
+  document.addEventListener('click', (e) => { if (app.classList.contains('rail-mais') && !e.target.closest('.lateral')) fecharMais(); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') fecharMais(); });
   document.querySelectorAll('[data-abrir-menu]').forEach((b) => b.addEventListener('click', () => document.querySelector('.app').classList.toggle('menu-aberto')));
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelector('.app').classList.remove('menu-aberto'); });
   document.querySelector('.app').addEventListener('click', (e) => { if (e.target.classList.contains('app')) e.target.classList.remove('menu-aberto'); });
@@ -92,7 +112,7 @@ export function atualizarShell(estado) {
     st.innerHTML = `<span class="ponto ${cls}"></span>${estado.pausado ? 'agentes pausados' : trabalhando ? `${trabalhando} trabalhando agora` : 'equipe ociosa'}`;
   }
   const ap = document.querySelector('#shell-aprovar');
-  if (ap) ap.textContent = estado.funil?.mensagem ? `${estado.funil.mensagem} p/ aprovar` : '';
+  if (ap) ap.innerHTML = estado.funil?.mensagem ? `<b>${estado.funil.mensagem}</b><span class="txt"> p/ aprovar</span>` : ''; // trilho: só o número; gaveta do celular: número e texto
   const na = document.querySelector('#nav-aprovar');
   if (na) { na.textContent = estado.funil?.mensagem > 99 ? '99+' : estado.funil?.mensagem || ''; na.hidden = !estado.funil?.mensagem; }
   const ag = document.querySelector('#shell-agentes');

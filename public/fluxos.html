@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#000000">
+<title>Fluxos · Prospector</title>
+<meta name="description" content="Visão geral do escritório de prospecção: equipe, números reais e o que pede seu olhar.">
+<link rel="icon" type="image/png" href="/icone/prospector.png">
+<link rel="stylesheet" href="/ui/base.css">
+<link rel="stylesheet" href="/ui/orbita.css">
+<link rel="stylesheet" href="/ui/botao-aviao.css">
+<link rel="stylesheet" href="/ui/fluxos.css">
+<!-- prévia do link (WhatsApp, Instagram, LinkedIn, X): imagem em public/og.jpg, fonte em docs/producao/og/ -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Prospector">
+<meta property="og:title" content="Prospector · Escritório Virtual 3D">
+<meta property="og:description" content="Sua equipe de agentes de IA prospectando sozinha: acham empresas, auditam o site e escrevem a abordagem — num escritório 3D que você assiste trabalhar.">
+<meta property="og:url" content="https://escritoriovirtual3d.netlify.app/fluxos.html">
+<meta property="og:image" content="https://escritoriovirtual3d.netlify.app/og.jpg">
+<meta property="og:image:secure_url" content="https://escritoriovirtual3d.netlify.app/og.jpg">
+<meta property="og:image:type" content="image/jpeg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Prospector: sua equipe de IA prospectando sozinha num escritório virtual 3D">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Prospector · Escritório Virtual 3D">
+<meta name="twitter:description" content="Sua equipe de agentes de IA prospectando sozinha: acham empresas, auditam o site e escrevem a abordagem — num escritório 3D que você assiste trabalhar.">
+<meta name="twitter:image" content="https://escritoriovirtual3d.netlify.app/og.jpg">
+</head>
+<body>
+<a class="pular" href="#conteudo">Pular para o conteúdo</a>
+<div class="app">
+  <aside class="lateral" id="lateral" aria-label="Navegação e equipe"></aside>
+  <main class="principal" id="conteudo" tabindex="-1">
+    <header class="cabecalho">
+      <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
+      <div class="titulo"><p class="trilha">Workspace <span aria-hidden="true">›</span> <b>Fluxos</b></p></div>
+      <div class="acoes" id="acoes"></div>
+    </header>
+    <div class="pagina" id="pagina" aria-busy="true"></div>
+  </main>
+</div>
+<script type="module" src="/fluxos.js"></script>
+</body>
+</html>
