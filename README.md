@@ -138,10 +138,30 @@ Para testar um modelo novo antes de trocar: `npm run bancada` roda a bancada de 
 
 **Uso responsável:** modelos sem filtro de recusa não substituem o seu julgamento. No Prospector o modelo só produz probabilidades e rascunhos; **toda mensagem exige aprovação humana**, leva opt-out e respeita o teto diário. Mensagem fria em massa pode violar a LGPD, os termos do WhatsApp e leis locais: use com consciência.
 
-### Outras referências de modelos
+### Referências de modelos e ecossistemas
 
-| Referência | Por que está aqui |
-|---|---|
+Projetos estudados como inspiração. **Nenhum deles está integrado ao Prospector**; cada linha diz o que foi aproveitado como ideia ou o que pode ser aproveitado se o sistema evoluir nessa direção.
+
+**Modelos e projetos regionais**
+
+| Referência | O que é | Por que importa aqui |
+|---|---|---|
+| [Khaleeji AI](https://github.com/Anique-1/Khaleeji-AI-Bilingual-Financial-Agent-for-the-Gulf) · [site](https://khaleeji-ai.vercel.app/) · [`Khaleeji-FinLLM-7B-Instruct`](https://ollama.com/muhammadanique81/Khaleeji-FinLLM-7B-Instruct) · [pesos](https://huggingface.co/anique-1/khaleeji-qwen2.5-7b-finllm) | Ecossistema bilíngue (árabe/inglês) para finanças no Golfo: Qwen2.5 7B ajustado com LoRA em GPUs AMD MI210 (ROCm), versão GGUF 8-bit no Ollama, camada agêntica em LangGraph com busca na web (Tavily) e front em Next.js. Licença MIT | Modelo de apresentação (hub no Ollama, pesos no Hugging Face, site, servidor de inferência) e roteiro do que o item **B19** do backlog quer fazer: afinar um modelo pequeno fora do PC e só aceitar se a bancada aprovar |
+| [`dicta-il/DictaLM-3.0-1.7B-Thinking-GGUF`](https://huggingface.co/dicta-il/DictaLM-3.0-1.7B-Thinking-GGUF) | Modelo aberto de raciocínio em hebraico e inglês, do centro Dicta, em GGUF | Tamanho (1.7B) igual ao Josiefied usado aqui: prova de que um modelo pequeno e especializado em um idioma é viável |
+| [`mradermacher/LFM2.5-1.2B-Instruct-Saudi-Dialect-1-GGUF`](https://huggingface.co/mradermacher/LFM2.5-1.2B-Instruct-Saudi-Dialect-1-GGUF) | LFM2.5 1.2B ajustado ao dialeto saudita | Ideia para versões específicas de **pt-PT** e **es-PY** das mensagens |
+| [`yasserrmd/Kallamni-chat`](https://huggingface.co/spaces/yasserrmd/Kallamni-chat) | Chat em dialeto local feito só com prompt de sistema e few-shot | Caminho barato para ajustar o tom regional sem treinar nada |
+
+**Agentes e ecossistemas**
+
+| Referência | O que é | Por que importa aqui |
+|---|---|---|
+| [OpenClaw](https://github.com/openclaw/openclaw) | Assistente de IA de código aberto que roda no seu computador e conversa pelos canais que você já usa (WhatsApp, Telegram, Slack, Discord, iMessage e mais de 20 outros); estado, memória e credenciais ficam na sua máquina; modelos e agentes são plugins trocáveis | Mesmo princípio **local-first** do Prospector e uma segunda forma de ligar o WhatsApp além do OpenWA |
+| [NanoClaw](https://github.com/nanocoai/nanoclaw) · [canal WhatsApp](https://github.com/nanocoai/nanoclaw-whatsapp) | Alternativa leve ao OpenClaw que roda dentro de contêineres, por segurança, e conecta WhatsApp, Telegram, Slack, Discord e Gmail | Isolamento por contêiner para o envio de mensagens, caso o Prospector precise de um canal mais seguro |
+| [Israeli AI](https://github.com/danielrosehill/Israeli-AI) · [agentes](https://github.com/danielrosehill/Israeli-AI/blob/main/agents.md) · [recursos em hebraico](https://github.com/danielrosehill/Israeli-AI/blob/main/hebrew.md) | Mapa curado do ecossistema de IA de Israel: agentes, *skills*, servidores MCP, modelos e recursos em hebraico (DictaLM, Open Hebrew LLM Leaderboard, índices de modelos hebraicos) | Referência de como organizar e mostrar um ecossistema regional inteiro |
+| **Knessy**, **Solvulator**, **ClawCierge** (da lista de agentes de Israeli AI) | Knessy: pesquisa agêntica sobre dados do parlamento israelense, com LangGraph, RAG e MCP. Solvulator: pipeline de 12 agentes para documentos jurídicos, com linha do tempo sobre documentos reais. ClawCierge: reserva de restaurantes com API direta e passagem para automação de navegador | Pipelines de vários agentes com interface de acompanhamento (parecido com Produção e Fluxos), RAG + MCP para dados públicos e o padrão "API quando existe, navegador quando não" |
+| [spec-ai](https://github.com/erevateinc/spec-ai) | Chatbot de enxame de agentes com dados do governo japonês, em TypeScript e Next.js | Exemplo de enxame de agentes sobre dados públicos oficiais |
+
+---|---|
 | [`Khaleeji-FinLLM-7B-Instruct`](https://ollama.com/muhammadanique81/Khaleeji-FinLLM-7B-Instruct) · [pesos](https://huggingface.co/anique-1/khaleeji-qwen2.5-7b-finllm) · [site](https://khaleeji-ai.vercel.app/) | Projeto do Golfo (agente financeiro bilíngue) que serviu de inspiração de apresentação |
 | [`dicta-il/DictaLM-3.0-1.7B-Thinking-GGUF`](https://huggingface.co/dicta-il/DictaLM-3.0-1.7B-Thinking-GGUF) | Modelo pequeno de raciocínio, de tamanho próximo ao 1.7B usado aqui |
 | [`mradermacher/LFM2.5-1.2B-Instruct-Saudi-Dialect-1-GGUF`](https://huggingface.co/mradermacher/LFM2.5-1.2B-Instruct-Saudi-Dialect-1-GGUF) | Exemplo de modelo pequeno adaptado a um dialeto regional (ideia para es-PY e pt-PT) |
