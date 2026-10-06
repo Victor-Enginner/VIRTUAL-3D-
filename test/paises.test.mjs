@@ -31,3 +31,14 @@ test('cada país tem DDI, idioma e parâmetros de busca', () => {
     assert.ok(p.ddi && p.idioma && p.maps.hl && p.maps.gl && p.maps.avaliacao && p.osm.iso && p.osm.nivel, p.id);
   }
 });
+
+test('telefone mostrado na tela respeita o país (o Brasil não mudou)', async () => {
+  const { formatarTelefone } = await import('../src/regras.mjs');
+  assert.equal(formatarTelefone('5516993850531'), '(16) 99385-0531');
+  assert.equal(formatarTelefone('551637221000'), '(16) 3722-1000');
+  assert.equal(formatarTelefone('351960403461'), '+351 960 403 461');
+  assert.equal(formatarTelefone('351211234567'), '+351 211 234 567');
+  assert.equal(formatarTelefone('595981123456'), '+595 981 123 456');
+  assert.equal(formatarTelefone('59521212345'), '+595 21 212 345');
+  assert.equal(formatarTelefone(null), '');
+});

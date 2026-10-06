@@ -57,6 +57,12 @@ export function normalizarTelefone(bruto) {
 
 export function formatarTelefone(t) {
   if (!t) return '';
+  // Portugal (+351, 9 dígitos) e Paraguai (+595): o número guardado traz o DDI. Brasil começa sempre por 55, então o prefixo não se confunde.
+  if (t.startsWith('351') && t.length === 12) return `+351 ${t.slice(3, 6)} ${t.slice(6, 9)} ${t.slice(9)}`;
+  if (t.startsWith('595')) {
+    const n = t.slice(3);
+    return n.length === 9 && n[0] === '9' ? `+595 ${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` : `+595 ${n.slice(0, 2)} ${n.slice(2, 5)} ${n.slice(5)}`.trim();
+  }
   const d = t.slice(2);
   const ddd = d.slice(0, 2), l = d.slice(2);
   return l.length === 9 ? `(${ddd}) ${l.slice(0, 5)}-${l.slice(5)}` : `(${ddd}) ${l.slice(0, 4)}-${l.slice(4)}`;
