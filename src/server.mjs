@@ -22,7 +22,7 @@ import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES, GRUPOS, TERMOS_MAPS_POR_VARREDURA, catalogo, nichosDoGrupo } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
 import { AGENTES, ROTULO_ABORDAGEM, reavaliarBloqueados, aprovarEnvio, briefing, criarOrquestrador, receberMensagem, situacaoDoEnvio, marcarRespondeu, fecharNegocio, marcarPerdido } from './agentes.mjs';
-import { interpretar } from './comando.mjs';
+import { interpretar, LIMIAR_COMANDO, SUGESTAO } from './comando.mjs';
 import { saudeOllama } from './llm.mjs';
 import { definirSessao, enviarTexto, garantirSessao, garantirWebhook, iniciarSessao, lerMensagemRecebida, qrSessao, saudeOpenwa, sessaoId, temChave } from './envio/openwa.mjs';
 import { aprender, resumoAprendizado } from './aprendizado.mjs';
@@ -348,7 +348,7 @@ rota('POST', '/api/comando', async ({ body }) => {
   if (!fala) throw new HttpError(400, 'comando vazio');
   const c = await interpretar(fala);
   let resposta;
-  if (c.confianca < 0.5) resposta = `Não tive certeza do que você pediu (${Math.round(c.confianca * 100)}%). Tente: "varre barbearias em Franca SP".`;
+  if (c.confianca < LIMIAR_COMANDO) resposta = c.origem === 'modelo_indisponivel' ? 'Não entendi, e o modelo de linguagem está desligado. Tente: "varre barbearias em Franca SP".' : c.intencao !== 'outro' && SUGESTAO[c.intencao] ? `Não tenho certeza (${Math.round(c.confianca * 100)}%). Você quis ${SUGESTAO[c.intencao]}? Se sim, diga de um jeito mais direto.` : `Não entendi (${Math.round(c.confianca * 100)}%). Tente: "varre barbearias em Franca SP".`;
   else if (c.intencao === 'varrer') {
     if (!c.nicho || !c.cidade) resposta = `Entendi que é para varrer, mas faltou ${!c.nicho ? 'o ramo' : 'a cidade'}. Ramos que conheço: ${Object.values(NICHOS).map((n) => n.rotulo).join(', ')}.`;
     else {

@@ -632,10 +632,12 @@ export function abrirExpediente(db) {
 }
 
 export function briefing(db) {
-  const c = (etapa) => db.prepare('SELECT COUNT(*) n FROM leads WHERE etapa = ?').get(etapa).n;
+  // números da SESSÃO ATIVA: a sessão nova começa zerada também no resumo (antes mostrava o total de todas)
+  const sessao = idSessaoAtiva(db);
+  const c = (etapa) => db.prepare('SELECT COUNT(*) n FROM leads WHERE etapa = ? AND sessao_id IS ?').get(etapa, sessao).n;
   const s = situacaoDoEnvio(db);
   return {
-    leads: db.prepare('SELECT COUNT(*) n FROM leads').get().n,
+    leads: db.prepare('SELECT COUNT(*) n FROM leads WHERE sessao_id IS ?').get(sessao).n,
     para_aprovar: c('mensagem'),
     responderam: c('respondeu') + c('fechado') + c('perdido'),
     fechados: c('fechado'),

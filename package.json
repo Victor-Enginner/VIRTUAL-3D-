@@ -14,6 +14,7 @@
     "exportar-treino": "node scripts/exportar-treino.mjs",
     "instalar": "node scripts/instalar.mjs",
     "empacotar": "node scripts/empacotar.mjs",
-    "bancada": "node scripts/bancada.mjs"
+    "bancada": "node scripts/bancada.mjs",
+    "eval-comandos": "node scripts/eval-comandos.mjs"
   }
 }

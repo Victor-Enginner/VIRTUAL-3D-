@@ -33,3 +33,15 @@ test('sessões: nova sessão começa zerada, a anterior fica guardada e dá para
   assert.equal(idSessaoAtiva(db), primeira);
   assert.equal(db.prepare('SELECT COUNT(*) n FROM leads').get().n, 2); // nada apagado
 });
+
+test('sessões: resumo, quentes e "aprova o próximo" só enxergam a sessão ativa', async () => {
+  const { briefing } = await import('../src/agentes.mjs');
+  const { contarQuentes, proximoCartao } = await import('../src/comandos-acao.mjs');
+  const db = abrirBanco(':memory:');
+  db.prepare("INSERT INTO leads (id, nome, fonte, etapa, score, criado_em, atualizado_em) VALUES ('a', 'Antiga', 'maps', 'mensagem', 90, ?, ?)").run(agora(), agora());
+  assert.equal(proximoCartao(db).id, 'a');
+  novaSessaoDeRastreio(db, 'Nova');
+  assert.equal(proximoCartao(db), null); // não aprova cartão de outra sessão
+  assert.deepEqual(contarQuentes(db), { quentes: 0, para_aprovar: 0 });
+  assert.equal(briefing(db).leads, 0);
+});
