@@ -3,10 +3,18 @@
 Você é o Claude Code trabalhando com o Victor Borsari Silva (PT-BR, direto, informal, entusiasmado; GitHub `Victor-Enginner`) no **Prospector / Escritório Virtual 3D**.
 Leia primeiro `CLAUDE.md`, `README.md`, `docs/DETALHES-TECNICOS.md`, `docs/REVISAO-2026-10-06.md`, `docs/ACESSIBILIDADE.md` e `docs/estudos/90-backlog-de-engenharia.md`.
 
-## Estado (07/10/2026, madrugada)
-- Git: branch `main`, último commit `bfb5125`, **já no GitHub** (`Victor-Enginner/VIRTUAL-3D-`, público). **294 testes**, `npm run verificar` passa (o commit roda a verificação).
-- Servidor sem dependências (Node 22+), banco real na **versão 9** (~97 leads, equipe sempre sobe pausada). Localhost: `http://127.0.0.1:4300` (`npm start`). A demonstração com dados fictícios roda com `DEMO=1 PORT=4301 node src/server.mjs`.
-- A Sala 3D agora se chama **Paraíso Artificial** (rota `/sala.html`, rótulo curto "Paraíso" na barra lateral).
+## Estado (07/10/2026, noite)
+- Git: branch `main`, commits locais desta sessão (sessões de rastreamento, fila por sessão, lista de cidades, identidade do Agentes Money). **296 testes**, `npm run verificar` passa. Push para o GitHub só quando ele pedir.
+- Banco real na **versão 10** (`sessoes` + `leads.sessao_id`, gatilho `leads_na_sessao`). Sessão 1 = os 130 leads antigos; sessão ativa "leads 1" (zerada). Backup `data/backups/pre-v10-*.db`.
+- Localhost: `http://127.0.0.1:4300` (`npm start`; **eu mesmo reinicio o servidor**, não peço a ele). Demonstração: `DEMO=1 PORT=4301 node src/server.mjs`.
+- **Ollama liberado sempre** com o JOSIEFIED-Qwen3 1.7B (o "xodó"). Bancada de 07/10: Nova 100% (≈1,9 s/decisão, resistência a injeção 100%); Maia 100% recusada (fala como se fosse o negócio) → escrita segue no **texto fixo** (`modelos.json`). O Qwen3-4B listado no Ollama está quebrado ("not found"); não baixar sem pedido.
+
+## Plano do Victor (07/10)
+- Agora: **estruturar e commitar tudo**. Depois ele **formata o PC** (1,2 TB e 16 GB livres) e usa **modelos melhores** (≥ 4B para a Maia escrever).
+- Trabalho concreto começa com **2 chips novos** de WhatsApp (Leo). Até lá o OpenWA fica parado.
+- Cores dos agentes: **não mexer** (Prospector e landings têm as suas). O que importa é o **funcionamento de cada agente**.
+- Identidade: retratos e ícones vêm do projeto **Agentes Money** (`Desktop/Agentes Money`, landings em `127.0.0.1:3100/preview/<agente>`), lidos por `/api/agentes/identidade` e `/api/agentes/:id/retrato|icone`, sem copiar. Ícones: ele gera no ChatGPT e salva em `Agentes Money/apps/web/public/agents/icones/<id>.png`.
+- **Sempre pesquisar no arXiv antes de qualquer arquitetura**; nada inventado sem base teórica (citar o id).
 
 ## O que existe hoje (resumo)
 - **Vidro em todas as telas:** trilho lateral, Início (esfera "Recursive Erosion" em movimento contínuo, desligada no modo calmo), Painel (Nova varredura em faixa horizontal), Produção, Agentes, Nichos (fotos reais em `public/img/nichos/`), Engine, Configurador, Base.
