@@ -648,9 +648,52 @@ async function carregarCidades() {
   const uf = $('#sel-uf').value;
   if (!uf) return;
   const { cidades } = await api(`/api/localidades/cidades?uf=${encodeURIComponent(uf)}&pais=${encodeURIComponent($('#sel-pais').value || 'BR')}`);
-  $('#lista-cidades').innerHTML = cidades.map((c) => `<option value="${esc(c)}">`).join('');
+  todasCidades = cidades;
+  if (document.activeElement === $('#inp-cidade')) abrirCidades();
   verCidade();
 }
+
+// lista de cidades própria (a datalist do navegador abre pequena, sem rolagem boa e com "Gerenciar endereços")
+let todasCidades = [], marcada = -1;
+const semAcento = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function abrirCidades() {
+  const q = semAcento($('#inp-cidade').value.trim());
+  const achadas = q ? todasCidades.filter((c) => semAcento(c).includes(q)).sort((a, b) => semAcento(b).startsWith(q) - semAcento(a).startsWith(q)) : todasCidades;
+  const ul = $('#lista-cidades');
+  marcada = -1;
+  ul.innerHTML = achadas.length
+    ? achadas.map((c, i) => `<li role="option" id="cid-${i}" data-cidade="${esc(c)}">${esc(c)}</li>`).join('')
+    : '<li class="vazio" aria-disabled="true">Nenhuma cidade com esse nome neste estado</li>';
+  ul.hidden = false;
+  ul.scrollTop = 0;
+  $('#inp-cidade').setAttribute('aria-expanded', 'true');
+}
+function fecharCidades() { $('#lista-cidades').hidden = true; $('#inp-cidade').setAttribute('aria-expanded', 'false'); }
+function escolherCidade(c) { $('#inp-cidade').value = c; fecharCidades(); verCidade(); }
+function marcar(i) {
+  const itens = [...$('#lista-cidades').querySelectorAll('li[data-cidade]')];
+  if (!itens.length) return;
+  marcada = (i + itens.length) % itens.length;
+  itens.forEach((li, k) => li.classList.toggle('marcada', k === marcada));
+  itens[marcada].scrollIntoView({ block: 'nearest' });
+  $('#inp-cidade').setAttribute('aria-activedescendant', itens[marcada].id);
+}
+$('#inp-cidade').addEventListener('focus', abrirCidades);
+$('#inp-cidade').addEventListener('click', abrirCidades);
+$('#inp-cidade').addEventListener('input', abrirCidades);
+$('#inp-cidade').addEventListener('blur', () => setTimeout(fecharCidades, 120));
+$('#inp-cidade').addEventListener('keydown', (e) => {
+  const aberta = !$('#lista-cidades').hidden;
+  if (e.key === 'ArrowDown') { e.preventDefault(); if (!aberta) abrirCidades(); marcar(marcada + 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); marcar(marcada - 1); }
+  else if (e.key === 'Enter' && aberta && marcada >= 0) { e.preventDefault(); escolherCidade($('#lista-cidades').querySelectorAll('li[data-cidade]')[marcada].dataset.cidade); }
+  else if (e.key === 'Escape') fecharCidades();
+});
+$('#lista-cidades').addEventListener('mousedown', (e) => {
+  e.preventDefault(); // não deixa o campo perder o foco antes do clique contar
+  const li = e.target.closest('li[data-cidade]');
+  if (li) escolherCidade(li.dataset.cidade);
+});
 let temporizadorCidade = null;
 function verCidade() {
   clearTimeout(temporizadorCidade);
