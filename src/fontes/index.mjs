@@ -45,7 +45,10 @@ const chaveDe = (o) => `${String(o.nome).normalize('NFD').replace(/[̀-ͯ]/g, ''
 
 // Nicho = pacote de termos (src/nichos.mjs). Roda os primeiros TERMOS_MAPS_POR_VARREDURA, divide o limite entre eles,
 // tira duplicados (o mesmo lugar aparece em "dentista" e em "ortodontia") e para quando o limite fecha.
+// SEM_COLETA=1: nenhuma coleta externa (robô de cliques, testes em cópia do banco). Falha alto, nunca finge resultado.
+const semColeta = () => { if (process.env.SEM_COLETA === '1') throw new Error('coleta externa desligada (SEM_COLETA=1)'); };
 export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'BR' }) {
+  semColeta();
   const termos = termosDoNicho(nicho, paisDe(pais).idioma).slice(0, TERMOS_MAPS_POR_VARREDURA);
   const porTermo = Math.max(5, Math.ceil(limite / termos.length));
   const vistos = new Set();
@@ -76,6 +79,7 @@ export async function coletarMaps({ cidade, uf, nicho, limite, aoItem, pais = 'B
 const OVERPASS = 'https://overpass-api.de/api/interpreter';
 
 export async function coletarOsm({ cidade, nicho, limite, pais = 'BR' }) {
+  semColeta();
   const p = paisDe(pais);
   const tags = NICHOS[nicho]?.osm;
   if (!tags) throw new Error(`nicho sem tags OSM: ${nicho}`);

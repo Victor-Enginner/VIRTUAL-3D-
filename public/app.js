@@ -128,6 +128,8 @@ function esqueletoLinhas(n = 6) {
   return Array.from({ length: n }, () => `<tr class="esqueleto" aria-hidden="true"><td><i style="width:62%"></i><i style="width:38%"></i></td><td><i style="width:70px"></i></td><td><i style="width:48px"></i></td><td><i style="width:110px"></i></td><td><i style="width:40px"></i></td></tr>`).join('');
 }
 
+// cada número diz de onde veio (ficha do servidor: tabela, filtro, sessão, hora)
+const origemTexto = (k) => { const o = estado.origem?.[k]; return o ? `Origem: tabela ${o.tabela} · ${o.filtro} · ${new Date(o.em).toLocaleTimeString('pt-BR')}` : 'Origem: desconhecida'; };
 function desenharFunil() {
   const f = estado.funil, s = estado.situacoes;
   const soma = (...ks) => ks.reduce((a, k) => a + (f[k] || 0), 0);
@@ -146,8 +148,9 @@ function desenharFunil() {
     const conv = i && ant ? `<span class="conv">${Math.round((100 * n) / ant)}%</span>` : '';
     const ativo = filtro.etapa === etapaAtual && Boolean(filtro.fraco) === soFraco;
     const escala = total ? Math.max(2, Math.round((100 * n) / total)) : 0;
-    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista"><b data-valor="${n}">${valoresAnteriores.get(i) ?? 0}</b><span>${esc(rot)}</span>${conv}<i class="escala" style="--p:${escala}%" aria-hidden="true"></i></button>`;
+    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista&#10;${esc(origemTexto('funil'))}"><b data-valor="${n}">${valoresAnteriores.get(i) ?? 0}</b><span>${esc(rot)}</span>${conv}<i class="escala" style="--p:${escala}%" aria-hidden="true"></i></button>`;
   }).join('');
+  $('#kpis').insertAdjacentHTML('beforeend', `<p class="origem-numeros" title="${esc(estado.origem?.funil?.consulta || '')}">Números da ${esc(estado.sessao?.nome || 'sessão')} · tabela leads · ${new Date(estado.origem?.funil?.em || Date.now()).toLocaleTimeString('pt-BR')}</p>`);
   $('#kpis').querySelectorAll('b[data-valor]').forEach((b, i) => { const ate = Number(b.dataset.valor); contar(b, valoresAnteriores.get(i) ?? 0, ate); valoresAnteriores.set(i, ate); });
 }
 
@@ -711,11 +714,42 @@ $('#sel-pais').addEventListener('change', () => { $('#inp-cidade').value = ''; p
 $('#sel-uf').addEventListener('change', () => { $('#inp-cidade').value = ''; carregarCidades(); });
 $('#inp-cidade').addEventListener('input', verCidade);
 
+// estado inteiro: a cidade some do formulário (quem escolhe é o bandit, src/territorio.mjs)
+$('#chk-territorio').addEventListener('change', (e) => { const c = $('#inp-cidade'); c.disabled = e.target.checked; c.required = !e.target.checked; if (e.target.checked) c.value = ''; });
+const pct0 = (p) => `${Math.round(p * 100)}%`;
+async function carregarCampanhas() {
+  const { campanhas } = await api('/api/campanhas');
+  $('#campanhas').innerHTML = campanhas.map((c) => {
+    const ult = c.passos[0];
+    const prior = c.prior.media === null ? 'ramo ainda sem histórico neste país' : `média do ramo ${pct0(c.prior.media)} (de ${c.prior.base} auditadas)`;
+    return `<li class="campanha"><div><strong>${esc(c.nicho_rotulo)} · ${esc(c.uf)} inteiro</strong>
+      <small>${c.visitadas} de ${c.total_cidades} cidades · ${c.esgotadas} esgotadas · ${esc(prior)}</small>
+      ${ult ? `<small>Última escolha: <b>${esc(ult.cidade)}</b> (esperado ${pct0(ult.media)}; sorteou ${pct0(ult.amostra)} contra ${ult.alternativas.slice(1, 4).map((a) => `${esc(a.cidade)} ${pct0(a.amostra)}`).join(', ')})</small>` : ''}</div>
+      <button class="btn" data-campanha="${c.id}" title="Escolhe a próxima cidade por Thompson Sampling. Só abre quando a cidade anterior estiver com o lote tratado.">Próxima cidade</button></li>`;
+  }).join('');
+}
+$('#campanhas').addEventListener('click', async (ev) => {
+  const b = ev.target.closest('[data-campanha]');
+  if (!b) return;
+  const msg = $('#msg-varredura');
+  try { const r = await api(`/api/campanhas/${b.dataset.campanha}/proximo`, {}); msg.textContent = `Atlas escolheu ${r.cidade} (esperado ${pct0(r.escolha.media)} de oportunidade).`; msg.className = 'dica-cidade largo ok'; await Promise.all([atualizarTudo(), carregarCampanhas()]); }
+  catch (e) { msg.textContent = e.message; msg.className = 'dica-cidade largo aviso'; }
+});
+carregarCampanhas().catch(() => {});
+
 $('#form-varredura').addEventListener('submit', async (ev) => {
   ev.preventDefault();
   const d = Object.fromEntries(new FormData(ev.target));
   const msg = $('#msg-varredura');
   try {
+    if (d.territorio) {
+      if (String(d.nicho).startsWith('grupo:')) throw new Error('No estado inteiro escolha um ramo só (o Atlas aprende por ramo).');
+      const r = await api('/api/campanhas', { uf: d.uf, pais: d.pais, nicho: d.nicho, fonte: d.fonte, meta: d.limite });
+      msg.textContent = `Campanha criada. Primeira cidade: ${r.primeiro.cidade} (esperado ${pct0(r.primeiro.escolha.media)} de oportunidade).`;
+      msg.className = 'dica-cidade largo ok';
+      await Promise.all([atualizarTudo(), carregarCampanhas()]);
+      return;
+    }
     if (String(d.nicho).startsWith('grupo:')) {
       const r = await api('/api/varreduras/lote', { ...d, grupo: d.nicho.slice(6), nichos: undefined });
       msg.textContent = `${r.varreduras.length} varreduras do grupo entraram na fila do Atlas em ${r.varreduras[0].cidade}-${r.varreduras[0].uf}.`;

@@ -44,6 +44,7 @@ export const MIGRACOES = [
     const id = Number(db.prepare("INSERT INTO sessoes (nome, criada_em) VALUES ('Sessão 1', ?)").run(inicio).lastInsertRowid);
     db.prepare('UPDATE leads SET sessao_id = ? WHERE sessao_id IS NULL').run(id);
   } },
+  { v: 11, nome: 'campanhas de território com bandit (ramo x estado inteiro) e o histórico de cada escolha; as tabelas vêm do SCHEMA', up() {} },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

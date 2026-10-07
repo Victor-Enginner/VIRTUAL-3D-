@@ -138,6 +138,28 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- campanhas de território (src/territorio.mjs): um ramo num estado inteiro; o bandit escolhe a próxima cidade
+CREATE TABLE IF NOT EXISTS campanhas (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  pais TEXT NOT NULL DEFAULT 'BR',
+  uf TEXT NOT NULL,
+  nicho TEXT NOT NULL,
+  fonte TEXT NOT NULL DEFAULT 'maps',
+  meta INTEGER NOT NULL DEFAULT 50,
+  ativa INTEGER NOT NULL DEFAULT 1,
+  criada_em TEXT NOT NULL
+);
+-- cada escolha de cidade com o "porquê" (amostra sorteada, média esperada, evidência): auditável e reproduzível
+CREATE TABLE IF NOT EXISTS campanha_passos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  campanha_id INTEGER NOT NULL REFERENCES campanhas(id),
+  varredura_id INTEGER,
+  cidade TEXT NOT NULL,
+  amostra REAL, media REAL, auditados INTEGER, oportunidades INTEGER,
+  alternativas TEXT,
+  em TEXT NOT NULL
+);
+
 -- sessões de rastreamento: cada rodada de prospecção aparece zerada na tela; as anteriores ficam guardadas (src/sessoes.mjs)
 CREATE TABLE IF NOT EXISTS sessoes (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

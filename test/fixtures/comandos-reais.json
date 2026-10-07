@@ -1,45 +1,317 @@
 {
-  "_ajuda": "Frases como o Victor fala/digita (sem acento, erro de digitação, transcrição de voz). esperado: só os campos que importam; null = tem que vir vazio. Usado por scripts/eval-comandos.mjs e test/comandos-reais.test.mjs.",
-  "casos": [
-    { "frase": "varre barbearias em Franca SP", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca", "uf": "SP" } },
-    { "frase": "varre barbearia em franca", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca" } },
-    { "frase": "procura dentista em ribeirão preto", "esperado": { "intencao": "varrer", "nicho": "odontologia", "cidade": "Ribeirão Preto" } },
-    { "frase": "procura dentista lá em ribeirão preto", "esperado": { "intencao": "varrer", "nicho": "odontologia", "cidade": "Ribeirão Preto" } },
-    { "frase": "busca restaurantes em campinas são paulo", "esperado": { "intencao": "varrer", "nicho": "restaurante", "cidade": "Campinas", "uf": "SP" } },
-    { "frase": "busca restaurante em belo horizonte minas gerais", "esperado": { "intencao": "varrer", "nicho": "restaurante", "cidade": "Belo Horizonte", "uf": "MG" } },
-    { "frase": "quero 50 barbearias na cidade de franca", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca" } },
-    { "frase": "minera estética em uberaba mg", "esperado": { "intencao": "varrer", "nicho": "estetica", "cidade": "Uberaba", "uf": "MG" } },
-    { "frase": "varre energia solar em ribeirao preto sp", "esperado": { "intencao": "varrer", "nicho": "energia_solar", "cidade": "Ribeirao Preto", "uf": "SP" } },
-    { "frase": "pesquisa salão de unhas em lisboa portugal", "esperado": { "intencao": "varrer", "nicho": "salao_unhas", "cidade": "Lisboa", "pais": "PT" } },
-    { "frase": "Varre barbearias em Franca, SP.", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca", "uf": "SP" } },
-    { "frase": "varre barbearias em franca e em batatais", "esperado": { "intencao": "varrer", "nicho": "barbearia" } },
-    { "frase": "procura barbearia por franca", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca" } },
-    { "frase": "acha uns dentistas em franca pra mim", "esperado": { "intencao": "varrer", "nicho": "odontologia", "cidade": "Franca" } },
-    { "frase": "vare barbearias em franca", "esperado": { "intencao": "varrer", "nicho": "barbearia", "cidade": "Franca" } },
-    { "frase": "busca mais 50", "esperado": { "intencao": "mais_leads" } },
-    { "frase": "traz mais um lote", "esperado": { "intencao": "mais_leads" } },
-    { "frase": "pausar", "esperado": { "intencao": "pausar" } },
-    { "frase": "para tudo", "esperado": { "intencao": "pausar" } },
-    { "frase": "pare de varrer", "esperado": { "intencao": "pausar" } },
-    { "frase": "segura os agentes ai", "esperado": { "intencao": "pausar" } },
-    { "frase": "retomar", "esperado": { "intencao": "retomar" } },
-    { "frase": "pode voltar a trabalhar", "esperado": { "intencao": "retomar" } },
-    { "frase": "bora equipe", "esperado": { "intencao": "retomar" } },
-    { "frase": "resumo do dia", "esperado": { "intencao": "resumo" } },
-    { "frase": "como ta o dia", "esperado": { "intencao": "resumo" } },
-    { "frase": "o que rolou hoje", "esperado": { "intencao": "resumo" } },
-    { "frase": "quantos leads quentes", "esperado": { "intencao": "quentes" } },
-    { "frase": "tem algum lead quente", "esperado": { "intencao": "quentes" } },
-    { "frase": "aprova o próximo", "esperado": { "intencao": "aprovar_proximo" } },
-    { "frase": "manda ver no próximo cartão", "esperado": { "intencao": "aprovar_proximo" } },
-    { "frase": "descarta o próximo", "esperado": { "intencao": "descartar_proximo" } },
-    { "frase": "joga fora essa mensagem", "esperado": { "intencao": "descartar_proximo" } },
-    { "frase": "troca a cidade para ribeirão preto sp", "esperado": { "intencao": "cidade", "cidade": "Ribeirão Preto", "uf": "SP" } },
-    { "frase": "muda a cidade pra uberlandia", "esperado": { "intencao": "cidade", "cidade": "Uberlandia" } },
-    { "frase": "agora vai pra campinas", "esperado": { "intencao": "cidade", "cidade": "Campinas" } },
-    { "frase": "qual a previsão do tempo", "esperado": { "intencao": "outro" } },
-    { "frase": "me conta uma piada", "esperado": { "intencao": "outro" } },
-    { "frase": "liga a luz", "esperado": { "intencao": "outro" } },
-    { "frase": "varre o estado do pará", "esperado": { "intencao": "varrer" } }
-  ]
+ "_ajuda": "Frases como o Victor fala/digita (sem acento, erro de digitação, transcrição de voz). esperado: só os campos que importam; null = tem que vir vazio. Usado por scripts/eval-comandos.mjs e test/comandos-reais.test.mjs.",
+ "casos": [
+  {
+   "frase": "varre barbearias em Franca SP",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "varre barbearia em franca",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca"
+   }
+  },
+  {
+   "frase": "procura dentista em ribeirão preto",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "odontologia",
+    "cidade": "Ribeirão Preto"
+   }
+  },
+  {
+   "frase": "procura dentista lá em ribeirão preto",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "odontologia",
+    "cidade": "Ribeirão Preto"
+   }
+  },
+  {
+   "frase": "busca restaurantes em campinas são paulo",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "restaurante",
+    "cidade": "Campinas",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "busca restaurante em belo horizonte minas gerais",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "restaurante",
+    "cidade": "Belo Horizonte",
+    "uf": "MG"
+   }
+  },
+  {
+   "frase": "quero 50 barbearias na cidade de franca",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca"
+   }
+  },
+  {
+   "frase": "minera estética em uberaba mg",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "estetica",
+    "cidade": "Uberaba",
+    "uf": "MG"
+   }
+  },
+  {
+   "frase": "varre energia solar em ribeirao preto sp",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "energia_solar",
+    "cidade": "Ribeirao Preto",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "pesquisa salão de unhas em lisboa portugal",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "salao_unhas",
+    "cidade": "Lisboa",
+    "pais": "PT"
+   }
+  },
+  {
+   "frase": "Varre barbearias em Franca, SP.",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "varre barbearias em franca e em batatais",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia"
+   }
+  },
+  {
+   "frase": "procura barbearia por franca",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca"
+   }
+  },
+  {
+   "frase": "acha uns dentistas em franca pra mim",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "odontologia",
+    "cidade": "Franca"
+   }
+  },
+  {
+   "frase": "vare barbearias em franca",
+   "esperado": {
+    "intencao": "varrer",
+    "nicho": "barbearia",
+    "cidade": "Franca"
+   }
+  },
+  {
+   "frase": "busca mais 50",
+   "esperado": {
+    "intencao": "mais_leads"
+   }
+  },
+  {
+   "frase": "traz mais um lote",
+   "esperado": {
+    "intencao": "mais_leads"
+   }
+  },
+  {
+   "frase": "pausar",
+   "esperado": {
+    "intencao": "pausar"
+   }
+  },
+  {
+   "frase": "para tudo",
+   "esperado": {
+    "intencao": "pausar"
+   }
+  },
+  {
+   "frase": "pare de varrer",
+   "esperado": {
+    "intencao": "pausar"
+   }
+  },
+  {
+   "frase": "segura os agentes ai",
+   "esperado": {
+    "intencao": "pausar"
+   }
+  },
+  {
+   "frase": "retomar",
+   "esperado": {
+    "intencao": "retomar"
+   }
+  },
+  {
+   "frase": "pode voltar a trabalhar",
+   "esperado": {
+    "intencao": "retomar"
+   }
+  },
+  {
+   "frase": "bora equipe",
+   "esperado": {
+    "intencao": "retomar"
+   }
+  },
+  {
+   "frase": "resumo do dia",
+   "esperado": {
+    "intencao": "resumo"
+   }
+  },
+  {
+   "frase": "como ta o dia",
+   "esperado": {
+    "intencao": "resumo"
+   }
+  },
+  {
+   "frase": "o que rolou hoje",
+   "esperado": {
+    "intencao": "resumo"
+   }
+  },
+  {
+   "frase": "quantos leads quentes",
+   "esperado": {
+    "intencao": "quentes"
+   }
+  },
+  {
+   "frase": "tem algum lead quente",
+   "esperado": {
+    "intencao": "quentes"
+   }
+  },
+  {
+   "frase": "aprova o próximo",
+   "esperado": {
+    "intencao": "aprovar_proximo"
+   }
+  },
+  {
+   "frase": "manda ver no próximo cartão",
+   "esperado": {
+    "intencao": "aprovar_proximo"
+   }
+  },
+  {
+   "frase": "descarta o próximo",
+   "esperado": {
+    "intencao": "descartar_proximo"
+   }
+  },
+  {
+   "frase": "joga fora essa mensagem",
+   "esperado": {
+    "intencao": "descartar_proximo"
+   }
+  },
+  {
+   "frase": "troca a cidade para ribeirão preto sp",
+   "esperado": {
+    "intencao": "cidade",
+    "cidade": "Ribeirão Preto",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "muda a cidade pra uberlandia",
+   "esperado": {
+    "intencao": "cidade",
+    "cidade": "Uberlandia"
+   }
+  },
+  {
+   "frase": "agora vai pra campinas",
+   "esperado": {
+    "intencao": "cidade",
+    "cidade": "Campinas"
+   }
+  },
+  {
+   "frase": "qual a previsão do tempo",
+   "esperado": {
+    "intencao": "outro"
+   }
+  },
+  {
+   "frase": "me conta uma piada",
+   "esperado": {
+    "intencao": "outro"
+   }
+  },
+  {
+   "frase": "liga a luz",
+   "esperado": {
+    "intencao": "outro"
+   }
+  },
+  {
+   "frase": "varre o estado do pará",
+   "esperado": {
+    "intencao": "varrer"
+   }
+  },
+  {
+   "frase": "varre barbearias em SP inteiro",
+   "esperado": {
+    "intencao": "campanha",
+    "nicho": "barbearia",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "busca dentista em todo o estado de minas gerais",
+   "esperado": {
+    "intencao": "campanha",
+    "nicho": "odontologia",
+    "uf": "MG"
+   }
+  },
+  {
+   "frase": "procura estética em todas as cidades de são paulo",
+   "esperado": {
+    "intencao": "campanha",
+    "nicho": "estetica",
+    "uf": "SP"
+   }
+  },
+  {
+   "frase": "varre restaurante em minas inteiro",
+   "esperado": {
+    "intencao": "campanha",
+    "nicho": "restaurante",
+    "uf": "MG"
+   }
+  }
+ ]
 }

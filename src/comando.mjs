@@ -13,7 +13,7 @@ const sem = (s) => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCas
 // Solução: decisão HIERÁRQUICA — primeiro o grupo, depois a intenção dentro dele. P(intenção) = P(grupo) × P(intenção | grupo).
 // Escala para o chatbot: grupo ou intenção nova cabe sem mexer no motor.
 export const GRUPOS_INTENCAO = {
-  buscar: { descricao: 'Buscar empresas: varrer um ramo numa cidade, pedir mais um lote da busca atual ou trocar a cidade', intencoes: ['varrer', 'mais_leads', 'cidade'] },
+  buscar: { descricao: 'Buscar empresas: varrer um ramo numa cidade, pedir mais um lote da busca atual ou trocar a cidade', intencoes: ['varrer', 'campanha', 'mais_leads', 'cidade'] },
   controle: { descricao: 'Ligar/retomar ou pausar/parar a equipe de agentes', intencoes: ['pausar', 'retomar'] },
   fila: { descricao: 'Aprovar ou descartar o próximo cartão de mensagem da fila', intencoes: ['aprovar_proximo', 'descartar_proximo'] },
   consulta: { descricao: 'Perguntar como está o dia (resumo) ou quantos leads quentes existem', intencoes: ['resumo', 'quentes'] },
@@ -26,6 +26,7 @@ export const PERGUNTA_INTENCAO = {
     instructions: 'O que a pessoa está pedindo para os agentes de prospecção fazerem?',
     criteria: {
       varrer: 'Buscar/varrer/procurar/minerar empresas de um ramo numa cidade',
+      campanha: 'Buscar um ramo no ESTADO INTEIRO (todas as cidades), deixando o Atlas escolher as cidades',
       pausar: 'Pausar, parar ou desligar os agentes',
       retomar: 'Retomar, continuar ou ligar os agentes',
       resumo: 'Pedir um resumo, relatório ou como está o dia',
@@ -78,7 +79,18 @@ function cidadeDepoisDe(texto) {
   return c.cidade ? c : null;
 }
 
+// campanha: o estado vem por sigla ("SP inteiro") ou por nome ("todo o estado de Minas Gerais", "de Minas")
+export function ufDaFrase(texto) {
+  const s = sem(texto);
+  const est = ESTADO_POR_NOME.find((e) => new RegExp(`\\b${e.nome}\\b`).test(s))
+    || ESTADO_POR_NOME.find((e) => e.nome.split(' ')[0].length > 4 && new RegExp(`\\b(de|do|da|em) ${e.nome.split(' ')[0]}\\b`).test(s));
+  if (est) return est.sigla;
+  const sig = texto.match(/\b([A-Za-z]{2})\b(?=\s+(?:inteir|todo))/) || texto.match(/\b([A-Z]{2})\b/);
+  return sig && UFS.includes(sig[1].toUpperCase()) ? sig[1].toUpperCase() : null;
+}
+
 export function extrairLiterais(texto, intencao = null) {
+  if (intencao === 'campanha') return { ...extrairLiterais(texto), cidade: null, uf: ufDaFrase(texto) };
   if (intencao === 'cidade') { const c = cidadeDepoisDe(texto) || { cidade: null, uf: null }; const sp = separarPais(c.cidade); return { nicho: null, fonte: 'maps', ...c, cidade: sp.cidade, pais: sp.pais }; }
   const t = sem(texto);
   // vale o termo mais ESPECÍFICO que casar: "hotel para pets" é Pet shop, não Hospedagem
@@ -107,6 +119,8 @@ export function intencaoPorRegra(texto) {
   if (/\b(descart\w*|joga\w* fora|recus\w*)\b.*\b(proxim\w*|cartao|mensagem|seguinte)\b|^descart\w*$/.test(t)) return 'descartar_proximo';
   if (/\b(troc\w*|mud\w*|alter\w*) (a |de )?cidade\b/.test(t)) return 'cidade';
   if (/\b(pare|parar|para|pausa|pausar|chega) de (varr|busc|procur|miner|trabalh)/.test(t) || /\bpara tudo\b/.test(t)) return 'pausar';
+  // "SP inteiro", "todo o estado de Minas", "todas as cidades": campanha de território (src/territorio.mjs)
+  if (/\b(varr|vare|busc|procur|miner|pesquis|vasculh)\w*/.test(t) && /\b(inteiro|inteira|todo o estado|todas as cidades|estado todo)\b/.test(t)) return 'campanha';
   if (/\b(varr|vare|busc|procur|miner|pesquis|vasculh)\w*/.test(t)) return 'varrer';
   // "liga" sozinho é ambíguo ("liga a luz"): só conta quando fala dos agentes/equipe
   if ((/\b(retoma\w*|continu\w*|volta\w*|religa\w*|reinicia\w*|bora)\b/.test(t) || /\bliga\w* (os |a )?(agentes|equipe|tudo|time)\b/.test(t)) && !/\bdesliga/.test(t)) return 'retomar';

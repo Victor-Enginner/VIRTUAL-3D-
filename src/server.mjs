@@ -11,12 +11,14 @@ import { resumoRejeicoes } from './rejeicoes.mjs';
 import { canal, lerEvento } from './envio/canal.mjs';
 import { avancarEstado, conversaDoLead, registrarMensagem, envioPausadoPelaConexao, registrarConexao, resumoDeEntrega } from './conversa.mjs';
 import { calcularCapacidade, fraseDaCapacidade } from './capacidade.mjs';
-import { abrirLote, cobertura, META_MAXIMA, META_PADRAO } from './lotes.mjs';
+import { abrirLote, cobertura, META_MAXIMA, META_PADRAO, podeAbrirLote } from './lotes.mjs';
 import { cidadesDe, ESTADOS, estadosDe, mensagemCidade, PAISES_COM_LOCALIDADES, resolverLocal, resolverUF } from './localidades.mjs';
 import { codigoDoPais, PAISES } from './paises.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
+import { ficha } from './origem.mjs';
+import { criarCampanha, escolherCidades, registrarPasso, resumoCampanha, ultimoPasso } from './territorio.mjs';
 import { ativarSessao, novaSessaoDeRastreio, idSessaoAtiva, listarSessoes, sessaoAtiva } from './sessoes.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES, GRUPOS, TERMOS_MAPS_POR_VARREDURA, catalogo, nichosDoGrupo } from './nichos.mjs';
@@ -79,7 +81,14 @@ rota('GET', '/api/estado', async () => {
     pausado: orq.pausado,
     demo: CONFIG.demo,
     saude: { ollama, openwa, motor: { backend: CONFIG.decideBackend, modelo_decisao: CONFIG.decideModel, modelo_escrita: CONFIG.writeModel, modelo_comando: CONFIG.modelos.comando.modelo } },
-    sessao: sessaoAtiva(db), funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
+    sessao: sessaoAtiva(db), funil, situacoes,
+    // de onde vem cada número da tela (src/origem.mjs); test/origem.test.mjs exige ficha para todo bloco numérico
+    origem: {
+      funil: ficha(db, { tabela: 'leads', filtro: 'agrupado por etapa', sql: 'SELECT etapa, COUNT(*) n FROM leads WHERE sessao_id IS ? GROUP BY etapa' }),
+      situacoes: ficha(db, { tabela: 'leads', filtro: 'situação do site já auditada', sql: 'SELECT situacao_site, COUNT(*) FROM leads WHERE situacao_site IS NOT NULL AND sessao_id IS ? GROUP BY 1' }),
+      envio: ficha(db, { tabela: 'envios + leads', filtro: "status 'aprovado' (na fila) e enviados hoje", sql: "SELECT COUNT(*) FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' AND l.sessao_id IS ?" }),
+      briefing: ficha(db, { tabela: 'leads + negocios', filtro: 'resumo da Alva', sql: 'SELECT COUNT(*) FROM leads WHERE sessao_id IS ? (por etapa); SUM(valor) FROM negocios' }),
+    }, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
     ajustes: lerAjustes(db),
     tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20), zonas: { limites: LIMITES_ZONA, nichos: resumoZonas(db) } },
@@ -296,6 +305,36 @@ rota('GET', '/api/nichos', () => {
   };
 });
 
+// campanhas de território (src/territorio.mjs): um ramo num estado inteiro; o bandit escolhe a próxima cidade
+function avancarCampanha(c) {
+  const ult = ultimoPasso(db, c.id);
+  if (ult?.varredura_id) {
+    const p = podeAbrirLote(db, ult.varredura_id);
+    if (!p.ok && !p.esgotada) throw new HttpError(409, `A campanha espera ${ult.cidade}: ${p.motivo}.`);
+  }
+  const { escolhidas } = escolherCidades(db, { pais: c.pais, uf: c.uf, nicho: c.nicho, k: 5 });
+  if (!escolhidas.length) throw new HttpError(409, 'todas as cidades desta campanha já esgotaram');
+  const escolha = escolhidas[0];
+  const v = criarVarredura({ cidade: escolha.cidade, uf: c.uf, pais: c.pais, nicho: c.nicho, fonte: c.fonte, limite: c.meta });
+  registrarPasso(db, c.id, v.id, escolha, escolhidas);
+  registrar(db, 'atlas', 'campanha', `Campanha ${NICHOS[c.nicho]?.rotulo || c.nicho} em ${c.uf}: escolhi ${escolha.cidade} (esperado ${Math.round(escolha.media * 100)}% de oportunidade, ${escolha.auditados} já auditadas lá)`);
+  return { cidade: escolha.cidade, varredura: v, escolha, alternativas: escolhidas.slice(1) };
+}
+rota('GET', '/api/campanhas', () => ({ campanhas: db.prepare('SELECT * FROM campanhas ORDER BY id DESC').all().map((c) => ({ ...resumoCampanha(db, c), nicho_rotulo: NICHOS[c.nicho]?.rotulo || c.nicho })) }));
+rota('POST', '/api/campanhas', ({ body }) => {
+  const uf = texto(body.uf, 20).toUpperCase(), pais = body.pais ? codigoDoPais(body.pais) : 'BR', nicho = texto(body.nicho, 40), fonte = texto(body.fonte, 20) || 'maps';
+  if (!NICHOS[nicho]) throw new HttpError(400, 'nicho desconhecido');
+  if (!FONTES[fonte]) throw new HttpError(400, 'fonte desconhecida');
+  if (!estadosDe(pais).some((e) => e.sigla === uf)) throw new HttpError(400, 'estado desconhecido');
+  const c = criarCampanha(db, { pais, uf, nicho, fonte, meta: Math.min(Math.max(Number(body.meta) || META_PADRAO, 1), META_MAXIMA) });
+  return { campanha: c, primeiro: avancarCampanha(c) };
+});
+rota('POST', '/api/campanhas/:id/proximo', ({ params }) => {
+  const c = db.prepare('SELECT * FROM campanhas WHERE id = ?').get(Number(params.id));
+  if (!c) throw new HttpError(404, 'campanha não encontrada');
+  return avancarCampanha(c);
+});
+
 // sessões de rastreamento (src/sessoes.mjs): nova começa zerada na tela; nada é apagado
 rota('GET', '/api/sessoes', () => ({ sessoes: listarSessoes(db), ativa: idSessaoAtiva(db) }));
 rota('POST', '/api/sessoes', ({ body }) => {
@@ -355,6 +394,15 @@ rota('POST', '/api/comando', async ({ body }) => {
       try {
         const v = criarVarredura({ cidade: c.cidade, uf: c.uf, pais: c.pais, nicho: c.nicho, fonte: c.fonte });
         resposta = `Atlas vai varrer ${NICHOS[c.nicho].rotulo} em ${v.cidade}-${v.uf}${v.correcao ? ` (entendi "${v.correcao.de}" como ${v.cidade})` : ''}${v.uf_inferida ? ` (estado ${v.uf} pelo nome da cidade)` : ''}.`;
+      } catch (e) { if (!e.status) throw e; resposta = e.message; }
+    }
+  } else if (c.intencao === 'campanha') {
+    if (!c.nicho || !c.uf) resposta = `Entendi que é o estado inteiro, mas faltou ${!c.nicho ? 'o ramo' : 'o estado'}. Ex.: "varre barbearias em SP inteiro".`;
+    else {
+      try {
+        const camp = criarCampanha(db, { pais: 'BR', uf: c.uf, nicho: c.nicho, fonte: c.fonte || 'maps', meta: META_PADRAO });
+        const p = avancarCampanha(camp);
+        resposta = `Campanha ${NICHOS[c.nicho].rotulo} em ${c.uf} inteiro. Atlas começa por ${p.cidade} (esperado ${Math.round(p.escolha.media * 100)}% de oportunidade) e aprende a cada cidade.`;
       } catch (e) { if (!e.status) throw e; resposta = e.message; }
     }
   } else if (c.intencao === 'pausar') { orq.pausar(true); resposta = 'Agentes pausados.'; }
