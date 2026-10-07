@@ -48,7 +48,7 @@ function desenharLista() {
   $('#qtd').textContent = String(ags.length + custom.length);
   $('#lista').innerHTML = ags.map(([id, a]) => {
     const [cls] = statusDe(a);
-    return `<button class="o-agente" data-ag="${id}" style="--cor:${esc(a.cor)}" aria-current="${id === selecionado}"><span class="o-avatar">${esc(a.nome[0])}</span><span class="info"><strong>${esc(a.nome)}</strong><small>${esc(a.papel)}</small></span><span class="o-ponto ${cls}"></span></button>`;
+    return `<button class="o-agente" data-ag="${id}" style="--cor:${esc(a.cor)}" aria-current="${id === selecionado}">${avatar(id, a)}<span class="info"><strong>${esc(a.nome)}</strong><small>${esc(a.papel)}</small></span><span class="o-ponto ${cls}"></span></button>`;
   }).join('') + (custom.length ? `<p class="eyebrow espaco-p">CRIADOS POR VOCÊ</p>${custom.map((a) => `<a class="o-agente" href="/configurador.html#${encodeURIComponent(a.id)}" style="--cor:${esc(a.cor)}"><span class="o-avatar">${esc(a.nome[0])}</span><span class="info"><strong>${esc(a.nome)}</strong><small>${esc(a.papel || 'agente criado no Configurador')}</small></span></a>`).join('')}` : '');
 }
 
@@ -113,10 +113,20 @@ async function desenhar() {
   const meu = ++pedido;
   const corpo = aba === 'atividade' ? await corpoAtividade(id) : aba === 'funcao' ? corpoFuncao(id) : await corpoDecide(id);
   if (meu !== pedido) return; // chegou resposta de uma troca de aba antiga
-  $('#detalhe').innerHTML = `<div class="o-detalhe-topo" style="--cor:${esc(a.cor)}"><span class="o-avatar grande">${esc(a.nome[0])}</span><div><h2>${esc(a.nome)} <span class="selo-o ${cor}"><span class="o-ponto ${cls}"></span>${rot}</span></h2><p>${esc(a.papel)}</p></div>
+  $('#detalhe').innerHTML = `<div class="o-detalhe-topo" style="--cor:${esc(a.cor)}">${avatar(id, a, true)}<div><h2>${esc(a.nome)} <span class="selo-o ${cor}"><span class="o-ponto ${cls}"></span>${rot}</span></h2><p>${esc(a.papel)}</p></div>
+      ${identidade?.agentes?.[id] ? `<a class="btn fantasma" href="${esc(identidade.agentes[id].landing)}" target="_blank" rel="noopener" title="Abre a página do agente no Agentes Money">Conhecer ${esc(a.nome)}</a>` : ''}
       <a class="btn icone fantasma" href="/sala.html" title="Ver ${esc(a.nome)} no Paraíso Artificial" aria-label="Ver ${esc(a.nome)} no Paraíso Artificial">${ICONES.sala}</a></div>
     <div class="o-abas" role="tablist" aria-label="Detalhes de ${esc(a.nome)}" style="--aba:${esc(a.cor)}">${ABAS.map(([k, r, i]) => `<button role="tab" data-aba="${k}" aria-selected="${k === aba}" tabindex="${k === aba ? 0 : -1}">${i}${r}</button>`).join('')}</div>
     <div class="o-corpo" role="tabpanel">${corpo}</div>`;
+}
+
+// retrato/ícone do Agentes Money; sem a imagem fica a letra. Selo "IA" sempre visível (rosto humano mexe na confiança: arXiv 2512.17898, 2602.13625)
+let identidade = null;
+fetch('/api/agentes/identidade').then((r) => r.json()).then((j) => { identidade = j; atualizar(); }).catch(() => {});
+function avatar(id, a, grande = false) {
+  const i = identidade?.agentes?.[id];
+  const img = i?.icone ? 'icone' : i?.retrato ? 'retrato' : null;
+  return `<span class="o-avatar${grande ? ' grande' : ''}${img ? ' com-foto' : ''}">${img ? `<img src="/api/agentes/${id}/${img}" alt="" loading="lazy">` : esc(a.nome[0])}${img && grande ? '<b class="selo-ia" title="Agente de inteligência artificial">IA</b>' : ''}</span>`;
 }
 
 async function atualizar() {

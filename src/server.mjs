@@ -396,6 +396,23 @@ rota('POST', '/api/comando', async ({ body }) => {
 });
 
 const configurador = registrarRotasConfigurador({ rota, db, dataDir: CONFIG.dataDir, HttpError });
+// identidade visual vem do projeto Agentes Money (mesmos 5 agentes): retrato/ícone lidos de lá, nada copiado.
+// Sem a pasta no PC, responde 404 e a tela cai para a letra inicial.
+const MONEY_DIR = process.env.AGENTES_MONEY_DIR || path.resolve(ROOT, '..', '..', 'Agentes Money');
+const MONEY_URL = process.env.AGENTES_MONEY_URL || 'http://127.0.0.1:3100';
+rota('GET', '/api/agentes/identidade', () => ({ landing: MONEY_URL, agentes: Object.fromEntries(Object.keys(AGENTES).map((id) => [id, {
+  retrato: fs.existsSync(path.join(MONEY_DIR, `${id}.png`)),
+  icone: fs.existsSync(path.join(MONEY_DIR, 'apps/web/public/agents/icones', `${id}.png`)),
+  landing: `${MONEY_URL}/preview/${id}`,
+}])) }));
+rota('GET', '/api/agentes/:id/:tipo', ({ res, params }) => {
+  if (!AGENTES[params.id] || !['retrato', 'icone'].includes(params.tipo)) throw new HttpError(404, 'agente não encontrado');
+  const f = params.tipo === 'retrato' ? path.join(MONEY_DIR, `${params.id}.png`) : path.join(MONEY_DIR, 'apps/web/public/agents/icones', `${params.id}.png`);
+  if (!fs.existsSync(f)) throw new HttpError(404, 'imagem não encontrada no Agentes Money');
+  res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'max-age=3600' });
+  fs.createReadStream(f).pipe(res);
+  return SEM_RESPOSTA;
+});
 rota('GET', '/api/anexos/:arquivo', ({ res, params }) => { configurador.servirAnexo(res, params.arquivo); return SEM_RESPOSTA; });
 
 rota('POST', '/webhooks/openwa', ({ url, body }) => {
