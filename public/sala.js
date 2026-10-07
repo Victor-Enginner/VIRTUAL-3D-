@@ -1,4 +1,4 @@
-// Sala 3D: escritório vivo. O estado vem de /api/estado e /api/stream (o mesmo do painel);
+// Paraíso Artificial (a antiga Sala 3D): escritório vivo. O estado vem de /api/estado e /api/stream (o mesmo do painel);
 // cada agente decide onde estar pela máquina de estados (sala/comportamento.js), anda pela
 // grade com A* (sala/caminhos.js) e mostra no monitor o que está fazendo de verdade.
 import { lerCena, salvarCena } from './sala/cena-salva.js';
@@ -134,7 +134,12 @@ cena.add(sol, sol.target);
 // luminárias das mesas são um brilho desenhado no tampo (cena.js).
 const LUZ_NOITE = new THREE.Color(0xffd9a8), LUZ_DIA = new THREE.Color(0xffffff);
 
-const CORES = escuro ? { piso: 0x8a6446, parede: 0xd8d2c6 } : { piso: 0xb5865c, parede: 0xe9e3d8 }; // mesma cor dos segmentos de janela do kit
+// foto "Paraíso Artificial" (fundo do Windows do Victor) e vídeo de chuva no vidro: arquivos pessoais que não vão para o git;
+// só olha o cabeçalho (aborta antes de baixar) e, sem o arquivo, a cena usa o céu em degradê
+const existe = async (url) => { const c = new AbortController(); try { const r = await fetch(url, { signal: c.signal }); c.abort(); return r.ok; } catch { return false; } };
+const FUNDO_URL = (await existe('/assets/fundo/paraiso-artificial.jpg')) ? '/assets/fundo/paraiso-artificial.jpg' : null;
+const CHUVA_URL = (await existe('/assets/video/chuva-vidro.mp4')) ? '/assets/video/chuva-vidro.mp4' : null;
+const CORES = { ...(escuro ? { piso: 0x8a6446, parede: 0xd8d2c6 } : { piso: 0xb5865c, parede: 0xe9e3d8 }), fundoUrl: FUNDO_URL, chuvaUrl: CHUVA_URL, animar: !semMovimento }; // cores = mesma cor dos segmentos de janela do kit
 const escritorio = criarEscritorio(cena, CORES);
 const multidao = criarMultidao(escritorio.grade);
 let vagas = null;
@@ -154,6 +159,7 @@ function aplicarHora(agora = new Date()) {
   const h = agora.getHours() + agora.getMinutes() / 60;
   const dia = Math.max(0, Math.sin(((h - 6) / 12) * Math.PI)); // 0 à noite, 1 ao meio-dia
   cena.background = CEU_NOITE.clone().lerp(CEU_DIA, Math.min(1, dia * 1.6));
+  escritorio.fachada?.aplicarHora(dia); // céu atrás do vidro
   const ang = ((h - 6) / 12) * Math.PI;
   sol.position.set(Math.cos(ang) * 16, 4 + Math.max(0, Math.sin(ang)) * 16, 10);
   sol.intensity = 0.35 + 2.0 * dia;
@@ -685,6 +691,7 @@ function ajustarTamanho() {
   if (!w || !h) return;
   renderer.setSize(w, h); rotulos.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
+  escritorio.fachada?.ajustarAspecto(camera.aspect); // a foto de fundo acompanha o formato da tela
   const g = vistaGeral();
   controles.maxDistance = Math.max(42, g.distancia + 6);
   if (!cameraMexida && !voo) { controles.target.copy(g.alvo); camera.position.copy(g.pos); }

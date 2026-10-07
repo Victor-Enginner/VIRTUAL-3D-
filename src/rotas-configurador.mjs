@@ -87,7 +87,7 @@ export function registrarRotasConfigurador({ rota, db, dataDir, HttpError }) {
     const faltando = ['nome', 'papel', 'identidade'].filter((k) => !ficha[k]);
     if (faltando.length) throw new HttpError(409, `faltam campos: ${faltando.join(', ')}`);
     db.prepare("UPDATE agentes_custom SET status = 'ativo', etapa = 'revisao', ficha = ?, atualizado_em = ? WHERE id = ?").run(json(ficha), agora(), a.id);
-    falar(a.id, 'sistema', `${ficha.nome} está ativo e já ocupa uma mesa na Sala 3D.`);
+    falar(a.id, 'sistema', `${ficha.nome} está ativo e já ocupa uma mesa no Paraíso Artificial.`);
     registrar(db, 'alva', 'agente_criado', `Novo agente na equipe: ${ficha.nome} (${ficha.papel})`);
     return { ok: true, ativado: true };
   }

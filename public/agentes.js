@@ -114,7 +114,7 @@ async function desenhar() {
   const corpo = aba === 'atividade' ? await corpoAtividade(id) : aba === 'funcao' ? corpoFuncao(id) : await corpoDecide(id);
   if (meu !== pedido) return; // chegou resposta de uma troca de aba antiga
   $('#detalhe').innerHTML = `<div class="o-detalhe-topo" style="--cor:${esc(a.cor)}"><span class="o-avatar grande">${esc(a.nome[0])}</span><div><h2>${esc(a.nome)} <span class="selo-o ${cor}"><span class="o-ponto ${cls}"></span>${rot}</span></h2><p>${esc(a.papel)}</p></div>
-      <a class="btn icone fantasma" href="/sala.html" title="Ver ${esc(a.nome)} na Sala 3D" aria-label="Ver ${esc(a.nome)} na Sala 3D">${ICONES.sala}</a></div>
+      <a class="btn icone fantasma" href="/sala.html" title="Ver ${esc(a.nome)} no Paraíso Artificial" aria-label="Ver ${esc(a.nome)} no Paraíso Artificial">${ICONES.sala}</a></div>
     <div class="o-abas" role="tablist" aria-label="Detalhes de ${esc(a.nome)}" style="--aba:${esc(a.cor)}">${ABAS.map(([k, r, i]) => `<button role="tab" data-aba="${k}" aria-selected="${k === aba}" tabindex="${k === aba ? 0 : -1}">${i}${r}</button>`).join('')}</div>
     <div class="o-corpo" role="tabpanel">${corpo}</div>`;
 }

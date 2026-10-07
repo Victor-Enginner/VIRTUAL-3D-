@@ -8,6 +8,7 @@ import { criarAssinatura } from './assinatura.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { bloquear, buscarCaminho, criarGrade } from './caminhos.js';
 import { criarColocador, metade, padronizar } from './modelos.js';
+import { criarFachada } from './fachada.js';
 
 const ESCALA_KIT = 2;
 const LARGURA = 26, PROFUNDIDADE = 18, ALTURA_PAREDE = 2.6;
@@ -74,9 +75,9 @@ export function criarEscritorio(cena, cores) {
     return m;
   };
   // fundo e lateral esquerda: segmentos de parede com janela do kit (2 m cada)
+  // fachada de vidro do piso ao teto (blindex) no lugar das janelinhas do kit
   const janelas = [];
-  for (let x = X0 + 1; x < X1; x += 2) janelas.push(por('wallWindow', x, Z0 + 0.09, 0, { obstaculo: false }));
-  for (let z = Z0 + 1; z < Z1; z += 2) janelas.push(por('wallWindow', X0 + 0.09, z, Math.PI / 2, { obstaculo: false }));
+  const fachada = criarFachada(cena, { X0, X1, Z0, Z1, fundoUrl: cores.fundoUrl, chuvaUrl: cores.chuvaUrl, animar: cores.animar });
   bloquear(grade, X0, Z0, X1, Z0 + 0.3, 0);
   bloquear(grade, X0, Z0, X0 + 0.3, Z1, 0);
   // lateral direita com porta (as mensagens saem por ela)
@@ -324,7 +325,7 @@ export function criarEscritorio(cena, cores) {
     g.position.y = Math.abs(Math.sin(robo.passo)) * 0.025; // passada das pernas
   }
 
-  return { grade, postos, pontos, janelas, adicionarPosto, atualizar, painel: painelLed, tv: tvReuniao, tvs: [tvReuniao, tvLounge], robo: () => (robo.grupo ? { x: robo.grupo.position.x, z: robo.grupo.position.z } : null), vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
+  return { grade, postos, pontos, janelas, fachada, adicionarPosto, atualizar, painel: painelLed, tv: tvReuniao, tvs: [tvReuniao, tvLounge], robo: () => (robo.grupo ? { x: robo.grupo.position.x, z: robo.grupo.position.z } : null), vagas: VAGAS.length, porta: new THREE.Vector3(X1 + 0.6, 1.2, PORTA_Z), pronto: Promise.all(pendentes) };
 }
 
 // piso de tacos: tábuas com tons levemente diferentes e juntas escuras, desenhado no canvas

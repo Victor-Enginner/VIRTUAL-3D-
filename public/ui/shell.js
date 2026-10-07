@@ -34,7 +34,7 @@ const PAGINAS = [
   ['agentes', '/agentes.html', 'Agentes', 'workspace', 'Agentes'],
   ['nichos', '/nichos.html', 'Nichos', 'workspace', 'Nichos'],
   ['engine', '/engine.html', 'Engine', 'workspace', 'Engine'],
-  ['sala', '/sala.html', 'Sala 3D', 'escritorio', 'Sala 3D'],
+  ['sala', '/sala.html', 'Paraíso Artificial', 'escritorio', 'Paraíso'],
   ['base', '/base.html', 'Base do Mestre', 'escritorio', 'Base'],
   ['configurador', '/configurador.html', 'Configurador', 'escritorio', 'Config.'],
   ['fluxos', '/fluxos.html', 'Fluxos', 'workspace', 'Fluxos'],

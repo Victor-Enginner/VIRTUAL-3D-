@@ -16,7 +16,7 @@ function desenhar() {
       <label class="check"><input type="checkbox" id="calmo" ${p.calmo ? 'checked' : ''}> Ligar o modo calmo neste navegador</label>
       <ul>
         <li>Sem animação decorativa (o fundo de letras que seguem o cursor, transições, confete).</li>
-        <li>Agentes na Sala 3D vão direto aos lugares, sem multidão andando.</li>
+        <li>Agentes no Paraíso Artificial vão direto aos lugares, sem multidão andando.</li>
         <li>Sem som da sala (digitação e envelopes) e sem mascotes.</li>
       </ul>
       <p class="sub">${sistemaReduz ? 'Seu sistema já pede "reduzir movimento": as animações já estão reduzidas, com ou sem o modo calmo.' : 'Se o seu sistema tiver "reduzir movimento" ligado, isso já vale sozinho.'}</p>
@@ -29,7 +29,7 @@ function desenhar() {
         <li>Daemon (Alva), Wumpus (Atlas), Grue (Nova), Fantasma (Maia) e Verme (Leo).</li>
         <li>Ficam mais ausentes que presentes: somem por 2 a 6 minutos e ficam só 10 a 24 segundos.</li>
         <li>São pequenas (64 px), ficam nas bordas, olham para o seu cursor, às vezes brincam em dupla e somem “como mágica”.</li>
-        <li>Nunca bloqueiam um clique, não fazem som e não aparecem no modo calmo nem na Sala 3D.</li>
+        <li>Nunca bloqueiam um clique, não fazem som e não aparecem no modo calmo nem no Paraíso Artificial.</li>
       </ul>
       <label class="check"><input type="checkbox" id="mascotes-sistema" ${p.mascotesApesarDoSistema ? 'checked' : ''} ${p.calmo ? 'disabled' : ''}> Mostrar mesmo com “reduzir movimento” do sistema</label>
       <p class="sub">${sistemaReduz ? 'O seu computador está com as animações do Windows desligadas (comum para ganhar velocidade), então as criaturas só aparecem se você marcar esta opção.' : 'O seu sistema não pede menos movimento; esta opção só faz diferença se isso mudar.'}</p>

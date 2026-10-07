@@ -10,7 +10,7 @@
 ![Dependências](https://img.shields.io/badge/npm-zero%20depend%C3%AAncias-b7ff00?style=for-the-badge)
 ![SQLite](https://img.shields.io/badge/SQLite-local-003b57?style=for-the-badge&logo=sqlite&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-Josiefied-000000?style=for-the-badge)
-![Three.js](https://img.shields.io/badge/Three.js-Sala%203D-049ef4?style=for-the-badge&logo=threedotjs&logoColor=white)
+![Three.js](https://img.shields.io/badge/Three.js-Para%C3%ADso%20Artificial-049ef4?style=for-the-badge&logo=threedotjs&logoColor=white)
 ![WhatsApp](https://img.shields.io/badge/WhatsApp-OpenWA%20%C2%B7%20Baileys-25d366?style=for-the-badge&logo=whatsapp&logoColor=white)
 ![Testes](https://img.shields.io/badge/testes-294%20passando-22c55e?style=for-the-badge)
 ![Idiomas](https://img.shields.io/badge/mensagens-pt--BR%20%C2%B7%20pt--PT%20%C2%B7%20es--PY-7c5cff?style=for-the-badge)
@@ -39,14 +39,16 @@ Os agentes aparecem trabalhando de verdade em um **escritório 3D** (cada anima�
 | ![Engine](docs/img/engine.jpg)<br>**Engine** — etapas com portões, crença dos leads e controlador | ![Configurador](docs/img/configurador.jpg)<br>**Configurador** — cria agentes novos por conversa guiada |
 
 <details>
-<summary><b>Sala 3D e Base do Mestre</b></summary>
+<summary><b>Paraíso Artificial (o escritório 3D) e Base do Mestre</b></summary>
 
 <br>
 
-![Sala 3D](docs/img/sala.jpg)
+![Paraíso Artificial](docs/img/sala.jpg)
 ![Base do Mestre](docs/img/base.jpg)
 
 </details>
+
+> **Paraíso Artificial** é o nome do escritório 3D onde os agentes trabalham: fachada de vidro do piso ao teto, agentes sentados nas mesas (só saem para o café e as reuniões), robô com doca de recarga e TV ao vivo. No PC do autor a vista é uma foto de baía com chuva escorrendo no vidro; essa foto e o vídeo são arquivos pessoais fora do repositório, e quem clonar vê um céu em degradê (para usar os seus, ponha `public/assets/fundo/paraiso-artificial.jpg` e `public/assets/video/chuva-vidro.mp4`).
 
 > Todos os prints vêm da **versão de demonstração** (`DEMO=1`), com empresas fictícias. Nenhum dado real de lead aparece neste repositório.
 
@@ -208,7 +210,7 @@ python -m playwright install chromium
 DEMO=1 PORT=4301 node src/server.mjs
 ```
 
-No Windows, `instalacao.bat` confere Node, Python, Ollama, modelos e disco, cria o `.env` e sobe o servidor. `iniciar-escritorio.bat` abre a Sala 3D.
+No Windows, `instalacao.bat` confere Node, Python, Ollama, modelos e disco, cria o `.env` e sobe o servidor. `iniciar-escritorio.bat` abre o Paraíso Artificial.
 
 ### Variáveis do `.env`
 
@@ -287,7 +289,7 @@ Backlog de engenharia (B1 a B19) com fonte e critério de pronto em [`docs/estud
 ```
 src/            servidor, agentes, motor TOCOMAS, decisão, envio, países/idiomas, nichos
 src/tocomas/    contratos, grafo, crença, fidelidade, controlador, habilidades
-public/         Painel, Início, Fluxos, Sala 3D, Base do Mestre, Configurador (JS puro)
+public/         Painel, Início, Fluxos, Paraíso Artificial (a Sala 3D), Base do Mestre, Configurador (JS puro)
 public/ui/      design system (tokens, trilho de vidro, fundo ASCII, esfera de pontos)
 web/            ilhas React (shadcn/OriginKit) compiladas para public/ilhas
 test/           294 testes (node:test), inclusive integração HTTP
@@ -297,7 +299,7 @@ scripts/        verificação, empacotamento, bancada de modelos, capturas
 
 ## Estado atual
 
-Funciona hoje: varredura em lotes, auditoria, decisão, escrita (texto fixo por idioma), aprovação, envio guiado, Sala 3D, Fluxos, modo espectador. Em andamento: conexão estável do WhatsApp, caixa de respostas por lead, follow-up após 72 h e apoio ao fechamento. A revisão completa está em [`docs/REVISAO-2026-10-06.md`](docs/REVISAO-2026-10-06.md).
+Funciona hoje: varredura em lotes, auditoria, decisão, escrita (texto fixo por idioma), aprovação, envio guiado, Paraíso Artificial, Fluxos, modo espectador. Em andamento: conexão estável do WhatsApp, caixa de respostas por lead, follow-up após 72 h e apoio ao fechamento. A revisão completa está em [`docs/REVISAO-2026-10-06.md`](docs/REVISAO-2026-10-06.md).
 
 ## Créditos e licenças dos modelos 3D
 

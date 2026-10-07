@@ -21,7 +21,7 @@ const MODOS = [
   ['/producao.html', 'Quadro', '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 4v16"/>'],
   ['/agentes.html', 'Equipe', '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7"/>'],
   ['/nichos.html', 'Nichos', '<path d="M12 3l9 5-9 5-9-5z"/><path d="M3 13l9 5 9-5"/>'],
-  ['/sala.html', 'Sala 3D', '<path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/>'],
+  ['/sala.html', 'Paraíso', '<path d="M3 21V9l9-6 9 6v12M9 21v-6h6v6"/>'],
 ];
 pagina.innerHTML = `
   <section class="v-hero" aria-labelledby="t-hero">

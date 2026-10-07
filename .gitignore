@@ -5,3 +5,10 @@ node_modules/
 .ferramentas/
 .netlify/
 *.lnk
+
+# modelo com licença Sketchfab Standard: não pode ser redistribuído, então fica só no PC (nunca no git)
+public/assets/modelos/apartamento-loft.glb
+
+# mídia pessoal do Victor (foto de fundo e vídeo de chuva): direitos de terceiros, ficam só no PC
+public/assets/fundo/
+public/assets/video/

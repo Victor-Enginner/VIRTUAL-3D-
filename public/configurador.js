@@ -87,7 +87,7 @@ function fichaHtml() {
   const ferr = (f.ferramentas || []).map((k) => lista.ferramentas[k] || k);
   return `<article class="ficha" aria-label="Ficha do agente">
     <header><span class="marca-item" style="background:${esc(a.cor)}">${esc((f.nome || '?')[0])}</span><div><h2>${esc(f.nome)}</h2><p>${esc(f.papel || '')}</p></div>
-      ${a.status === 'ativo' ? '<span class="ativo"><span class="ponto ok"></span>ativo · mesa na Sala 3D</span>' : ''}</header>
+      ${a.status === 'ativo' ? '<span class="ativo"><span class="ponto ok"></span>ativo · mesa no Paraíso Artificial</span>' : ''}</header>
     <dl>
       <dt>Função</dt><dd>${esc(f.papel || '—')}</dd>
       <dt>Modos</dt><dd>${esc((f.modos || []).join(', ') || '—')}</dd>
@@ -130,7 +130,7 @@ function desenharChat() {
     // estado vazio = convite: o que a conversa vai perguntar, na ordem (é uma sequência de verdade)
     chat.innerHTML = `<section class="boas-vindas" aria-labelledby="bv-titulo">
       <h2 id="bv-titulo">Monte um agente conversando</h2>
-      <p>São 8 perguntas curtas. No fim você revisa a ficha e o agente ganha uma mesa na Sala 3D.</p>
+      <p>São 8 perguntas curtas. No fim você revisa a ficha e o agente ganha uma mesa no Paraíso Artificial.</p>
       <ol class="etapas-config">${ETAPAS_CONVITE.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join('')}</ol>
       <div class="bv-acoes"><button class="btn primario" data-comecar>Começar um agente novo</button>
       ${document.querySelector('#lista .item') ? '<span class="sub">ou continue um da lista ao lado</span>' : ''}</div>
