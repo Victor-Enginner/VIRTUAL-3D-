@@ -32,6 +32,18 @@ export const MIGRACOES = [
     }
   } },
   { v: 9, nome: 'pais em varreduras e leads (Brasil, Portugal, Paraguai); o padrão é BR', up(db) { adicionarColuna(db, 'varreduras', 'pais', "TEXT NOT NULL DEFAULT 'BR'"); adicionarColuna(db, 'leads', 'pais', "TEXT NOT NULL DEFAULT 'BR'"); } },
+  { v: 10, nome: 'sessões de rastreamento: leads.sessao_id; o que já existe vira a "Sessão 1"; a tabela vem do SCHEMA', up(db) {
+    adicionarColuna(db, 'leads', 'sessao_id', 'INTEGER');
+    db.exec('CREATE INDEX IF NOT EXISTS leads_sessao ON leads(sessao_id, etapa)');
+    // qualquer caminho que cria lead (coletor, demonstração, teste) cai na sessão ativa sem precisar lembrar disso
+    db.exec(`CREATE TRIGGER IF NOT EXISTS leads_na_sessao AFTER INSERT ON leads WHEN NEW.sessao_id IS NULL BEGIN
+      UPDATE leads SET sessao_id = COALESCE((SELECT CAST(v AS INTEGER) FROM config WHERE k = 'sessao_ativa'), (SELECT MAX(id) FROM sessoes)) WHERE id = NEW.id;
+    END`);
+    if (db.prepare('SELECT 1 FROM sessoes').get()) return;
+    const inicio = db.prepare('SELECT MIN(criado_em) t FROM leads').get().t || new Date().toISOString();
+    const id = Number(db.prepare("INSERT INTO sessoes (nome, criada_em) VALUES ('Sessão 1', ?)").run(inicio).lastInsertRowid);
+    db.prepare('UPDATE leads SET sessao_id = ? WHERE sessao_id IS NULL').run(id);
+  } },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

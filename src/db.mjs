@@ -138,6 +138,22 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- sessões de rastreamento: cada rodada de prospecção aparece zerada na tela; as anteriores ficam guardadas (src/sessoes.mjs)
+CREATE TABLE IF NOT EXISTS sessoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL,
+  criada_em TEXT NOT NULL,
+  encerrada_em TEXT
+);
+
+-- sessões de rastreamento: cada rodada de prospecção aparece zerada na tela; as anteriores ficam guardadas (src/sessoes.mjs)
+CREATE TABLE IF NOT EXISTS sessoes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nome TEXT NOT NULL,
+  criada_em TEXT NOT NULL,
+  encerrada_em TEXT
+);
+
 -- lotes de busca: cada vez que o Atlas busca N empresas de uma varredura (cidade x ramo x fonte) é um lote. O histórico NUNCA é apagado:
 -- é ele que diz onde já buscamos, quantas empresas vieram e se o lote já foi todo tratado (src/lotes.mjs)
 CREATE TABLE IF NOT EXISTS lotes (

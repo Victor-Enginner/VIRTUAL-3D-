@@ -17,6 +17,7 @@ import { codigoDoPais, PAISES } from './paises.mjs';
 import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
+import { ativarSessao, novaSessaoDeRastreio, idSessaoAtiva, listarSessoes, sessaoAtiva } from './sessoes.mjs';
 import { barramento, registrar } from './eventos.mjs';
 import { NICHOS, FONTES, GRUPOS, TERMOS_MAPS_POR_VARREDURA, catalogo, nichosDoGrupo } from './nichos.mjs';
 import { SITUACOES, formatarTelefone } from './regras.mjs';
@@ -71,14 +72,14 @@ const rota = (metodo, padrao, fn) => rotas.push({ metodo, re: new RegExp(`^${pad
 
 rota('GET', '/api/estado', async () => {
   const [ollama, openwa] = await Promise.all([saudeOllama(), saudeOpenwa()]);
-  const funil = Object.fromEntries(db.prepare('SELECT etapa, COUNT(*) n FROM leads GROUP BY etapa').all().map((r) => [r.etapa, r.n]));
-  const situacoes = Object.fromEntries(db.prepare('SELECT situacao_site s, COUNT(*) n FROM leads WHERE situacao_site IS NOT NULL GROUP BY s').all().map((r) => [r.s, r.n]));
+  const funil = Object.fromEntries(db.prepare('SELECT etapa, COUNT(*) n FROM leads WHERE sessao_id IS ? GROUP BY etapa').all(idSessaoAtiva(db)).map((r) => [r.etapa, r.n]));
+  const situacoes = Object.fromEntries(db.prepare('SELECT situacao_site s, COUNT(*) n FROM leads WHERE situacao_site IS NOT NULL AND sessao_id IS ? GROUP BY s').all(idSessaoAtiva(db)).map((r) => [r.s, r.n]));
   return {
     agentes: Object.fromEntries(Object.entries(AGENTES).map(([k, a]) => [k, { ...a, ...orq.estado()[k] }])),
     pausado: orq.pausado,
     demo: CONFIG.demo,
     saude: { ollama, openwa, motor: { backend: CONFIG.decideBackend, modelo_decisao: CONFIG.decideModel, modelo_escrita: CONFIG.writeModel, modelo_comando: CONFIG.modelos.comando.modelo } },
-    funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
+    sessao: sessaoAtiva(db), funil, situacoes, envio: situacaoDoEnvio(db), briefing: briefing(db), agentes_custom: configurador.ativos(),
     nichos: Object.fromEntries(Object.entries(NICHOS).map(([k, n]) => [k, n.rotulo])), fontes: FONTES, situacoes_rotulos: SITUACOES, abordagens: ROTULO_ABORDAGEM,
     ajustes: lerAjustes(db),
     tocomas: { controlador: orq.controlador.ultimas(), fidelidade: lerFlag(db, 'fidelidade', { total: 0, preservados: 0, ultimos_desvios: [] }), presos: presos(db).slice(0, 20), zonas: { limites: LIMITES_ZONA, nichos: resumoZonas(db) } },
@@ -95,6 +96,9 @@ rota('GET', '/api/leads', ({ url }) => {
   const etapa = url.searchParams.get('etapa');
   const q = texto(url.searchParams.get('q'));
   const where = [], args = [];
+  // padrão: só a sessão ativa; ?sessao=todas mostra o histórico inteiro
+  const sessao = url.searchParams.get('sessao');
+  if (sessao !== 'todas') { where.push('sessao_id IS ?'); args.push(sessao ? Number(sessao) : idSessaoAtiva(db)); }
   if (etapa) { where.push('etapa = ?'); args.push(etapa); }
   if (q) { where.push('(nome LIKE ? OR cidade LIKE ? OR categoria LIKE ?)'); args.push(`%${q}%`, `%${q}%`, `%${q}%`); }
   if (url.searchParams.get('fraco') === '1') where.push("situacao_site IS NOT NULL AND situacao_site != 'site_proprio'");
@@ -280,7 +284,7 @@ rota('GET', '/api/grafo', () => ({ nos: NOS, arestas: ARESTAS, requisitos: REQUI
 
 // cada nicho como um "universo" (aba Nichos): leads por etapa, varreduras e se a Nova já decide sozinha
 rota('GET', '/api/nichos', () => {
-  const porEtapa = db.prepare('SELECT nicho, etapa, COUNT(*) n FROM leads GROUP BY nicho, etapa').all();
+  const porEtapa = db.prepare('SELECT nicho, etapa, COUNT(*) n FROM leads WHERE sessao_id IS ? GROUP BY nicho, etapa').all(idSessaoAtiva(db));
   const varreduras = db.prepare('SELECT id, cidade, uf, nicho, fonte, ativa, ultima_execucao FROM varreduras ORDER BY criado_em DESC').all();
   const usados = new Set([...porEtapa.map((r) => r.nicho), ...varreduras.map((v) => v.nicho)]);
   return {
@@ -290,6 +294,20 @@ rota('GET', '/api/nichos', () => {
         varreduras: varreduras.filter((v) => v.nicho === id), calibracao: prontidao(db, id) };
     }),
   };
+});
+
+// sessões de rastreamento (src/sessoes.mjs): nova começa zerada na tela; nada é apagado
+rota('GET', '/api/sessoes', () => ({ sessoes: listarSessoes(db), ativa: idSessaoAtiva(db) }));
+rota('POST', '/api/sessoes', ({ body }) => {
+  const s = novaSessaoDeRastreio(db, texto(body.nome));
+  registrar(db, 'alva', 'sessao', `Nova sessão de rastreamento: ${s.nome} (as anteriores ficam guardadas)`);
+  return { sessao: s };
+});
+rota('POST', '/api/sessoes/:id/ativar', ({ params }) => {
+  const s = ativarSessao(db, params.id);
+  if (!s) throw new HttpError(404, 'sessão não encontrada');
+  registrar(db, 'alva', 'sessao', `Voltando para a ${s.nome}`);
+  return { sessao: s };
 });
 
 rota('POST', '/api/agentes/pausar', () => { orq.pausar(true); registrar(db, 'alva', 'pausa', 'Agentes pausados pelo operador'); return { ok: true }; });

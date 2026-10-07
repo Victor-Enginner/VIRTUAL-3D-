@@ -558,6 +558,25 @@ async function salvarAjustes(ev) {
 document.querySelector('#conteudo')?.classList.add('entrada');
 setTimeout(() => document.querySelector('#conteudo')?.classList.remove('entrada'), 1200);
 
+// ---------------------------------------------------------------- sessões de rastreamento
+// Cada sessão começa zerada na tela; as anteriores ficam guardadas e dá para voltar a elas pelo seletor.
+async function carregarSessoes() {
+  const { sessoes } = await api('/api/sessoes');
+  const d = (iso) => new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  $('#sel-sessao').innerHTML = sessoes.map((s) => `<option value="${s.id}" ${s.ativa ? 'selected' : ''}>${esc(s.nome)} · ${d(s.criada_em)} · ${s.leads} leads</option>`).join('');
+}
+$('#sel-sessao').addEventListener('change', async (e) => {
+  await api(`/api/sessoes/${e.target.value}/ativar`, {});
+  await Promise.all([atualizarTudo(), carregarSessoes()]);
+});
+$('#btn-nova-sessao').addEventListener('click', async () => {
+  const nome = prompt('Nome da nova sessão (a atual fica guardada, nada é apagado):', '');
+  if (nome === null) return;
+  await api('/api/sessoes', { nome });
+  await Promise.all([atualizarTudo(), carregarSessoes()]);
+});
+carregarSessoes().catch(() => {});
+
 async function atualizarTudo() {
   await carregarEstado();
   await Promise.all([carregarLeads(), carregarVarreduras(), carregarEnvios()]);

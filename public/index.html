@@ -39,6 +39,9 @@
       <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
       <div class="titulo"><h1>Painel</h1><p id="saude" class="saude">Carregando o estado dos agentes…</p></div>
       <div class="acoes">
+        <label class="sr" for="sel-sessao">Sessão de rastreamento</label>
+        <select id="sel-sessao" class="sel-sessao" title="Sessão de rastreamento: cada uma começa zerada, as anteriores ficam guardadas"></select>
+        <button class="btn" id="btn-nova-sessao" title="Começa uma sessão zerada sem apagar a atual">Nova sessão</button>
         <button class="btn" id="btn-ajustes">Ajustes</button>
         <button class="btn" id="btn-pausa">Pausar agentes</button>
       </div>
