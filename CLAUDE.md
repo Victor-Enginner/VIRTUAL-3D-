@@ -1,12 +1,12 @@
 # Prospector — regras para agentes de código
 
-Projeto do Victor (PT-BR). Agentes de prospecção com modelos abertos + escritório 3D. Leia `README.md`
+Projeto do Victor (PT-BR). **Leia primeiro `docs/PROMPT-EIXO.md`** (como trabalhar com ele). Agentes de prospecção com modelos abertos + escritório 3D. Leia `README.md`
 (o que existe), `docs/TOCOMAS.md` (arquitetura-alvo), `docs/estudos/` (papers lidos e backlog B1–B15) e
 `docs/ROADMAP.md` (o que vem a seguir). Mudança motivada por paper cita o id do arXiv.
 
 ## Invioláveis
 - **Não mexer em outros projetos** fora desta pasta (`Escritório Virtual 3D` tem irmãos, como `AGENT_FOUNDRY_GEN01` e `JEV SHOWCASE`). O Repass AI continua intocável.
-- **Não iniciar o Ollama** nem baixar modelos sem o Victor pedir. Testes não dependem dele.
+- O Ollama com o JOSIEFIED-Qwen3 1.7B **pode ser ligado sempre** (autorizado em 07/10/2026). Baixar modelo novo só com pedido. Testes não dependem dele.
 - **Nunca inventar dado de lead** (telefone, nota, avaliação). Sem fonte → `null`.
 - Nada de instalar pacote, baixar arquivo ou publicar/subir para o GitHub sem pedir. O git é **só local**.
 - Modelos 3D com sufixo `-nc` são licença não comercial: uso pessoal, nunca em material para cliente.
