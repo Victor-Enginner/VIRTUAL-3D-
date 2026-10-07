@@ -39,6 +39,7 @@ import { igual as igualTexto, registrarEdicao } from './tocomas/edicoes.mjs';
 import { abrirPlano, registrarFidelidade } from './tocomas/fidelidade.mjs';
 import { CONTROLADOS, criarControlador } from './tocomas/controlador.mjs';
 import { aplicar as aplicarHabilidades } from './tocomas/habilidades.mjs';
+import { idSessaoAtiva } from './sessoes.mjs';
 
 export const AGENTES = {
   alva: { nome: 'Alva', papel: 'Assistente executiva', funcao: 'Abre o expediente, reabre varreduras e resume o dia', cor: '#d9468f' },
@@ -470,7 +471,7 @@ export function situacaoDoEnvio(db) {
   const prox = lerFlag(db, 'proximo_envio_em', null);
   const aval = avaliarEnvio({ agora: new Date(), enviadosHoje: enviadosHoje(db), proximoPermitido: prox ? new Date(prox) : null, cfg: ajustes.envio, aleatorio: () => 0 });
   const escuta = ajustes.envio.so_escuta !== false;
-  return { ...aval, ...(escuta ? { pode: false, motivo: 'modo só escuta: você envia à mão' } : {}), so_escuta: escuta, enviados_hoje: enviadosHoje(db), limite: ajustes.envio.limite_diario, openwa: openwaConfigurado(), na_fila: db.prepare("SELECT COUNT(*) n FROM envios WHERE status = 'aprovado'").get().n };
+  return { ...aval, ...(escuta ? { pode: false, motivo: 'modo só escuta: você envia à mão' } : {}), so_escuta: escuta, enviados_hoje: enviadosHoje(db), limite: ajustes.envio.limite_diario, openwa: openwaConfigurado(), na_fila: db.prepare("SELECT COUNT(*) n FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' AND l.sessao_id IS ?").get(idSessaoAtiva(db)).n };
 }
 
 // `dep` existe para o teste provar que, em modo só escuta, nada é enviado.
@@ -478,7 +479,7 @@ export async function despachar(db, ctx, dep = { configurado: openwaConfigurado,
   // modo só escuta (padrão): o Leo nunca envia sozinho, mesmo com o WhatsApp conectado
   const ajustes = lerAjustes(db);
   if (ajustes.envio.so_escuta !== false) return false;
-  const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' ORDER BY e.id LIMIT 1").get();
+  const pendente = db.prepare("SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE e.status = 'aprovado' AND l.sessao_id IS ? ORDER BY e.id LIMIT 1").get(idSessaoAtiva(db));
   if (!pendente || !dep.configurado()) return false;
   // restrição da conta ou laço de reconexão (eventos do provedor): não insiste, o Painel mostra o motivo
   if (envioPausadoPelaConexao(db)) return false;

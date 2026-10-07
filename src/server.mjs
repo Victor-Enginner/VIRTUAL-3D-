@@ -257,7 +257,7 @@ rota('POST', '/api/varreduras/:id/ativa', ({ params, body }) => {
 });
 
 rota('GET', '/api/envios', () => ({
-  envios: db.prepare('SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id ORDER BY e.id DESC LIMIT 200').all().map((e) => ({ ...e, telefone_fmt: formatarTelefone(e.telefone), resposta: parse(e.resposta) })),
+  envios: db.prepare('SELECT e.*, l.nome FROM envios e JOIN leads l ON l.id = e.lead_id WHERE l.sessao_id IS ? ORDER BY e.id DESC LIMIT 200').all(idSessaoAtiva(db)).map((e) => ({ ...e, telefone_fmt: formatarTelefone(e.telefone), resposta: parse(e.resposta) })),
   situacao: situacaoDoEnvio(db),
 }));
 rota('POST', '/api/envios/:id/cancelar', ({ params }) => {
