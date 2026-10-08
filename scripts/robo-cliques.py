@@ -146,7 +146,15 @@ def main():
                     erros.clear()  # erro de carregamento da página não é culpa do botão
                     pausar_equipe()
                     antes_db, antes_tela = banco_quieto(arquivo_db), digital_tela(pg)
-                    alvo = pg.locator(CLICAVEIS).nth(el['i'])
+                    # acha o MESMO elemento pela identidade (tag + rótulo + classe), nunca pela posição:
+                    # a lista criada pelo JavaScript pode nascer em outra ordem a cada carga e trocar os rótulos do relatório
+                    alvo = pg.evaluate_handle("""([sel, tag, rot, cls]) => [...document.querySelectorAll(sel)].find((e) => {
+                      const r = e.getBoundingClientRect();
+                      const t = ((e.innerText || e.value || '').replace(/\\s+/g, ' ').trim() || e.getAttribute('aria-label') || e.getAttribute('title') || e.id || e.tagName.toLowerCase()).trim().slice(0, 60);
+                      const c = e.className && e.className.baseVal === undefined ? String(e.className) : '';
+                      return e.tagName.toLowerCase() === tag && t === rot && c === cls && r.width > 0 && r.height > 0;
+                    }) || null""", [CLICAVEIS, el['tag'], rotulo(el), el['classe']]).as_element()
+                    if alvo is None: alvo = pg.locator('#__nao_existe__')  # sumiu nesta carga: vira NAO_CLICAVEL com motivo
                     falha_clique = None
                     try: alvo.click(timeout=3000)
                     except Exception as e: falha_clique = str(e).split('\n')[0][:140]

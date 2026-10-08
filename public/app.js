@@ -11,6 +11,18 @@ const hora = (iso) => (iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '
 const dataHora = (iso) => (iso ? new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '');
 const pct = (p) => `${Math.round(p * 100)}%`;
 
+// tela['#id'] = html: só mexe no DOM quando o HTML MUDOU. O ciclo de 5 s redesenhava listas e botões iguais e o
+// clique que caía no meio da troca se perdia (achado do robô de cliques). Mesmo princípio do "diff" do React/Vue.
+const ultimoHTML = new Map();
+const tela = new Proxy({}, { set(_, sel, html) {
+  const el = document.querySelector(sel);
+  if (!el) return true;
+  if (ultimoHTML.get(sel) === html && el.isConnected && el.childNodes.length) return true;
+  ultimoHTML.set(sel, html);
+  el.innerHTML = html;
+  return true;
+} });
+
 async function api(caminho, corpo) {
   const r = await fetch(caminho, corpo === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
   const j = await r.json().catch(() => ({}));
@@ -72,6 +84,9 @@ async function desenharFoco() {
       <p>${total ? 'Quer mais leads? Peça uma varredura nova abaixo ou fale um comando.' : 'Diga uma cidade e um ramo, por exemplo "varre barbearias em Franca SP". O Atlas busca, audita e passa para a Nova.'}</p>${aoVivo}</div>
       <div class="foco-acao"><button class="btn primario magnetico" id="foco-varrer">${total ? 'Nova varredura' : 'Fazer a primeira busca'}</button></div>`;
   }
+  // mesmo motivo do funil: só troca o topo quando o conteúdo mudou (o botão principal não some no meio do clique)
+  if (html === htmlFoco) return;
+  htmlFoco = html;
   $('#foco').innerHTML = html;
   // a fila em cartões é o caminho rápido; a gaveta continua para quem quer ver tudo do lead
   $('#foco-comecar')?.addEventListener('click', () => abrirCartoes({ motivos: MOTIVOS, avisar, aoFechar: atualizarTudo }));
@@ -114,7 +129,7 @@ function desenharSaude() {
   const { ollama, openwa, motor } = estado.saude;
   const motorOk = motor.backend === 'jev' || (ollama.ok && ollama.decide);
   const item = (cls, txt) => `<span class="estado-linha"><span class="ponto ${cls}"></span>${esc(txt)}</span>`;
-  $('#saude').innerHTML = [
+  tela['#saude'] = [
     item(ollama.ok ? 'ok' : 'erro', ollama.ok ? 'Ollama ligado' : 'Ollama desligado'),
     item(motorOk ? 'ok' : 'alerta', `decisão: ${motor.backend === 'jev' ? 'Jev (pago)' : motor.modelo_decisao}${motorOk ? '' : ' (indisponível)'}`),
     item(openwa.ok ? 'ok' : openwa.configurado ? 'erro' : 'alerta', openwa.ok ? 'WhatsApp conectado' : !openwa.configurado ? 'WhatsApp não configurado' : openwa.erro ? 'WhatsApp desligado' : `WhatsApp ${openwa.status || 'desconectado'}`),
@@ -130,6 +145,7 @@ function esqueletoLinhas(n = 6) {
 
 // cada número diz de onde veio (ficha do servidor: tabela, filtro, sessão, hora)
 const origemTexto = (k) => { const o = estado.origem?.[k]; return o ? `Origem: tabela ${o.tabela} · ${o.filtro} · ${new Date(o.em).toLocaleTimeString('pt-BR')}` : 'Origem: desconhecida'; };
+let chaveFunil = null, htmlFoco = null;
 function desenharFunil() {
   const f = estado.funil, s = estado.situacoes;
   const soma = (...ks) => ks.reduce((a, k) => a + (f[k] || 0), 0);
@@ -143,21 +159,27 @@ function desenharFunil() {
     [total, 'encontrados', { etapa: '' }], [oportunidade, 'com site fraco ou sem site', { etapa: '', fraco: true }], [prontas, 'mensagens escritas', { etapa: 'mensagem' }],
     [enviados, 'enviados', { etapa: 'enviado' }], [responderam, 'responderam', { etapa: 'respondeu' }],
   ];
+  // Só redesenha quando o funil MUDOU. Redesenhar a cada 5 s trocava os botões no meio do clique e o clique se perdia
+  // (achado do robô de cliques, scripts/robo-cliques.py). A hora da origem atualiza sozinha, sem tocar nos botões.
+  const chave = JSON.stringify([etapas.map(([n, , f]) => [n, f.etapa === etapaAtual && Boolean(f.fraco) === soFraco]), estado.sessao?.id]);
+  const hora = `Números da ${estado.sessao?.nome || 'sessão'} · tabela leads · ${new Date(estado.origem?.funil?.em || Date.now()).toLocaleTimeString('pt-BR')}`;
+  if (chave === chaveFunil) { const p = $('#kpis .origem-numeros'); if (p) p.textContent = hora; return; }
+  chaveFunil = chave;
   $('#kpis').innerHTML = etapas.map(([n, rot, filtro], i) => {
     const ant = i ? etapas[i - 1][0] : 0;
     const conv = i && ant ? `<span class="conv">${Math.round((100 * n) / ant)}%</span>` : '';
     const ativo = filtro.etapa === etapaAtual && Boolean(filtro.fraco) === soFraco;
     const escala = total ? Math.max(2, Math.round((100 * n) / total)) : 0;
-    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista&#10;${esc(origemTexto('funil'))}"><b data-valor="${n}">${valoresAnteriores.get(i) ?? 0}</b><span>${esc(rot)}</span>${conv}<i class="escala" style="--p:${escala}%" aria-hidden="true"></i></button>`;
+    return `<button class="etapa ${i === 4 && n ? 'destaque' : ''}" data-funil='${JSON.stringify(filtro)}' aria-pressed="${ativo}" title="Mostrar só estes na lista&#10;${esc(origemTexto('funil').replace(/ · d{1,2}:d{2}:d{2}$/, ''))}"><b data-valor="${n}">${valoresAnteriores.get(i) ?? 0}</b><span>${esc(rot)}</span>${conv}<i class="escala" style="--p:${escala}%" aria-hidden="true"></i></button>`;
   }).join('');
-  $('#kpis').insertAdjacentHTML('beforeend', `<p class="origem-numeros" title="${esc(estado.origem?.funil?.consulta || '')}">Números da ${esc(estado.sessao?.nome || 'sessão')} · tabela leads · ${new Date(estado.origem?.funil?.em || Date.now()).toLocaleTimeString('pt-BR')}</p>`);
+  $('#kpis').insertAdjacentHTML('beforeend', `<p class="origem-numeros" title="${esc(estado.origem?.funil?.consulta || '')}">${esc(hora)}</p>`);
   $('#kpis').querySelectorAll('b[data-valor]').forEach((b, i) => { const ate = Number(b.dataset.valor); contar(b, valoresAnteriores.get(i) ?? 0, ate); valoresAnteriores.set(i, ate); });
 }
 
 function desenharAbas() {
   const f = estado.funil;
   const total = Object.values(f).reduce((a, b) => a + b, 0);
-  $('#abas').innerHTML = ETAPAS.map(([k, rot]) => `<button class="aba" role="tab" aria-selected="${k === etapaAtual}" data-etapa="${k}">${esc(rot)}<em>${k ? f[k] || 0 : total}</em></button>`).join('');
+  tela['#abas'] = ETAPAS.map(([k, rot]) => `<button class="aba" role="tab" aria-selected="${k === etapaAtual}" data-etapa="${k}">${esc(rot)}<em>${k ? f[k] || 0 : total}</em></button>`).join('');
 }
 
 // ---------------------------------------------------------------- leads
@@ -170,7 +192,7 @@ async function carregarLeads() {
   const q = $('#busca').value.trim();
   if (!$('#linhas').children.length) $('#linhas').innerHTML = esqueletoLinhas(); // primeira carga: esqueleto, não tela vazia
   const { leads } = await api(`/api/leads?etapa=${encodeURIComponent(etapaAtual)}&q=${encodeURIComponent(q)}${soFraco ? '&fraco=1' : ''}`);
-  $('#linhas').innerHTML = leads.map((l) => `<tr data-id="${esc(l.id)}" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}" tabindex="0" title="Com ${esc(NOME_AGENTE[DONO_DA_ETAPA[l.etapa]] || '—')} agora">
+  tela['#linhas'] = leads.map((l) => `<tr data-id="${esc(l.id)}" data-agente="${DONO_DA_ETAPA[l.etapa] || ''}" tabindex="0" title="Com ${esc(NOME_AGENTE[DONO_DA_ETAPA[l.etapa]] || '—')} agora">
     <td><div class="nome">${esc(l.nome)}</div><div class="sub">${esc(l.categoria || '')} · <span class="sem-quebra">${esc(l.cidade)}-${esc(l.uf)}</span></div></td>
     <td>${l.situacao_site ? `<span class="selo s-${esc(l.situacao_site)}">${esc(l.situacao_rotulo)}</span>` : '<span class="sub">auditando…</span>'}</td>
     <td>${l.score == null ? '<span class="sub">—</span>' : `<span class="prio"><b>${Number(l.score)}</b><span class="barra"><i style="width:${Number(l.score)}%"></i></span></span>`}${l.decisao?.zona?.zona === 'meio' && ['qualificado', 'mensagem'].includes(l.etapa) ? '<div class="selo-zona" title="Chance de aprovação no meio: a Nova deixou para você">pediu sua opinião</div>' : ''}</td>
@@ -467,7 +489,7 @@ async function mostrarCapacidade() {
 async function carregarVarreduras() {
   mostrarCapacidade();
   const { buscas, meta_padrao: meta } = await api('/api/cobertura');
-  $('#varreduras').innerHTML = buscas.map((b) => {
+  tela['#varreduras'] = buscas.map((b) => {
     const ult = b.lotes.at(-1);
     const rodando = ult?.status === 'rodando';
     const abertos = b.lotes.reduce((n, l) => n + (l.pendentes || 0), 0);
@@ -488,14 +510,14 @@ async function carregarVarreduras() {
 async function carregarEnvios() {
   const { envios, situacao: s } = await api('/api/envios');
   const prox = s.pode ? 'pode enviar agora' : `próximo: ${dataHora(s.proximo)} (${s.motivo})`;
-  $('#envio-status').innerHTML = `
+  tela['#envio-status'] = `
     <div>${s.enviados_hoje} de ${s.limite} hoje · ${s.na_fila} na fila · ${esc(prox)}</div>
     <div class="medidor"><i style="width:${Math.min(100, (100 * s.enviados_hoje) / s.limite)}%"></i></div>
     ${s.na_fila ? '<button class="btn primario" id="btn-enviar-fila">Enviar em sequência</button>' : ''}
     ${s.openwa ? '' : '<div class="aviso">OpenWA não configurado: nada sai sozinho. Aprove e use "Abrir no WhatsApp" para enviar à mão, ou configure o OpenWA no .env.</div>'}`;
   $('#btn-enviar-fila')?.addEventListener('click', () => abrirEnvio({ avisar, aoFechar: atualizarTudo }));
   const rot = { aprovado: 'na fila', enviado: 'enviado', erro: 'erro', cancelado: 'cancelado' };
-  $('#envios').innerHTML = envios.slice(0, 15).map((e) => `<li><div><strong>${esc(e.nome)}</strong><small>${esc(e.telefone_fmt)} · ${esc(rot[e.status] || e.status)}${e.enviado_em ? ` ${esc(dataHora(e.enviado_em))}` : e.agendado_para ? ` · ${esc(dataHora(e.agendado_para))}` : ''}${e.resposta?.erro ? ` · ${esc(e.resposta.erro)}` : ''}</small></div>
+  tela['#envios'] = envios.slice(0, 15).map((e) => `<li><div><strong>${esc(e.nome)}</strong><small>${esc(e.telefone_fmt)} · ${esc(rot[e.status] || e.status)}${e.enviado_em ? ` ${esc(dataHora(e.enviado_em))}` : e.agendado_para ? ` · ${esc(dataHora(e.agendado_para))}` : ''}${e.resposta?.erro ? ` · ${esc(e.resposta.erro)}` : ''}</small></div>
     ${e.status === 'aprovado' ? `<button class="btn" data-cancelar="${e.id}">Cancelar</button>` : ''}</li>`).join('');
 }
 
@@ -506,7 +528,7 @@ function linhaFeed(e) {
 }
 async function carregarFeed() {
   const { eventos } = await api('/api/eventos');
-  $('#feed').innerHTML = eventos.map(linhaFeed).join('');
+  tela['#feed'] = eventos.map(linhaFeed).join('');
 }
 
 // ---------------------------------------------------------------- voz e comandos
@@ -719,7 +741,7 @@ $('#chk-territorio').addEventListener('change', (e) => { const c = $('#inp-cidad
 const pct0 = (p) => `${Math.round(p * 100)}%`;
 async function carregarCampanhas() {
   const { campanhas } = await api('/api/campanhas');
-  $('#campanhas').innerHTML = campanhas.map((c) => {
+  tela['#campanhas'] = campanhas.map((c) => {
     const ult = c.passos[0];
     const prior = c.prior.media === null ? 'ramo ainda sem histórico neste país' : `média do ramo ${pct0(c.prior.media)} (de ${c.prior.base} auditadas)`;
     return `<li class="campanha"><div><strong>${esc(c.nicho_rotulo)} · ${esc(c.uf)} inteiro</strong>
