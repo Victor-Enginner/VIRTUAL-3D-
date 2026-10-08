@@ -5,7 +5,7 @@
   "papel": "Cibersegurança",
   "funcao": "Audita, sem atacar, o site e o e-mail do domínio de cada lead e transforma cada falha em evidência verificável",
   "andar": 2,
-  "identidade": { "cor": "#39ff88", "retrato": null, "fala": "texto" },
+  "identidade": { "cor": "#ff2a3d", "retrato": null, "fala": "texto" },
   "habilidades": [
     {
       "id": "auditar_seguranca",

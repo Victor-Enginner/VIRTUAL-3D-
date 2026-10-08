@@ -19,6 +19,7 @@ import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './com
 import { versaoDoBanco } from './migracoes.mjs';
 import { ficha } from './origem.mjs';
 import { carregarAgentes } from './especificacao.mjs';
+import { executar as executarTerminalEtbaal } from './etbaal/terminal.mjs';
 import { especificacaoEtbaal, resumo as resumoEtbaal, rodarLote as rodarLoteEtbaal } from './etbaal/index.mjs';
 import { criarCampanha, escolherCidades, registrarPasso, resumoCampanha, ultimoPasso } from './territorio.mjs';
 import { ativarSessao, novaSessaoDeRastreio, idSessaoAtiva, listarSessoes, sessaoAtiva } from './sessoes.mjs';
@@ -341,6 +342,7 @@ rota('POST', '/api/campanhas/:id/proximo', ({ params }) => {
 // agentes como dado (agentes/*.json, src/especificacao.mjs) e o Etbaal, 2º andar (src/etbaal/)
 rota('GET', '/api/especificacoes', () => carregarAgentes());
 rota('GET', '/api/etbaal', ({ url }) => ({ especificacao: especificacaoEtbaal(), ...resumoEtbaal(db, url.searchParams.get('sessao') === 'todas') }));
+rota('POST', '/api/etbaal/terminal', async ({ body }) => { const out = await executarTerminalEtbaal(db, especificacaoEtbaal(), texto(body.comando, 120)); return Array.isArray(out) ? { linhas: out } : out; });
 rota('POST', '/api/etbaal/auditar', async ({ body }) => rodarLoteEtbaal(db, { limite: Math.min(Math.max(Number(body.limite) || 10, 1), 30), todas: body.sessao === 'todas' }));
 
 // sessões de rastreamento (src/sessoes.mjs): nova começa zerada na tela; nada é apagado

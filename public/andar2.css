@@ -1,23 +1,25 @@
 /* 2º andar: lanhouse cyberpunk do Etbaal. Só vale nesta página (.andar2); o Paraíso não é tocado. */
-.andar2 { --etbaal: #39ff88; --neon-a: #00e5ff; --neon-b: #ff2bd6; }
-.andar2 .titulo h1 { letter-spacing: .02em; }
+.andar2 { --etbaal: #ff2a3d; }
 .andar2 .titulo h1::first-letter { color: var(--etbaal); }
-.painel-etbaal {
-  position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(360px, 42vw); overflow-y: auto; z-index: 2;
-  padding: 14px; border: 1px solid #39ff8840; border-radius: 14px; background: #03070acc; backdrop-filter: blur(12px);
-  font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 12.5px; color: #c9ffe0;
+/* terminal preto e vermelho: a conversa com o Etbaal (só texto) */
+.terminal-etbaal {
+  position: absolute; right: 12px; bottom: 12px; width: min(520px, 46vw); height: min(380px, 52%); z-index: 2;
+  display: flex; flex-direction: column; background: #050000f2; border: 1px solid #ff2a3d66; border-radius: 10px;
+  box-shadow: 0 0 0 1px #000, 0 18px 50px #000c, 0 0 28px #ff2a3d22; overflow: hidden;
+  font: 13px/1.45 ui-monospace, "Cascadia Code", Consolas, monospace; color: #ff4d5e;
 }
-.painel-etbaal h2 { margin: 0 0 6px; font-size: 13px; color: var(--etbaal); text-transform: uppercase; letter-spacing: .12em; }
-.painel-etbaal .placar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
-.painel-etbaal .placar div { border: 1px solid #39ff8830; border-radius: 8px; padding: 6px; }
-.painel-etbaal .placar b { display: block; font-size: 18px; color: #fff; }
-.painel-etbaal .placar span { color: #8fbfa3; font-size: 11px; }
-.painel-etbaal .aud { border-top: 1px solid #39ff8222; padding: 8px 0; cursor: pointer; }
-.painel-etbaal .aud[aria-current="true"] { background: #39ff8812; }
-.painel-etbaal .aud strong { color: #fff; font-weight: 600; }
-.painel-etbaal .nota { float: right; font-weight: 700; }
-.painel-etbaal .alta { color: #ff5c7a; } .painel-etbaal .media { color: #ffc44d; } .painel-etbaal .baixa { color: #7fd1ff; }
-.painel-etbaal ul { margin: 4px 0 0; padding-left: 16px; }
-.painel-etbaal small { color: #8fbfa3; }
-.painel-etbaal .origem { margin-top: 10px; color: #6f9b82; font-size: 11px; }
-@media (max-width: 760px) { .painel-etbaal { top: auto; left: 8px; right: 8px; width: auto; height: 42%; } }
+.term-barra { display: flex; align-items: center; gap: 6px; padding: 7px 10px; background: #140204; border-bottom: 1px solid #ff2a3d33; }
+.term-barra span { width: 10px; height: 10px; border-radius: 50%; background: #3a0a10; }
+.term-barra span:first-child { background: #ff2a3d; }
+.term-barra b { margin-left: 8px; font-weight: 500; color: #ff8a95; font-size: 12px; }
+.term-saida { flex: 1; overflow-y: auto; padding: 10px 12px; white-space: pre-wrap; word-break: break-word; scrollbar-color: #ff2a3d #140204; }
+.term-saida .eco { color: #ffffff; }
+.term-saida .erro { color: #ffb020; }
+.term-linha { display: flex; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid #ff2a3d33; background: #0a0102; }
+.term-linha span { color: #ff2a3d; white-space: nowrap; }
+.andar2 .terminal-etbaal .term-linha input { min-width: 0; flex: 1; min-height: 0; padding: 0; background: transparent; border: 0; color: #fff; font: inherit; caret-color: #ff2a3d; box-shadow: none; }
+.andar2 .terminal-etbaal .term-linha input:focus { outline: none; border: 0; box-shadow: none; }
+@media (max-width: 760px) { .terminal-etbaal { left: 8px; right: 8px; width: auto; height: 46%; } }
+.term-barra { cursor: pointer; user-select: none; }
+.terminal-etbaal.fechado { height: auto; }
+.terminal-etbaal.fechado .term-saida, .terminal-etbaal.fechado .term-linha { display: none; }
