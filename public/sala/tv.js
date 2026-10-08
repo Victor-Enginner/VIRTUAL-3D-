@@ -73,7 +73,9 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
 
   const trocarEspera = () => { desligada.map?.dispose(); desligada.map = telaDeEspera(canal.nome); desligada.needsUpdate = true; };
   trocarEspera();
-  const pintar = () => { for (const t of telas) t.material = ligadaAgora && !carregando && !erro ? ligada : desligada; };
+  // pausada pela aba oculta = tela de espera, NUNCA um quadro congelado (antes parecia "ligou e travou")
+  let pausadaPorAba = false;
+  const pintar = () => { for (const t of telas) t.material = ligadaAgora && !carregando && !erro && !pausadaPorAba ? ligada : desligada; };
 
   // cada tela é um plano encaixado na frente do modelo da TV, medido depois que ele carrega;
   // todas usam o MESMO vídeo (um download só, mesmo com duas TVs)
@@ -144,10 +146,19 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
     pintar();
   }
 
-  // aba escondida: pausa o download; ao voltar, retoma no ao vivo
+  // Aba escondida: só pausa depois de 1 MINUTO oculta. No app do Claude o painel do navegador fica "oculto" enquanto
+  // o Victor digita no chat; pausar na hora fazia a TV congelar e recomeçar a cada vai-e-volta ("liga e fica travada").
+  const ESPERA_OCULTA_MS = 60_000;
+  let timerOculta = null;
   document.addEventListener('visibilitychange', () => {
     if (!ligadaAgora) return;
-    if (document.hidden) parar(); else tocar();
+    if (document.hidden) {
+      clearTimeout(timerOculta);
+      timerOculta = setTimeout(() => { pausadaPorAba = true; parar(); aoMudar(estado()); }, ESPERA_OCULTA_MS);
+    } else {
+      clearTimeout(timerOculta);
+      if (pausadaPorAba) { pausadaPorAba = false; tocar(); }
+    }
   });
 
   return {
