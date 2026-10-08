@@ -75,14 +75,17 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
 
   // cada tela é um plano encaixado na frente do modelo da TV, medido depois que ele carrega;
   // todas usam o MESMO vídeo (um download só, mesmo com duas TVs)
+  // a tela é medida no espaço da PRÓPRIA TV (frente = +Z local): vale para TV girada (parede lateral do 2º andar).
+  // Para TV sem giro (as do Paraíso) dá exatamente a mesma posição de antes.
   for (const grupo of todas) grupo.userData.pronto?.then(() => {
-    const caixa = new THREE.Box3().setFromObject(grupo);
+    grupo.updateMatrixWorld(true);
+    const caixa = new THREE.Box3().setFromObject(grupo).applyMatrix4(grupo.matrixWorld.clone().invert());
     const t = caixa.getSize(new THREE.Vector3());
     const w = t.x * 0.9, h = Math.min(w * 9 / 16, t.y * 0.62);
     const tela = new THREE.Mesh(new THREE.PlaneGeometry(w, h), desligada);
     tela.position.set((caixa.min.x + caixa.max.x) / 2, caixa.max.y - t.y * 0.06 - h / 2, caixa.max.z + 0.004);
     tela.name = telas.length ? `tela-tv-${telas.length + 1}` : 'tela-tv';
-    grupo.parent.add(tela);
+    grupo.add(tela);
     telas.push(tela);
     pintar();
     aoMudar(estado());

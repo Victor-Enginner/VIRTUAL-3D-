@@ -217,8 +217,8 @@ async function montar() {
   for (const [x, z] of [[-7.3, -4.7], [7.3, 4.0]]) porModelo('planta-vaso', x, z, 0, { obstaculo: false });
 
   // TV ao vivo na parede da direita: o MESMO canal do Paraíso (sala/tv.js). Começa desligada (conforto: nada toca sozinho)
-  // sem giro e virada para +Z, igual às TVs do Paraíso (o montarTV mede a tela assumindo isso; girada, a tela saía de lado)
-  const tvGrupo = new THREE.Group(); tvGrupo.position.set(0.6, 1.05, -P / 2 + 0.25); cena.add(tvGrupo);
+  // TV da parede DIREITA (pedido do Victor), virada para dentro da sala
+  const tvGrupo = new THREE.Group(); tvGrupo.position.set(L / 2 - 0.25, 1.05, 1.2); tvGrupo.rotation.y = -Math.PI / 2; cena.add(tvGrupo);
   tvGrupo.userData.pronto = modeloKenney('televisionModern', 0, 0, 0, { cor: 0x0c0c0e }).then((m) => { cena.remove(m); m.position.set(0, 0, 0); m.scale.multiplyScalar(1.6); tvGrupo.add(m); });
   await tvGrupo.userData.pronto;
   // TV do deck: na parede do fundo, acima dos 4 monitores, de frente para quem está nos computadores
@@ -277,7 +277,7 @@ function posicionar(auditando) {
 async function chamarEtbaal(sentado) {
   lugares = {
     deck: { x: sentado.x, z: sentado.z + 0.55, rot: Math.PI },           // atrás da cadeira, olhando os 4 monitores
-    tv: { x: 0.6, z: -P / 2 + 2.6, rot: Math.PI },                       // a ~2,3 m da TV da parede do fundo, olhando para ela
+    tv: { x: L / 2 - 2.8, z: 1.2, rot: Math.PI / 2 },                    // a ~2,5 m da TV da parede direita, olhando para ela
   };
   const pronto = (g, extra = {}) => { cena.add(g); etbaal = { grupo: g, mixer: null, ...extra }; posicionar(false); };
   try {
