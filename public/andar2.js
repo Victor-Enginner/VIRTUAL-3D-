@@ -18,7 +18,7 @@ import { montarShell } from './ui/shell.js';
 import { movimentoReduzido } from './ui/conforto.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
 import { criarColocador, metade } from './sala/modelos.js';
-import { montarTV } from './sala/tv.js';
+import { montarTV, diagnosticoTVs } from './sala/tv.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -428,6 +428,7 @@ function quadro() {
     montarTV({ grupos: [partes.tvDeck], canal: CANAIS.deck, chave: 'prospector-tv-andar2-deck:v1', aoMudar: () => tvs && desenharTvs() }),
   ];
   desenharTvs();
+  diagnosticoTVs(tvs);
   $('#btn-tv').addEventListener('click', (ev) => { painelTv.hidden = !painelTv.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!painelTv.hidden)); desenharTvs(); });
   painelTv.addEventListener('click', async (ev) => {
     const b = ev.target.closest('[data-acao]'); if (!b) return;

@@ -15,7 +15,7 @@ import { criarVagas, reservar, liberarVaga, livresEm, roda, grupos, quemFala } f
 import { planoDoDia, blocoAgora, proximoBloco, diaDe } from './sala/rotina.js';
 import { criarTela, desenharTela } from './sala/telas.js';
 import { desenharPainelLed, animarPainelLed, letreiroLed } from './sala/led.js';
-import { montarTV } from './sala/tv.js';
+import { montarTV, diagnosticoTVs } from './sala/tv.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { montarShell, atualizarShell } from './ui/shell.js';
 
@@ -828,6 +828,7 @@ renderer.setAnimationLoop(() => {
 // ------------------------------------------------------------ TV ao vivo (sala de reunião)
 const painelTv = $('#tv-painel');
 const tv = montarTV({ grupos: escritorio.tvs, aoMudar: desenharTv });
+diagnosticoTVs([tv]); // só com ?diag na URL
 function desenharTv(s = tv.estado()) {
   $('#btn-tv').textContent = s.ligada ? 'TV ligada' : 'TV';
   $('#btn-tv').classList.toggle('ativo', s.ligada);

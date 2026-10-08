@@ -177,3 +177,31 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
     },
   };
 }
+
+// Diagnóstico ao vivo: abra a página com ?diag (ex.: /andar2.html?diag ou /sala.html?diag). Mostra, a cada segundo,
+// os quadros/s da cena, de cada TV (quadros NOVOS de vídeo), o buffer, o estado e se a aba está oculta.
+// Feito para achar o travamento que o Victor vê e as medições automáticas não pegaram. Sem ?diag, nada aparece.
+export function diagnosticoTVs(tvs) {
+  if (!new URLSearchParams(location.search).has('diag')) return;
+  const caixa = document.createElement('pre');
+  caixa.style.cssText = 'position:fixed;left:8px;bottom:8px;z-index:99999;margin:0;padding:8px 10px;background:#000d;color:#7dffb0;font:12px/1.4 Consolas,monospace;border:1px solid #7dffb055;border-radius:8px;pointer-events:none;white-space:pre';
+  document.body.append(caixa);
+  let cena = 0;
+  const contaCena = () => { cena++; requestAnimationFrame(contaCena); };
+  requestAnimationFrame(contaCena);
+  const quadros = tvs.map(() => 0);
+  tvs.forEach((t, i) => { const f = () => { quadros[i]++; t.video.requestVideoFrameCallback(f); }; t.video.requestVideoFrameCallback?.(f); });
+  const eventos = tvs.map(() => ({ waiting: 0, stalled: 0 }));
+  tvs.forEach((t, i) => { for (const k of ['waiting', 'stalled']) t.video.addEventListener(k, () => eventos[i][k]++); });
+  setInterval(() => {
+    const linhas = [`cena ${cena} qps · aba ${document.hidden ? 'OCULTA' : 'visível'} · ${innerWidth}x${innerHeight}`];
+    tvs.forEach((t, i) => {
+      const v = t.video, e = t.estado();
+      const buf = v.buffered.length ? (v.buffered.end(v.buffered.length - 1) - v.currentTime).toFixed(1) : '0';
+      linhas.push(`${e.canal.nome}: ${e.ligada ? (e.carregando ? 'sintonizando' : e.erro ? 'ERRO ' + e.erro : 'no ar') : 'desligada'} · vídeo ${quadros[i]} qps · ${v.videoWidth}x${v.videoHeight} · buffer ${buf}s · esperas ${eventos[i].waiting}/${eventos[i].stalled}`);
+      quadros[i] = 0;
+    });
+    cena = 0;
+    caixa.textContent = linhas.join('\n');
+  }, 1000);
+}
