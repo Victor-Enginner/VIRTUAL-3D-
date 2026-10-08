@@ -18,6 +18,8 @@ import { backupDiario } from './backup.mjs';
 import { contarQuentes, LIMITE_QUENTE, proximoCartao, trocarCidade } from './comandos-acao.mjs';
 import { versaoDoBanco } from './migracoes.mjs';
 import { ficha } from './origem.mjs';
+import { carregarAgentes } from './especificacao.mjs';
+import { especificacaoEtbaal, resumo as resumoEtbaal, rodarLote as rodarLoteEtbaal } from './etbaal/index.mjs';
 import { criarCampanha, escolherCidades, registrarPasso, resumoCampanha, ultimoPasso } from './territorio.mjs';
 import { ativarSessao, novaSessaoDeRastreio, idSessaoAtiva, listarSessoes, sessaoAtiva } from './sessoes.mjs';
 import { barramento, registrar } from './eventos.mjs';
@@ -334,6 +336,11 @@ rota('POST', '/api/campanhas/:id/proximo', ({ params }) => {
   if (!c) throw new HttpError(404, 'campanha não encontrada');
   return avancarCampanha(c);
 });
+
+// agentes como dado (agentes/*.json, src/especificacao.mjs) e o Etbaal, 2º andar (src/etbaal/)
+rota('GET', '/api/especificacoes', () => carregarAgentes());
+rota('GET', '/api/etbaal', ({ url }) => ({ especificacao: especificacaoEtbaal(), ...resumoEtbaal(db, url.searchParams.get('sessao') === 'todas') }));
+rota('POST', '/api/etbaal/auditar', async ({ body }) => rodarLoteEtbaal(db, { limite: Math.min(Math.max(Number(body.limite) || 10, 1), 30), todas: body.sessao === 'todas' }));
 
 // sessões de rastreamento (src/sessoes.mjs): nova começa zerada na tela; nada é apagado
 rota('GET', '/api/sessoes', () => ({ sessoes: listarSessoes(db), ativa: idSessaoAtiva(db) }));

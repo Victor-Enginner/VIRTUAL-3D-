@@ -45,6 +45,7 @@ export const MIGRACOES = [
     db.prepare('UPDATE leads SET sessao_id = ? WHERE sessao_id IS NULL').run(id);
   } },
   { v: 11, nome: 'campanhas de território com bandit (ramo x estado inteiro) e o histórico de cada escolha; as tabelas vêm do SCHEMA', up() {} },
+  { v: 12, nome: 'seguranca: auditoria passiva do Etbaal por lead (achados com evidência); a tabela vem do SCHEMA', up() {} },
 ];
 export const VERSAO_ATUAL = MIGRACOES.at(-1).v;
 

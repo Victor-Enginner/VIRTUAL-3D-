@@ -138,6 +138,17 @@ CREATE TABLE IF NOT EXISTS edicoes (
   em TEXT NOT NULL
 );
 
+-- auditoria de segurança do Etbaal (src/etbaal/auditoria.mjs): a última de cada lead, com achados e evidência
+CREATE TABLE IF NOT EXISTS seguranca (
+  lead_id TEXT PRIMARY KEY REFERENCES leads(id),
+  auditado INTEGER NOT NULL,
+  motivo TEXT,
+  host TEXT,
+  nota INTEGER,
+  achados TEXT,
+  em TEXT NOT NULL
+);
+
 -- campanhas de território (src/territorio.mjs): um ramo num estado inteiro; o bandit escolhe a próxima cidade
 CREATE TABLE IF NOT EXISTS campanhas (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

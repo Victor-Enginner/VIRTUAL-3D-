@@ -1,0 +1,33 @@
+{
+  "formato": "agente/1",
+  "id": "etbaal",
+  "nome": "Etbaal",
+  "papel": "Cibersegurança",
+  "funcao": "Audita, sem atacar, o site e o e-mail do domínio de cada lead e transforma cada falha em evidência verificável",
+  "andar": 2,
+  "identidade": { "cor": "#39ff88", "retrato": null, "fala": "texto" },
+  "habilidades": [
+    {
+      "id": "auditar_seguranca",
+      "descricao": "Checagem passiva: HTTPS e redirecionamento, certificado, cabeçalhos de segurança, versão de software exposta, SPF e DMARC do domínio",
+      "efeito": "rede_passiva",
+      "entrada": "lead com site próprio",
+      "saida": "achados com severidade, evidência e a norma de origem"
+    }
+  ],
+  "permissoes": {
+    "ferramentas": ["http_get_publico", "tls_handshake", "dns_txt"],
+    "proibido": ["varredura_de_portas", "teste_de_senha", "envio_de_formulario", "exploracao_de_falha"],
+    "por_dia": 200,
+    "precisa_aprovacao": []
+  },
+  "limites": {
+    "tempo_por_site_ms": 15000,
+    "so_dominio_proprio": true
+  },
+  "avaliacao": {
+    "testes": "test/etbaal.test.mjs",
+    "regra": "nenhum achado sem evidência; site de rede social ou agregador nunca é auditado"
+  },
+  "base": ["RFC 6797 (HSTS)", "RFC 7208 (SPF)", "RFC 7489 (DMARC)", "OWASP Secure Headers", "arXiv 2410.14924", "arXiv 1711.06654"]
+}
