@@ -78,7 +78,7 @@ test('etbaal: certificado inválido é alta; DMARC p=none e SPF +all são aponta
 });
 
 test('etbaal: rede social, agregador e site gratuito nunca são auditados (nem uma requisição)', async () => {
-  for (const site of ['https://instagram.com/barbearia', 'https://loja.wixsite.com/x', '']) {
+  for (const site of ['https://instagram.com/barbearia', 'https://loja.wixsite.com/x', '', 'https://belarmino.resurva.com', 'https://www.fresha.com/pt/a/x', 'https://giuseppe.lecard.app', 'https://x.localo.site']) {
     const dep = falso({ http: resposta(200), https: resposta(200) });
     const r = await auditar(ETBAAL, site, dep, AGORA);
     assert.equal(r.auditado, false, site);

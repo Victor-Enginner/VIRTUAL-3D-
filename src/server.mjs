@@ -283,7 +283,8 @@ rota('POST', '/api/envios/:id/cancelar', ({ params }) => {
 rota('GET', '/api/eventos', ({ url }) => {
   const where = ['id > ?'], args = [Number(url.searchParams.get('desde')) || 0];
   const agente = url.searchParams.get('agente');
-  if (agente) { if (!AGENTES[agente]) throw new HttpError(400, 'agente desconhecido'); where.push('agente = ?'); args.push(agente); }
+  // os 5 da equipe + os agentes declarados como dado (agentes/*.json, ex.: Etbaal)
+  if (agente) { if (!AGENTES[agente] && !carregarAgentes().validos.some((e) => e.id === agente)) throw new HttpError(400, 'agente desconhecido'); where.push('agente = ?'); args.push(agente); }
   const lead = url.searchParams.get('lead');
   if (lead) { where.push('lead_id = ?'); args.push(texto(lead, 40)); }
   const limite = Math.min(300, Math.max(1, Number(url.searchParams.get('limite')) || 120));

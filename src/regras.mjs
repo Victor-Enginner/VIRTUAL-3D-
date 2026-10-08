@@ -4,11 +4,14 @@
 const REDES_SOCIAIS = ['instagram.com', 'instagram.com.br', 'facebook.com', 'facebook.com.br', 'fb.com', 'fb.me', 'tiktok.com', 'linktr.ee', 'linkin.bio', 'beacons.ai',
   'wa.me', 'api.whatsapp.com', 'whatsapp.com', 'youtube.com', 'twitter.com', 'x.com', 'kwai.com', 'bio.link', 'linkbio.co'];
 const CARDAPIO = ['goomer.app', 'anota.ai', 'ifood.com.br', 'cardapioweb.com', 'menudino.com', 'deliverydireto.com.br', 'aiqfome.com',
-  'saipos.com', 'ola.click', 'pedir.delivery', 'neemo.com.br', 'cardapio.menu', 'instadelivery.com.br', 'consumer.com.br', 'mais.delivery'];
+  'saipos.com', 'ola.click', 'pedir.delivery', 'neemo.com.br', 'cardapio.menu', 'instadelivery.com.br', 'consumer.com.br', 'mais.delivery',
+  'lecard.app', 'takeat.app']; // +2 achados pelo Etbaal em 08/10 (domínio de plataforma lido como site próprio)
 const AGENDAMENTO = ['appbarber.com.br', 'cashbarber.com.br', 'booksy.com', 'trinks.com', 'avec.app', 'salaovip.com.br', 'doctoralia.com.br', 'agendasalao.com.br',
-  'simplesagenda.com.br', 'gendo.app', 'agendor.com.br', 'belasis.com.br', 'tuagenda.com', 'calendly.com', 'zarpo.com.br'];
+  'simplesagenda.com.br', 'gendo.app', 'agendor.com.br', 'belasis.com.br', 'tuagenda.com', 'calendly.com', 'zarpo.com.br',
+  'fresha.com', 'treatwell.pt', 'setmore.com', 'buk.pt', 'tuaagenda.com', 'resurva.com']; // +6 achados pelo Etbaal em 08/10
 const GRATUITO = ['wixsite.com', 'wordpress.com', 'blogspot.com', 'business.site', 'negocio.site', 'sites.google.com', 'webnode.page',
-  'webnode.com.br', 'site123.me', 'godaddysites.com', 'weebly.com', 'jimdosite.com', 'carrd.co', 'canva.site', 'my.canva.site'];
+  'webnode.com.br', 'site123.me', 'godaddysites.com', 'weebly.com', 'jimdosite.com', 'carrd.co', 'canva.site', 'my.canva.site',
+  'localo.site'];
 
 export const SITUACOES = {
   sem_site: 'Sem site',
