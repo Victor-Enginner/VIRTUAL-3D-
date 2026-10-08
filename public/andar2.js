@@ -134,20 +134,12 @@ function novaTela(w = 512, h = 320) {
   return t;
 }
 function monitor(g, x, z, rot, t) {
-  // suporte próprio já girado (arco do deck): a tela segue a frente REAL do monitor. Igual ao Paraíso (sala/cena.js):
-  // o Iiyama entra girado -90° e a tela vira um plano no espaço do suporte, colado na face 'screen'.
+  // A tela é a PRÓPRIA malha 'screen' do Iiyama pintada com os dados. Na v3 eu media a caixa da tela e punha um plano
+  // na frente: com o monitor girado (arco do deck) a caixa alinhada aos eixos ficava maior e à frente, e o plano
+  // flutuava solto. Pintar a malha acompanha o monitor em qualquer ângulo.
   const sup = new THREE.Group(); sup.position.set(x, 0, z); sup.rotation.y = rot; g.add(sup);
   porModelo('monitor-iiyama-nc', 0, 0, -Math.PI / 2, { pai: sup, y: TAMPO, obstaculo: false, aoCarregar: (n) => {
-    let screen = null;
-    n.traverse((o) => { if (o.isMesh && o.material?.name === 'screen') screen = o; });
-    if (!screen) return;
-    sup.updateMatrixWorld(true);
-    const caixa = new THREE.Box3().setFromObject(screen, true).applyMatrix4(sup.matrixWorld.clone().invert());
-    const s2 = caixa.getSize(new THREE.Vector3()), c = caixa.getCenter(new THREE.Vector3());
-    const plano = new THREE.Mesh(new THREE.PlaneGeometry(s2.x * 0.97, s2.y * 0.95), t.material);
-    plano.position.set(c.x, c.y, caixa.max.z + 0.003);
-    sup.add(plano);
-    t.plano = plano;
+    n.traverse((o) => { if (o.isMesh && o.material?.name === 'screen') { o.material = t.material; t.plano = o; } });
   } });
 }
 function escreverTela(t, linhas, { fundo = '#050102', cor = '#ff4d5e', titulo = '#ffffff', fonte = 22 } = {}) {
@@ -263,13 +255,12 @@ async function carregar() {
     t.dado = a;
   });
   // as 6 telas do Etbaal: log, piores, falhas comuns, fila, regras, placar
-  const [log, piores, comuns, fila, regras, placar] = partes.deck;
-  escreverTela(log, ['etbaal@deck:~$ tail -f auditoria', ...(ev.eventos || []).slice(0, 9).map((e) => e.msg.slice(0, 38))], { fonte: 19 });
-  escreverTela(piores, ['MAIS VULNERÁVEIS', ...[...aud].sort((a, b) => a.nota - b.nota).slice(0, 8).map((a) => ({ t: `${String(a.nota).padStart(3)}  ${a.nome.slice(0, 28)}`, cor: corNota(a.nota) }))], { fonte: 19 });
-  escreverTela(comuns, ['FALHAS MAIS COMUNS', ...dados.mais_comuns.slice(0, 8).map((m) => `${String(m.n).padStart(3)}× ${m.id}`)], { fonte: 19 });
-  escreverTela(fila, ['FILA', '', { t: `${dados.pendentes}`, cor: '#ffffff' }, 'sites próprios', 'sem auditoria'], { fonte: 30 });
-  escreverTela(regras, ['REGRAS', 'passivo: GET, TLS, DNS', { t: 'proibido: portas, senha,', cor: '#ff4d5e' }, { t: 'formulário, exploração', cor: '#ff4d5e' }, 'só domínio próprio', 'evidência + norma'], { fonte: 20 });
-  escreverTela(placar, ['PLACAR', { t: `${dados.auditados} auditados`, cor: '#ffffff' }, { t: `nota média ${dados.nota_media ?? '—'}`, cor: corNota(dados.nota_media ?? 100) }, { t: `${dados.com_falha_grave} com falha grave`, cor: '#ff4d5e' }], { fonte: 24 });
+  // as 4 telas do Etbaal (arco): log ao vivo, mais vulneráveis, falhas comuns, placar + fila
+  const [log, piores, comuns, placar] = partes.deck;
+  escreverTela(log, ['etbaal@deck:~$ tail -f auditoria', ...(ev.eventos || []).slice(0, 10).map((e) => e.msg.slice(0, 40))], { fonte: 19 });
+  escreverTela(piores, ['MAIS VULNERÁVEIS', ...[...aud].sort((a, b) => a.nota - b.nota).slice(0, 9).map((a) => ({ t: `${String(a.nota).padStart(3)}  ${a.nome.slice(0, 28)}`, cor: corNota(a.nota) }))], { fonte: 19 });
+  escreverTela(comuns, ['FALHAS MAIS COMUNS', ...dados.mais_comuns.slice(0, 9).map((m) => `${String(m.n).padStart(3)}× ${m.id}`)], { fonte: 19 });
+  escreverTela(placar, ['PLACAR', { t: `${dados.auditados} auditados`, cor: '#ffffff' }, { t: `nota média ${dados.nota_media ?? '—'}/100`, cor: corNota(dados.nota_media ?? 100) }, { t: `${dados.com_falha_grave} com falha grave`, cor: '#ff4d5e' }, '', { t: `fila: ${dados.pendentes} sites próprios`, cor: '#ffb3ba' }, { t: 'passivo: GET · TLS · DNS', cor: '#6b4146' }], { fonte: 24 });
   const { ctx, canvas, tex } = partes.telao;
   ctx.fillStyle = '#050102'; ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = '#ff2a3d'; ctx.font = 'bold 54px Consolas, monospace'; ctx.fillText('ETBAAL // SEGURANÇA', 40, 80);
