@@ -7,8 +7,6 @@ import { hostLiberado, lerLinkFamelack, streamValido } from './tv-canal.js';
 export { lerLinkFamelack, streamValido };
 
 const DADOS = 'https://raw.githubusercontent.com/famelack/famelack-data/main/tv/compressed/countries/';
-// 33 ms = até 30 quadros por segundo, o ritmo real da TV. Era 66 ms (15 qps): jogava fora metade dos quadros e "engasgava".
-const ATUALIZA_MS = 33;
 // teto de 360p via hls.js: liberado em 08/10/2026 (Victor pediu TV fluida), só para os domínios de HOSTS_HLS no connect-src
 const LIMITAR_QUALIDADE = true;
 const ALTURA_MAX = 360; // qualidade máxima do vídeo na TV (pixels de altura)
@@ -60,10 +58,25 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   const textura = new THREE.VideoTexture(video);
   textura.colorSpace = THREE.SRGBColorSpace;
   textura.generateMipmaps = false; textura.minFilter = THREE.LinearFilter; // sem mipmap: não regera a pirâmide a cada quadro
-  // menos lag: a TV é pequena na tela, 15 quadros por segundo bastam e cortam metade do envio de imagem para a placa de vídeo
-  let ultimoEnvio = 0;
-  Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; const t = performance.now(); if (t - ultimoEnvio < ATUALIZA_MS) return; ultimoEnvio = t; this.version++; } });
+  // SEM freio: o three.js já envia um quadro por quadro REAL de vídeo (requestVideoFrameCallback). O freio antigo (66 ms,
+  // depois 33 ms) descartava todo quadro que chegasse 1–2 ms adiantado (vídeo a 30 qps oscila entre ~31 e ~36 ms):
+  // a TV mostrava 15–25 qps irregulares, o "engasgo" que o Victor via. Aqui só contamos os envios para o ?diag.
+  let enviosTextura = 0;
+  Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; enviosTextura++; this.version++; } });
   video.disablePictureInPicture = true; video.disableRemotePlayback = true;
+  // O Chrome PAUSA sozinho vídeo mudo que não está visível na página ("video-only background media was paused to save
+  // power"): era o "liga e já trava" do Victor (visto no ?diag). O vídeo só virava textura, fora do DOM. Agora fica na
+  // página, num canto, 2×2 px e quase transparente: para o Chrome é visível; para quem olha, não aparece.
+  Object.assign(video.style, { position: 'fixed', left: '0', bottom: '0', width: '64px', height: '36px', opacity: '0.01', pointerEvents: 'none', zIndex: '-1' });
+  video.setAttribute('aria-hidden', 'true');
+  document.body.append(video);
+  // Se mesmo assim o Chrome pausar (economia de energia), retoma na hora: TV ligada não fica parada sem você mandar.
+  video.addEventListener('pause', () => {
+    if (!ligadaAgora || pausadaPorAba || document.hidden || !video.src && !hls) return;
+    video.play().catch(() => {});
+  });
+  // voltou a tocar: some o aviso de erro antigo
+  video.addEventListener('playing', () => { if (erro) { erro = ''; pintar(); aoMudar(estado()); } });
   const desligada = new THREE.MeshBasicMaterial({ toneMapped: false });
   const ligada = new THREE.MeshBasicMaterial({ map: textura, toneMapped: false });
   const telas = [];
@@ -164,6 +177,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   return {
     estado,
     video, // para medir fluidez (quadros recebidos/perdidos) no diagnóstico
+    enviosTextura: () => enviosTextura, // quadros que chegaram à TELA (o que o Victor vê)
     async ligar() { ligadaAgora = true; await tocar(); },
     desligar() { ligadaAgora = false; parar(); erro = ''; aoMudar(estado()); },
     som() { video.muted = !video.muted; aoMudar(estado()); },
@@ -192,13 +206,15 @@ export function diagnosticoTVs(tvs) {
   const quadros = tvs.map(() => 0);
   tvs.forEach((t, i) => { const f = () => { quadros[i]++; t.video.requestVideoFrameCallback(f); }; t.video.requestVideoFrameCallback?.(f); });
   const eventos = tvs.map(() => ({ waiting: 0, stalled: 0 }));
+  const enviados = [];
   tvs.forEach((t, i) => { for (const k of ['waiting', 'stalled']) t.video.addEventListener(k, () => eventos[i][k]++); });
   setInterval(() => {
     const linhas = [`cena ${cena} qps · aba ${document.hidden ? 'OCULTA' : 'visível'} · ${innerWidth}x${innerHeight}`];
     tvs.forEach((t, i) => {
       const v = t.video, e = t.estado();
       const buf = v.buffered.length ? (v.buffered.end(v.buffered.length - 1) - v.currentTime).toFixed(1) : '0';
-      linhas.push(`${e.canal.nome}: ${e.ligada ? (e.carregando ? 'sintonizando' : e.erro ? 'ERRO ' + e.erro : 'no ar') : 'desligada'} · vídeo ${quadros[i]} qps · ${v.videoWidth}x${v.videoHeight} · buffer ${buf}s · esperas ${eventos[i].waiting}/${eventos[i].stalled}`);
+      const env = t.enviosTextura(); const naTela = env - (enviados[i] ?? env); enviados[i] = env;
+      linhas.push(`${e.canal.nome}: ${e.ligada ? (e.carregando ? 'sintonizando' : e.erro ? 'ERRO ' + e.erro : 'no ar') : 'desligada'} · vídeo ${quadros[i]} qps · na tela ${naTela} qps · ${v.videoWidth}x${v.videoHeight} · buffer ${buf}s · esperas ${eventos[i].waiting}/${eventos[i].stalled}`);
       quadros[i] = 0;
     });
     cena = 0;
