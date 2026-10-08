@@ -3,12 +3,14 @@
 // Começa desligada: só baixa vídeo quando você liga. Aceita qualquer link de canal da Famelack.
 // O conteúdo é da emissora; aqui é uso pessoal, como assistir no site deles.
 import * as THREE from 'three';
-import { lerLinkFamelack, streamValido } from './tv-canal.js';
+import { hostLiberado, lerLinkFamelack, streamValido } from './tv-canal.js';
 export { lerLinkFamelack, streamValido };
 
 const DADOS = 'https://raw.githubusercontent.com/famelack/famelack-data/main/tv/compressed/countries/';
-const ATUALIZA_MS = 66; // textura da TV: ~15 quadros por segundo
-const LIMITAR_QUALIDADE = false; // ligar só depois de liberar connect-src https: no servidor (src/server.mjs)
+// 33 ms = até 30 quadros por segundo, o ritmo real da TV. Era 66 ms (15 qps): jogava fora metade dos quadros e "engasgava".
+const ATUALIZA_MS = 33;
+// teto de 360p via hls.js: liberado em 08/10/2026 (Victor pediu TV fluida), só para os domínios de HOSTS_HLS no connect-src
+const LIMITAR_QUALIDADE = true;
 const ALTURA_MAX = 360; // qualidade máxima do vídeo na TV (pixels de altura)
 const HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.mjs'; // versão fixa: nada muda sozinho
 const CHAVE = 'prospector-tv:v1';
@@ -99,7 +101,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
       if (hls) { hls.destroy(); hls = null; }
       // hls.js deixa limitar a qualidade (360p), mas ele baixa o sinal por fetch e a política de segurança do servidor (connect-src)
       // só libera hls.js se o Victor autorizar; sem isso usa o HLS nativo do navegador, que escolhe a qualidade sozinho
-      const usarHlsJs = LIMITAR_QUALIDADE || !video.canPlayType('application/vnd.apple.mpegurl');
+      const usarHlsJs = (LIMITAR_QUALIDADE && hostLiberado(canal.stream)) || !video.canPlayType('application/vnd.apple.mpegurl');
       const Hls = usarHlsJs ? (await import(HLS_JS)).default : null;
       if (!Hls || !Hls.isSupported()) {
         if (!video.canPlayType('application/vnd.apple.mpegurl')) throw new Error('este navegador não toca HLS');
@@ -150,6 +152,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
 
   return {
     estado,
+    video, // para medir fluidez (quadros recebidos/perdidos) no diagnóstico
     async ligar() { ligadaAgora = true; await tocar(); },
     desligar() { ligadaAgora = false; parar(); erro = ''; aoMudar(estado()); },
     som() { video.muted = !video.muted; aoMudar(estado()); },

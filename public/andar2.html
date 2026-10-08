@@ -24,7 +24,7 @@
       <button class="btn icone fantasma abrir-menu" data-abrir-menu aria-label="Abrir menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10"/></svg></button>
       <div class="titulo"><h1>2º andar · Deck do Etbaal</h1><p id="chips" class="saude">Ligando o deck…</p></div>
       <div class="acoes">
-        <button class="btn" id="btn-tv" title="TV ao vivo (o mesmo canal do Paraíso)">Ligar TVs</button>
+        <button class="btn" id="btn-tv" aria-expanded="false" aria-controls="tv-painel" title="TVs ao vivo: ligar, som e trocar canal">TVs</button>
         <a class="btn" href="/sala.html" title="Desce para o Paraíso Artificial">↓ Paraíso</a>
       </div>
     </header>
@@ -33,6 +33,7 @@
       <p class="carregando" id="carregando" role="status">Ligando os computadores…</p>
       <p class="dica" id="dica">Arraste para girar · role para aproximar · clique numa tela para ver a auditoria no terminal</p>
       <p class="sem-webgl" id="sem-webgl" hidden>O navegador não abriu o WebGL. O terminal mostra as mesmas auditorias.</p>
+      <aside class="tv-painel" id="tv-painel" hidden aria-label="TVs ao vivo"></aside>
       <form class="terminal-etbaal" id="term" aria-label="Terminal do Etbaal">
         <div class="term-barra"><span></span><span></span><span></span><b>etbaal@deck — conversa em texto</b></div>
         <div class="term-saida" id="term-saida" role="log" aria-live="polite"></div>

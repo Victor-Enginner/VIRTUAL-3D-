@@ -23,3 +23,5 @@
 .term-barra { cursor: pointer; user-select: none; }
 .terminal-etbaal.fechado { height: auto; }
 .terminal-etbaal.fechado .term-saida, .terminal-etbaal.fechado .term-linha { display: none; }
+.andar2 .tv-painel { top: 12px; right: 12px; max-height: calc(100% - 24px); overflow-y: auto; }
+.andar2 .tv-bloco { display: grid; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid #ffffff14; }

@@ -409,15 +409,44 @@ function quadro() {
     sala: { nome: 'Record News', pagina: 'https://famelack.com/tv/br/TPTBqvtnc5kyaM', stream: 'https://rnw-rn.otteravision.com/rnw/rn/rnw_rn.m3u8' },
     deck: { nome: 'Band', pagina: 'https://famelack.com/tv/br/DWCfWX1a4zLh6X', stream: 'https://media.cdntvms.com.br/band_sat/index.m3u8' },
   };
-  const rotuloTv = () => { const ss = tvs.map((t) => t.estado()); const b = $('#btn-tv'); const lig = ss.some((x) => x.ligada);
-    b.textContent = ss.some((x) => x.carregando) ? 'Sintonizando…' : lig ? 'Desligar TVs' : 'Ligar TVs';
-    b.title = ss.map((x) => `${x.canal.nome}${x.erro ? ` (erro: ${x.erro})` : ''}`).join(' · '); };
+  // painel das TVs: o mesmo do Paraíso (ligar, som, trocar canal por link da Famelack), um bloco por TV
+  const NOMES = ['Parede direita', 'Deck (frente dos computadores)'];
+  const painelTv = $('#tv-painel');
+  const desenharTvs = () => {
+    const ss = tvs.map((t) => t.estado());
+    const b = $('#btn-tv'); b.textContent = ss.some((x) => x.ligada) ? 'TVs ligadas' : 'TVs'; b.classList.toggle('ativo', ss.some((x) => x.ligada));
+    if (painelTv.hidden) return;
+    painelTv.innerHTML = ss.map((st, i) => `<section class="tv-bloco"><header><strong>${NOMES[i]}</strong><span class="tv-canal">${esc(st.canal.nome)}</span></header>
+      <p class="tv-status ${st.erro ? 'erro' : st.ligada ? 'ok' : ''}" aria-live="polite">${st.carregando ? 'Sintonizando…' : st.erro ? esc(st.erro) : st.ligada ? `No ar${st.som ? ' · com som' : ' · sem som'}` : 'Desligada: não baixa nada até você ligar.'}</p>
+      <div class="tv-botoes"><button class="btn ${st.ligada ? '' : 'primario'}" data-tv="${i}" data-acao="${st.ligada ? 'desligar' : 'ligar'}">${st.ligada ? 'Desligar' : 'Ligar'}</button>
+        <button class="btn" data-tv="${i}" data-acao="som" ${st.ligada ? '' : 'disabled'}>${st.som ? 'Tirar o som' : 'Ligar o som'}</button></div>
+      <form class="tv-trocar" data-tv-form="${i}"><label class="sr" for="tv-link-${i}">Link de canal da Famelack</label><input id="tv-link-${i}" placeholder="Cole um link famelack.com/tv/…" autocomplete="off"><button class="btn">Trocar</button></form></section>`).join('')
+      + '<p class="tv-nota">Sinais públicos das emissoras (via Famelack). Pausam sozinhos quando você sai da aba. Só uma TV com som por vez.</p>';
+  };
   const tvs = [
-    montarTV({ grupos: [partes.tvGrupo], canal: CANAIS.sala, chave: 'prospector-tv-andar2-sala:v1', aoMudar: () => tvs && rotuloTv() }),
-    montarTV({ grupos: [partes.tvDeck], canal: CANAIS.deck, chave: 'prospector-tv-andar2-deck:v1', aoMudar: () => tvs && rotuloTv() }),
+    montarTV({ grupos: [partes.tvGrupo], canal: CANAIS.sala, chave: 'prospector-tv-andar2-sala:v1', aoMudar: () => tvs && desenharTvs() }),
+    montarTV({ grupos: [partes.tvDeck], canal: CANAIS.deck, chave: 'prospector-tv-andar2-deck:v1', aoMudar: () => tvs && desenharTvs() }),
   ];
-  rotuloTv();
-  $('#btn-tv').addEventListener('click', () => { const lig = tvs.some((t) => t.estado().ligada); for (const t of tvs) lig ? t.desligar() : t.ligar(); });
+  desenharTvs();
+  $('#btn-tv').addEventListener('click', (ev) => { painelTv.hidden = !painelTv.hidden; ev.currentTarget.setAttribute('aria-expanded', String(!painelTv.hidden)); desenharTvs(); });
+  painelTv.addEventListener('click', async (ev) => {
+    const b = ev.target.closest('[data-acao]'); if (!b) return;
+    const i = Number(b.dataset.tv), t = tvs[i];
+    if (b.dataset.acao === 'ligar') await t.ligar();
+    else if (b.dataset.acao === 'desligar') t.desligar();
+    else if (b.dataset.acao === 'som') {
+      // duas TVs com som ao mesmo tempo viram barulho: ligar o som de uma tira o da outra
+      if (!t.estado().som) for (const o of tvs) if (o !== t && o.estado().som) o.som();
+      t.som();
+    }
+  });
+  painelTv.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = ev.target.closest('[data-tv-form]'); const i = Number(f.dataset.tvForm);
+    const link = f.querySelector('input').value.trim(); if (!link) return;
+    try { await tvs[i].trocar(link); } catch (e) { const st = f.parentElement.querySelector('.tv-status'); if (st) { st.textContent = e.message; st.className = 'tv-status erro'; } }
+  });
+  if (new URLSearchParams(location.search).has('debug')) window.__andar2.tvs = tvs;
   await chamarEtbaal(partes.sentado);
   await carregar().catch((e) => { $('#chips').textContent = `Sem dados do Etbaal: ${e.message}`; });
   $('#carregando').hidden = true;

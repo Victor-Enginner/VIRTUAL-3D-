@@ -611,7 +611,7 @@ function arquivo(req, res, p) {
 }
 
 // CSP: o front usa <script>/<style> inline e Three.js via jsDelivr, então 'unsafe-inline' fica; o resto é fechado
-const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' blob: data: https://cdn.jsdelivr.net; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
+const CSP = "default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: https:; font-src 'self' data:; connect-src 'self' blob: data: https://cdn.jsdelivr.net https://raw.githubusercontent.com https://cdn.live.br1.jmvstream.com https://rnw-rn.otteravision.com https://media.cdntvms.com.br https://tvbrasil-stream.ebc.com.br; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'";
 const servidor = http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://localhost');
   res.setHeader('Content-Security-Policy', CSP);
