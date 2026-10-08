@@ -227,14 +227,30 @@ async function montar() {
 // ------------------------------------------------------------ Etbaal (provisório: personagem do Paraíso em vermelho;
 // o orc entra quando estiver otimizado e com esqueleto — ver docs/PLATAFORMA-AGENTES.md)
 let etbaal = null;
+// O orc (Sketchfab/TripoAI, licença ainda não confirmada: fica SÓ no PC, .gitignore) otimizado com glTF-Transform:
+// 2.000.000 → ~60 mil triângulos, 63 MB → ~1 MB. Ainda sem esqueleto: entra parado. Sem o arquivo, volta o personagem padrão.
 async function chamarEtbaal(sentado) {
   try {
+    const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+    const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/assets/modelos/etbaal-orc.glb');
+    const orc = gltf.scene;
+    const raiz = new THREE.Group(); raiz.add(orc);
+    const c0 = new THREE.Box3().setFromObject(raiz), t = c0.getSize(new THREE.Vector3());
+    orc.scale.multiplyScalar(2.1 / t.y); // brutamonte: 2,1 m
+    const c = new THREE.Box3().setFromObject(raiz), centro = c.getCenter(new THREE.Vector3());
+    orc.position.x -= centro.x; orc.position.z -= centro.z; orc.position.y -= c.min.y;
+    raiz.position.set(sentado.x + 2.0, 0, sentado.z + 0.3);
+    raiz.rotation.y = Math.PI + 0.9;
+    cena.add(raiz);
+    etbaal = { grupo: raiz, mixer: null };
+    return;
+  } catch (e) { console.info('orc indisponível, usando o personagem padrão:', e.message); }
+  try {
     etbaal = criarPersonagem(await carregarBase(), '#ff2a3d');
-    // de pé ao lado da bancada, virado para os monitores (na v2 ficava na frente e tapava as telas)
     etbaal.grupo.position.set(sentado.x + 2.0, 0, sentado.z + 0.3);
     etbaal.grupo.rotation.y = Math.PI + 0.9;
     cena.add(etbaal.grupo);
-  } catch { /* sem o personagem a cena segue: as telas são o que importa */ }
+  } catch { /* sem personagem a cena segue: as telas são o que importa */ }
 }
 
 // ------------------------------------------------------------ dados reais nas telas
@@ -320,7 +336,7 @@ renderer?.domElement.addEventListener('click', async (ev) => {
 const relogio = new THREE.Clock();
 function quadro() {
   const dt = relogio.getDelta();
-  if (etbaal && !semMovimento) etbaal.mixer.update(dt);
+  if (etbaal?.mixer && !semMovimento) etbaal.mixer.update(dt);
   controles?.update();
   composer?.render();
   requestAnimationFrame(quadro);
