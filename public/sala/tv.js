@@ -3,12 +3,11 @@
 // Começa desligada: só baixa vídeo quando você liga. Aceita qualquer link de canal da Famelack.
 // O conteúdo é da emissora; aqui é uso pessoal, como assistir no site deles.
 import * as THREE from 'three';
-import { hostLiberado, lerLinkFamelack, streamValido } from './tv-canal.js';
+import { lerLinkFamelack, streamValido } from './tv-canal.js';
 export { lerLinkFamelack, streamValido };
 
 const DADOS = 'https://raw.githubusercontent.com/famelack/famelack-data/main/tv/compressed/countries/';
-// teto de 360p via hls.js: liberado em 08/10/2026 (Victor pediu TV fluida), só para os domínios de HOSTS_HLS no connect-src
-const LIMITAR_QUALIDADE = true;
+const LIMITAR_QUALIDADE = false; // ligar só depois de liberar connect-src https: no servidor (src/server.mjs)
 const ALTURA_MAX = 360; // qualidade máxima do vídeo na TV (pixels de altura)
 const HLS_JS = 'https://cdn.jsdelivr.net/npm/hls.js@1.7.3/dist/hls.mjs'; // versão fixa: nada muda sozinho
 const CHAVE = 'prospector-tv:v1';
@@ -58,22 +57,12 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   const textura = new THREE.VideoTexture(video);
   textura.colorSpace = THREE.SRGBColorSpace;
   textura.generateMipmaps = false; textura.minFilter = THREE.LinearFilter; // sem mipmap: não regera a pirâmide a cada quadro
-  // SEM freio: o three.js já envia um quadro por quadro REAL de vídeo (requestVideoFrameCallback). O freio antigo (66 ms,
-  // depois 33 ms) descartava todo quadro que chegasse 1–2 ms adiantado (vídeo a 30 qps oscila entre ~31 e ~36 ms):
-  // a TV mostrava 15–25 qps irregulares, o "engasgo" que o Victor via. Aqui só contamos os envios para o ?diag.
+  // Sem freio: o three.js atualiza a textura a cada quadro real do vídeo (o freio de 15 qps fazia a TV engasgar).
+  // 08/10/2026: as tentativas de hoje (hls.js 360p, vídeo na página, retomada automática) deixaram a TV PARADA para o
+  // Victor; voltamos ao player nativo que funcionava (commit a22e652) e só tiramos o freio.
   let enviosTextura = 0;
   Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; enviosTextura++; this.version++; } });
   video.disablePictureInPicture = true; video.disableRemotePlayback = true;
-  // O Chrome PAUSA sozinho vídeo mudo que não está visível na página ("video-only background media was paused to save
-  // power"): era o "liga e já trava" do Victor (visto no ?diag). O vídeo só virava textura, fora do DOM. Agora fica na
-  // página, num canto, 2×2 px e quase transparente: para o Chrome é visível; para quem olha, não aparece.
-  Object.assign(video.style, { position: 'fixed', left: '0', bottom: '0', width: '64px', height: '36px', opacity: '0.01', pointerEvents: 'none', zIndex: '-1' });
-  video.setAttribute('aria-hidden', 'true');
-  document.body.append(video);
-  // Se o Chrome pausar (economia de energia) com a página visível, retoma na hora (retomar() fica mais abaixo).
-  video.addEventListener('pause', () => { if (!document.hidden) retomar(); });
-  // voltou a tocar: some o aviso de erro antigo
-  video.addEventListener('playing', () => { if (erro) { erro = ''; pintar(); aoMudar(estado()); } });
   const desligada = new THREE.MeshBasicMaterial({ toneMapped: false });
   const ligada = new THREE.MeshBasicMaterial({ map: textura, toneMapped: false });
   const telas = [];
@@ -83,9 +72,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
 
   const trocarEspera = () => { desligada.map?.dispose(); desligada.map = telaDeEspera(canal.nome); desligada.needsUpdate = true; };
   trocarEspera();
-  // pausada pela aba oculta = tela de espera, NUNCA um quadro congelado (antes parecia "ligou e travou")
-  let pausadaPorAba = false;
-  const pintar = () => { for (const t of telas) t.material = ligadaAgora && !carregando && !erro && !pausadaPorAba ? ligada : desligada; };
+  const pintar = () => { for (const t of telas) t.material = ligadaAgora && !carregando && !erro ? ligada : desligada; };
 
   // cada tela é um plano encaixado na frente do modelo da TV, medido depois que ele carrega;
   // todas usam o MESMO vídeo (um download só, mesmo com duas TVs)
@@ -113,7 +100,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
       if (hls) { hls.destroy(); hls = null; }
       // hls.js deixa limitar a qualidade (360p), mas ele baixa o sinal por fetch e a política de segurança do servidor (connect-src)
       // só libera hls.js se o Victor autorizar; sem isso usa o HLS nativo do navegador, que escolhe a qualidade sozinho
-      const usarHlsJs = (LIMITAR_QUALIDADE && hostLiberado(canal.stream)) || !video.canPlayType('application/vnd.apple.mpegurl');
+      const usarHlsJs = LIMITAR_QUALIDADE || !video.canPlayType('application/vnd.apple.mpegurl');
       const Hls = usarHlsJs ? (await import(HLS_JS)).default : null;
       if (!Hls || !Hls.isSupported()) {
         if (!video.canPlayType('application/vnd.apple.mpegurl')) throw new Error('este navegador não toca HLS');
@@ -144,7 +131,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
         hls.loadSource(canal.stream);
         hls.attachMedia(video);
       }
-      await video.play().catch((e) => { if (!document.hidden) throw e; }); // oculta: o Chrome pausa; retomar() resolve ao reaparecer
+      await video.play();
     } catch (e) { erro = e.name === 'NotAllowedError' ? 'o navegador bloqueou o vídeo: toque em Ligar de novo' : e.message; }
     carregando = false; pintar(); aoMudar(estado());
   }
@@ -156,45 +143,16 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
     pintar();
   }
 
-  // retomar(): TV ligada e página visível → vídeo tocando NO AO VIVO. Corrige os dois travamentos medidos em 08/10:
-  //  1. ligada com o painel oculto, o Chrome pausava e nada dava play de novo ao reaparecer (ficava no 1º quadro);
-  //  2. pausado antes de começar, o relógio ficava em 0 s fora do trecho baixado (36–54 s): precisa pular para o ao vivo.
-  function retomar() {
-    if (!ligadaAgora || pausadaPorAba || carregando || document.hidden) return;
-    const b = video.buffered;
-    if (b.length) {
-      const ini = b.start(0), fim = b.end(b.length - 1);
-      if (video.currentTime < ini || video.currentTime > fim) video.currentTime = hls?.liveSyncPosition ?? Math.max(ini, fim - 3);
-    }
-    if (video.paused) video.play().catch(() => {});
-  }
-  // vigia: a cada 2 s, se a TV está ligada e visível mas o relógio do vídeo não andou, retoma
-  let relogioAnterior = -1;
-  setInterval(() => {
-    if (!ligadaAgora || document.hidden || carregando) { relogioAnterior = -1; return; }
-    if (video.paused || video.currentTime === relogioAnterior) retomar();
-    relogioAnterior = video.currentTime;
-  }, 2000);
-
-  // Aba escondida: só pausa depois de 1 MINUTO oculta. No app do Claude o painel do navegador fica "oculto" enquanto
-  // o Victor digita no chat; pausar na hora fazia a TV congelar e recomeçar a cada vai-e-volta ("liga e fica travada").
-  const ESPERA_OCULTA_MS = 60_000;
-  let timerOculta = null;
+  // aba escondida: pausa o download; ao voltar, retoma no ao vivo
   document.addEventListener('visibilitychange', () => {
     if (!ligadaAgora) return;
-    if (document.hidden) {
-      clearTimeout(timerOculta);
-      timerOculta = setTimeout(() => { pausadaPorAba = true; parar(); aoMudar(estado()); }, ESPERA_OCULTA_MS);
-    } else {
-      clearTimeout(timerOculta);
-      if (pausadaPorAba) { pausadaPorAba = false; tocar(); } else retomar(); // reapareceu: garante vídeo andando no ao vivo
-    }
+    if (document.hidden) parar(); else tocar();
   });
 
   return {
     estado,
-    video, // para medir fluidez (quadros recebidos/perdidos) no diagnóstico
-    enviosTextura: () => enviosTextura, // quadros que chegaram à TELA (o que o Victor vê)
+    video, // só para o medidor ?diag
+    enviosTextura: () => enviosTextura,
     async ligar() { ligadaAgora = true; await tocar(); },
     desligar() { ligadaAgora = false; parar(); erro = ''; aoMudar(estado()); },
     som() { video.muted = !video.muted; aoMudar(estado()); },
