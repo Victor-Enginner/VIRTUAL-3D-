@@ -63,6 +63,14 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   let enviosTextura = 0;
   Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; enviosTextura++; this.version++; } });
   video.disablePictureInPicture = true; video.disableRemotePlayback = true;
+  // O Chrome trata vídeo FORA da página (ou coberto por outros elementos) como "não assistido": mudo, pausa; com som,
+  // DESLIGA A IMAGEM e toca só o áudio ("som normal, imagem travada", relatado pelo Victor em 08/10/2026).
+  // A textura 3D precisa dos quadros, então o vídeo fica NA página, POR CIMA de tudo (z-index alto: atrás do canvas
+  // ele conta como coberto), num canto, quase transparente e sem pegar cliques. Quem olha não vê.
+  Object.assign(video.style, { position: 'fixed', right: '0', bottom: '0', width: '96px', height: '54px', opacity: '0.02', pointerEvents: 'none', zIndex: '2147483647' });
+  video.setAttribute('aria-hidden', 'true');
+  video.tabIndex = -1;
+  document.body.append(video);
   const desligada = new THREE.MeshBasicMaterial({ toneMapped: false });
   const ligada = new THREE.MeshBasicMaterial({ map: textura, toneMapped: false });
   const telas = [];
