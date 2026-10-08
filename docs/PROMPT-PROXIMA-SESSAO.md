@@ -4,9 +4,9 @@ Você é o Claude Code trabalhando com o Victor Borsari Silva (PT-BR, direto, in
 Leia primeiro **`docs/PROMPT-EIXO.md`** (como trabalhar com ele: evoluções complexas, ensinar a fundo, nada irreal), `CLAUDE.md`, `README.md`, `docs/DETALHES-TECNICOS.md`, `docs/REVISAO-2026-10-06.md`, `docs/ACESSIBILIDADE.md` e `docs/estudos/90-backlog-de-engenharia.md`.
 
 ## PC FORMATADO EM 08/10/2026 — leia docs/RESTAURAR-APOS-FORMATAR.md primeiro
-- Código: GitHub  (Prospector) e  (privado; snapshot sem os 2 instaladores .exe).
-- Fora do git (banco com 130 leads, .env, OpenWA, mídias, modelos, Mixamo, memória do Claude):  (3 zips) + cópias no Google Drive/Terabox. Restauração testada: banco íntegro, v12, 130 leads, 31 auditorias.
-- Últimos achados: TV ao vivo funcionando de verdade (causa: setter de needsUpdate sem source.needsUpdate; teste visual ). 10 leads reabertos esperando "Retomar agentes".
+- Código: GitHub `Victor-Enginner/VIRTUAL-3D-` (Prospector) e `Victor-Enginner/agentes-money` (privado; snapshot sem os 2 instaladores .exe).
+- Fora do git (banco com 130 leads, .env, OpenWA, mídias, modelos, Mixamo, memória do Claude): `D:\BACKUP-ESCRITORIO-VIRTUAL-3D-2026-10-08\` (3 zips) + cópias no Google Drive/Terabox. Restauração testada: banco íntegro, v12, 130 leads, 31 auditorias.
+- Últimos achados: TV ao vivo funcionando de verdade (causa: setter de needsUpdate sem source.needsUpdate; teste visual `python scripts/teste-tv.py sala`). 10 leads reabertos esperando "Retomar agentes".
 
 ## Atualização 08/10/2026 (o PC desligou sem aviso no meio da sessão anterior; nada se perdeu)
 - Banco real na **versão 11** (campanhas de território), 130 leads, integridade ok. **306 testes**. Ao abrir: religar `ollama serve` e `npm start`.
