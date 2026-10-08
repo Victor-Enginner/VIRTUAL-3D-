@@ -17,6 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { montarShell } from './ui/shell.js';
 import { movimentoReduzido } from './ui/conforto.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
+import { criarColocador } from './sala/modelos.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -35,7 +36,8 @@ const alvo = $('#cena');
 const cena = new THREE.Scene();
 cena.background = new THREE.Color(0x030405);
 const camera = new THREE.PerspectiveCamera(48, 1, 0.1, 80);
-camera.position.set(-2.5, 3.6, 7.2);
+// câmera DENTRO da sala (na v2 começava atrás da parede da frente: de fora, a fita de LED parecia uma linha no ar)
+camera.position.set(-0.6, 2.3, 3.9);
 let composer, controles;
 if (renderer) {
   RectAreaLightUniformsLib.init();
@@ -47,7 +49,7 @@ if (renderer) {
   controles.target.set(2.2, 0.9, -2.4);
   controles.enableDamping = !semMovimento;
   controles.maxPolarAngle = Math.PI * 0.48;
-  controles.minDistance = 1.5; controles.maxDistance = 14;
+  controles.minDistance = 1.2; controles.maxDistance = 7.5; // não deixa a câmera atravessar as paredes
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(cena, camera));
   composer.addPass(new UnrealBloomPass(new THREE.Vector2(512, 512), 0.42, 0.35, 0.9)); // limiar alto: só fita, tela e LED brilham
@@ -101,39 +103,52 @@ fita(MAGENTA, 0, P / 2 - 0.01, L - 2, Math.PI, 9);       // frente
 cena.add(new THREE.HemisphereLight(0x5a6e8c, 0x140c10, 1.5));
 cena.add(new THREE.AmbientLight(0x1c2230, 1.2));
 // luz de trabalho sobre as fileiras (fria, lanhouse à noite)
-for (const x of [-4, 0]) { const s = new THREE.SpotLight(0xbfe9ff, 40, 8, Math.PI / 3, 0.7, 1.5); s.position.set(x, A - 0.05, 1); s.target.position.set(x, 0, 1); cena.add(s, s.target); }
+for (const x of [-5.2, -1]) { const s = new THREE.SpotLight(0xbfe9ff, 14, 8, Math.PI / 2.6, 0.9, 1.6); /* suave: na v2 estourava as mesas */ s.position.set(x, A - 0.05, 1); s.target.position.set(x, 0, 1); cena.add(s, s.target); }
 
-// ------------------------------------------------------------ modelos prontos
-const loader = new GLTFLoader();
-const cache = new Map();
-async function modelo(nome, x, z, rot = 0, { y = 0, tingir = null, cor = null } = {}) {
-  if (!cache.has(nome)) cache.set(nome, loader.loadAsync(`/assets/kenney/${nome}.glb`).then((g) => g.scene));
-  const m = (await cache.get(nome)).clone(true);
+// ------------------------------------------------------------ modelos: o MESMO kit das mesas dos agentes do Paraíso
+// (public/assets/modelos, escolhidos pelo Victor, normalizados por medida real em sala/modelos.js). Na v2 usei o Kenney
+// básico e ficou pobre; o Etbaal merece no mínimo o setup dos agentes. Kenney só onde não há peça própria (balcão, rack).
+const pendentes = [];
+const porModelo = criarColocador({ cena, grade: null, pendentes });
+const kenney = new GLTFLoader();
+const cacheK = new Map();
+async function modeloKenney(nome, x, z, rot = 0, { y = 0, cor = null, tingir = null } = {}) {
+  if (!cacheK.has(nome)) cacheK.set(nome, kenney.loadAsync(`/assets/kenney/${nome}.glb`).then((g) => g.scene));
+  const m = (await cacheK.get(nome)).clone(true);
   m.scale.setScalar(ESCALA_KIT);
   m.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); if (cor) o.material.color.setHex(cor); else if (tingir) o.material.color.multiplyScalar(tingir); } });
   const g = new THREE.Group(); g.add(m);
-  const caixa = new THREE.Box3().setFromObject(m); m.position.y -= caixa.min.y; // aterra pelo chão real do modelo
+  m.position.y -= new THREE.Box3().setFromObject(m).min.y;
   g.position.set(x, y, z); g.rotation.y = rot; cena.add(g);
   return g;
 }
 
-// Tela = plano com canvas colado na FRENTE do monitor. A frente é achada medindo o modelo (lado de onde está quem
-// usa), não presumida: na v1 as telas do deck ficaram viradas para a parede e pareciam "não funcionar".
+// Tela DENTRO do monitor Iiyama: plano colado na malha 'screen' do modelo (mesma técnica das mesas do Paraíso).
+// Na v2 o plano ficava solto na frente da carcaça e desalinhado.
 const telas = [];
-function tela(monitor, olharDe, { w = 512, h = 300, larg = 0.6, alt = 0.34 } = {}) {
+function novaTela(w = 512, h = 320) {
   const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
-  const plano = new THREE.Mesh(new THREE.PlaneGeometry(larg, alt), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-  monitor.updateMatrixWorld(true);
-  const caixa = new THREE.Box3().setFromObject(monitor);
-  const centro = caixa.getCenter(new THREE.Vector3());
-  plano.position.set(centro.x, caixa.min.y + (caixa.max.y - caixa.min.y) * 0.6, centro.z);
-  plano.lookAt(olharDe.x, plano.position.y, olharDe.z);       // vira para quem senta
-  plano.translateZ(Math.max(caixa.max.x - caixa.min.x, caixa.max.z - caixa.min.z) * 0.18); // sai da carcaça
-  cena.add(plano);
-  const t = { canvas, tex, plano, ctx: canvas.getContext('2d'), dado: null };
+  const t = { canvas, tex, ctx: canvas.getContext('2d'), material: new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), plano: null, dado: null };
   telas.push(t);
   return t;
+}
+function monitor(g, x, z, rot, t) {
+  // suporte próprio já girado (arco do deck): a tela segue a frente REAL do monitor. Igual ao Paraíso (sala/cena.js):
+  // o Iiyama entra girado -90° e a tela vira um plano no espaço do suporte, colado na face 'screen'.
+  const sup = new THREE.Group(); sup.position.set(x, 0, z); sup.rotation.y = rot; g.add(sup);
+  porModelo('monitor-iiyama-nc', 0, 0, -Math.PI / 2, { pai: sup, y: TAMPO, obstaculo: false, aoCarregar: (n) => {
+    let screen = null;
+    n.traverse((o) => { if (o.isMesh && o.material?.name === 'screen') screen = o; });
+    if (!screen) return;
+    sup.updateMatrixWorld(true);
+    const caixa = new THREE.Box3().setFromObject(screen, true).applyMatrix4(sup.matrixWorld.clone().invert());
+    const s2 = caixa.getSize(new THREE.Vector3()), c = caixa.getCenter(new THREE.Vector3());
+    const plano = new THREE.Mesh(new THREE.PlaneGeometry(s2.x * 0.97, s2.y * 0.95), t.material);
+    plano.position.set(c.x, c.y, caixa.max.z + 0.003);
+    sup.add(plano);
+    t.plano = plano;
+  } });
 }
 function escreverTela(t, linhas, { fundo = '#050102', cor = '#ff4d5e', titulo = '#ffffff', fonte = 22 } = {}) {
   const { ctx, canvas } = t;
@@ -142,63 +157,69 @@ function escreverTela(t, linhas, { fundo = '#050102', cor = '#ff4d5e', titulo = 
   const passo = fonte * 1.22;
   linhas.slice(0, Math.floor((canvas.height - 12) / passo)).forEach((l, i) => {
     ctx.fillStyle = typeof l === 'object' ? l.cor : (i === 0 ? titulo : cor);
-    ctx.fillText(typeof l === 'object' ? l.t : l, 14, fonte + 10 + i * passo);
+    ctx.fillText(typeof l === 'object' ? l.t : l, 16, fonte + 12 + i * passo);
   });
   t.tex.needsUpdate = true;
 }
-
-// LED fixo (não pisca): pequeno ponto emissivo
 function led(x, y, z, cor) { const m = new THREE.Mesh(new THREE.SphereGeometry(0.018, 8, 8), new THREE.MeshBasicMaterial({ color: cor })); m.position.set(x, y, z); cena.add(m); }
 
 // ------------------------------------------------------------ montagem
+const TAMPO = 0.75;
+// posto = mesa com o +z local virado para quem senta (mesma convenção do Paraíso, sala/cena.js)
+function posto(x, z, rot) {
+  const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = rot; cena.add(g);
+  return g;
+}
 const estacoes = [];
 async function montar() {
-  // fileiras da lanhouse (clientes): monitor de frente para a cadeira
-  const fileiras = [{ z: -0.2, rot: 0 }, { z: 2.8, rot: Math.PI }];
-  for (const f of fileiras) for (let i = 0; i < 4; i++) {
-    const x = -6 + i * 2.1;
-    const s = Math.cos(f.rot); // 1 = cadeira em +z
-    await modelo('desk', x, f.z, f.rot, { tingir: 0.3 });
-    const mon = await modelo('computerScreen', x, f.z - s * 0.25, f.rot + Math.PI, { y: 0.76, tingir: 0.35 });
-    await modelo('computerKeyboard', x, f.z + s * 0.12, f.rot + Math.PI, { y: 0.76 });
-    await modelo('chairDesk', x, f.z + s * 0.9, f.rot + Math.PI, { tingir: 0.45 });
-    estacoes.push(tela(mon, { x, z: f.z + s * 1.5 }));
+  // lanhouse: 8 estações com o kit dos agentes (mesa moderna, Iiyama, teclado Vortex, gabinete, cadeira gamer)
+  for (const [fz, rot] of [[-0.4, 0], [2.6, Math.PI]]) for (let i = 0; i < 4; i++) {
+    const x = -6.2 + i * 2.1;
+    const g = posto(x, fz, rot);
+    porModelo('mesa-moderna', 0, 0, 0, { pai: g, obstaculo: false });
+    const t = novaTela(); monitor(g, 0, -0.12, 0, t); estacoes.push(t);
+    porModelo('teclado-vortex', 0, 0.13, 0, { pai: g, y: TAMPO, obstaculo: false });
+    porModelo('gabinete-pc', 0.6, -0.05, 0, { pai: g, obstaculo: false });
+    porModelo('cadeira-gamer', 0, 0.72, Math.PI, { pai: g, obstaculo: false });
   }
 
-  // ---- deck do Etbaal: estação de comando (o setup mais forte do prédio)
+  // ---- deck do Etbaal: duas mesas modernas juntas, 4 Iiyamas em arco (todos APOIADOS na mesa), periféricos fortes
   const { x: dx, z: dz } = DECK;
-  const sentado = { x: dx, z: dz + 1.35 };
-  for (const off of [-1.05, 1.05]) await modelo('desk', dx + off, dz, 0, { cor: 0x111316 }); // bancada larga, preta
-  // 6 monitores: 3 embaixo (o do meio reto, laterais angulados) e 3 em cima
-  const deck = [];
-  for (const [ox, oy, oz] of [[-0.95, 0.76, 0.12], [0, 0.76, -0.05], [0.95, 0.76, 0.12], [-0.95, 1.27, 0.0], [0, 1.27, -0.15], [0.95, 1.27, 0.0]]) {
-    const m = await modelo('computerScreen', dx + ox, dz - 0.2 + oz, Math.PI + Math.atan2(ox, 1.4), { y: oy, cor: 0x0c0c0e });
-    deck.push(tela(m, sentado));
+  const deck = posto(dx, dz, 0);
+  // mesas do Etbaal em preto fosco (as dos agentes são brancas): o deck dele se destaca
+  const pretear = (n) => n.traverse((o) => { if (o.isMesh) { o.material.color?.setHex(0x16171a); if ('roughness' in o.material) o.material.roughness = 0.55; } });
+  for (const ox of [-0.82, 0.82]) porModelo('mesa-moderna', ox, 0, 0, { pai: deck, obstaculo: false, aoCarregar: pretear });
+  const telasDeck = [];
+  for (const [ox, oz, r] of [[-1.25, -0.02, 0.42], [-0.42, -0.14, 0.14], [0.42, -0.14, -0.14], [1.25, -0.02, -0.42]]) {
+    const t = novaTela(); monitor(deck, ox, oz, r, t); telasDeck.push(t);
   }
-  await modelo('computerKeyboard', dx, dz + 0.3, Math.PI, { y: 0.76, cor: 0x1a1a1d });
-  await modelo('computerMouse', dx + 0.42, dz + 0.32, Math.PI, { y: 0.76, cor: 0x1a1a1d });
-  await modelo('laptop', dx - 1.5, dz + 0.15, Math.PI - 0.4, { y: 0.76, cor: 0x18181b });
-  for (const sx of [-1.75, 1.75]) await modelo('speaker', dx + sx, dz - 0.15, Math.PI, { y: 0.76, cor: 0x101012 });
-  // cadeira própria (não a da equipe): modelo diferente, couro preto
-  await modelo('chairModernCushion', sentado.x, sentado.z, Math.PI, { cor: 0x141416 });
-  await modelo('rugRound', sentado.x, dz + 0.9, 0, { cor: 0x2a0a0e });
-  // fita vermelha sob a bancada e luz de destaque do deck
-  const fitaDeck = new THREE.Mesh(new THREE.BoxGeometry(4.1, 0.02, 0.02), new THREE.MeshBasicMaterial({ color: VERMELHO }));
-  fitaDeck.position.set(dx, 0.7, dz + 0.42); cena.add(fitaDeck);
-  const luzDeck = new THREE.RectAreaLight(VERMELHO, 8, 4.1, 0.2); luzDeck.position.set(dx, 0.68, dz + 0.42); luzDeck.lookAt(dx, 0, dz + 1.4); cena.add(luzDeck);
-  // recorte (rim) vermelho atrás do Etbaal: separa a silhueta do fundo
-  const rim = new THREE.SpotLight(0xff2a3d, 30, 7, Math.PI / 5, 0.6, 1.4); rim.position.set(dx + 1.8, 2.6, dz - 0.8); rim.target.position.set(dx + 0.5, 1, dz + 1.5); cena.add(rim, rim.target);
-  const spotDeck = new THREE.SpotLight(0xffd0d4, 34, 6, Math.PI / 4, 0.8, 1.6); spotDeck.position.set(dx, A - 0.05, dz + 1.2); spotDeck.target.position.set(dx, 0.8, dz); cena.add(spotDeck, spotDeck.target);
+  porModelo('teclado-mecanico-azul', 0, 0.16, 0, { pai: deck, y: TAMPO, obstaculo: false });
+  porModelo('caixas-razer', 0, -0.05, 0, { pai: deck, y: TAMPO, obstaculo: false, aoCarregar: (n) => n.scale.multiplyScalar(1.0) });
+  porModelo('lata-monster', -0.62, 0.18, 0.4, { pai: deck, y: TAMPO, obstaculo: false });
+  porModelo('xbox', 1.38, 0.18, -0.3, { pai: deck, y: TAMPO, obstaculo: false });
+  for (const ox of [-1.45, 1.45]) porModelo('gabinete-pc', ox, -0.06, 0, { pai: deck, obstaculo: false });
+  for (const ox of [-2.05, 2.05]) porModelo('caixa-pedestal', ox, -0.1, ox < 0 ? 0.3 : -0.3, { pai: deck, obstaculo: false });
+  porModelo('cadeira-gamer', 0, 0.78, Math.PI, { pai: deck, obstaculo: false });
+  porModelo('tapete', 0, 0.9, 0, { pai: deck, obstaculo: false });
+  // fita vermelha PRESA na borda da frente do tampo (na v2 ela atravessava a sala no ar)
+  const fitaDeck = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: VERMELHO }));
+  fitaDeck.position.set(0, TAMPO - 0.035, 0.3); deck.add(fitaDeck);
+  const luzDeck = new THREE.RectAreaLight(VERMELHO, 6, 3.2, 0.08); luzDeck.position.set(0, TAMPO - 0.05, 0.3); deck.add(luzDeck);
+  deck.updateMatrixWorld(true); luzDeck.lookAt(new THREE.Vector3(0, 0, 1.4).applyMatrix4(deck.matrixWorld));
+  const rim = new THREE.SpotLight(0xff2a3d, 26, 7, Math.PI / 5, 0.6, 1.4); rim.position.set(dx + 1.8, 2.6, dz - 0.8); rim.target.position.set(dx + 0.5, 1, dz + 1.5); cena.add(rim, rim.target);
+  const spotDeck = new THREE.SpotLight(0xff8a95, 10, 6, Math.PI / 4, 0.8, 1.6); spotDeck.position.set(dx, A - 0.05, dz + 1.2); spotDeck.target.position.set(dx, 0.8, dz); cena.add(spotDeck, spotDeck.target);
 
-  // racks de servidor atrás do deck, com LEDs fixos
-  for (const rx of [dx - 2.6, dx + 2.6]) {
-    await modelo('bookcaseClosedWide', rx, -P / 2 + 0.45, 0, { cor: 0x0d0e10 });
+  // racks de servidor atrás do deck (estante escurecida) com LEDs fixos
+  for (const rx of [dx - 2.9, dx + 2.9]) {
+    await modeloKenney('bookcaseClosedWide', rx, -P / 2 + 0.45, 0, { cor: 0x0d0e10 });
     for (let i = 0; i < 6; i++) for (let j = 0; j < 4; j++) led(rx - 0.45 + j * 0.3, 0.35 + i * 0.27, -P / 2 + 0.98, (i + j) % 3 ? VERMELHO : 0x39ff88);
   }
-  // balcão da lanhouse com banquetas e caixas de som
-  for (const x of [-6, -5]) await modelo('kitchenBar', x, 4.5, Math.PI, { tingir: 0.35 });
-  for (const x of [-6.1, -4.9]) await modelo('stoolBar', x, 3.75, 0, { tingir: 0.5 });
-  for (const x of [-7.4, 7.4]) await modelo('speaker', x, 4.6, x < 0 ? Math.PI / 4 : -Math.PI / 4, { tingir: 0.4 });
+  // balcão da lanhouse com banquetas e som
+  for (const x of [-6, -5]) await modeloKenney('kitchenBar', x, 4.5, Math.PI, { tingir: 0.35 });
+  for (const x of [-6.1, -4.9]) await modeloKenney('stoolBar', x, 3.75, 0, { tingir: 0.5 });
+  porModelo('caixa-pedestal', -7.3, 4.6, Math.PI / 4, { obstaculo: false });
+  porModelo('caixa-pedestal', 7.3, 4.6, -Math.PI / 4, { obstaculo: false });
+  for (const [x, z] of [[-7.3, -4.7], [7.3, 4.0]]) porModelo('planta-vaso', x, z, 0, { obstaculo: false });
 
   // telão na parede do fundo (resumo)
   const tc = Object.assign(document.createElement('canvas'), { width: 1024, height: 420 });
@@ -206,8 +227,10 @@ async function montar() {
   telao.tex.colorSpace = THREE.SRGBColorSpace;
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.9), new THREE.MeshBasicMaterial({ map: telao.tex, toneMapped: false }));
   pl.position.set(-3.4, 1.75, -P / 2 + 0.05); cena.add(pl);
-  return { deck, telao, sentado };
+  await Promise.all(pendentes);
+  return { deck: telasDeck, telao, sentado: { x: dx, z: dz + 0.78 } };
 }
+
 
 // ------------------------------------------------------------ Etbaal (provisório: personagem do Paraíso em vermelho;
 // o orc entra quando estiver otimizado e com esqueleto — ver docs/PLATAFORMA-AGENTES.md)
@@ -215,8 +238,9 @@ let etbaal = null;
 async function chamarEtbaal(sentado) {
   try {
     etbaal = criarPersonagem(await carregarBase(), '#ff2a3d');
-    etbaal.grupo.position.set(sentado.x + 0.55, 0, sentado.z + 0.15);
-    etbaal.grupo.rotation.y = Math.PI - 0.5;
+    // de pé ao lado da bancada, virado para os monitores (na v2 ficava na frente e tapava as telas)
+    etbaal.grupo.position.set(sentado.x + 2.0, 0, sentado.z + 0.3);
+    etbaal.grupo.rotation.y = Math.PI + 0.9;
     cena.add(etbaal.grupo);
   } catch { /* sem o personagem a cena segue: as telas são o que importa */ }
 }
