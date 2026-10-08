@@ -18,6 +18,7 @@ import { montarShell } from './ui/shell.js';
 import { movimentoReduzido } from './ui/conforto.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
 import { criarColocador, metade } from './sala/modelos.js';
+import { montarTV } from './sala/tv.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -215,6 +216,12 @@ async function montar() {
   porModelo('caixa-pedestal', 7.3, 4.6, -Math.PI / 4, { obstaculo: false });
   for (const [x, z] of [[-7.3, -4.7], [7.3, 4.0]]) porModelo('planta-vaso', x, z, 0, { obstaculo: false });
 
+  // TV ao vivo na parede da direita: o MESMO canal do Paraíso (sala/tv.js). Começa desligada (conforto: nada toca sozinho)
+  // sem giro e virada para +Z, igual às TVs do Paraíso (o montarTV mede a tela assumindo isso; girada, a tela saía de lado)
+  const tvGrupo = new THREE.Group(); tvGrupo.position.set(0.6, 1.05, -P / 2 + 0.25); cena.add(tvGrupo);
+  tvGrupo.userData.pronto = modeloKenney('televisionModern', 0, 0, 0, { cor: 0x0c0c0e }).then((m) => { cena.remove(m); m.position.set(0, 0, 0); m.scale.multiplyScalar(1.6); tvGrupo.add(m); });
+  await tvGrupo.userData.pronto;
+
   // telão na parede do fundo (resumo)
   const tc = Object.assign(document.createElement('canvas'), { width: 1024, height: 420 });
   const telao = { canvas: tc, ctx: tc.getContext('2d'), tex: new THREE.CanvasTexture(tc) };
@@ -222,7 +229,7 @@ async function montar() {
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.9), new THREE.MeshBasicMaterial({ map: telao.tex, toneMapped: false }));
   pl.position.set(-3.4, 1.75, -P / 2 + 0.05); cena.add(pl);
   await Promise.all(pendentes);
-  return { deck: telasDeck, telao, sentado: { x: dx, z: dz + 0.78 } };
+  return { deck: telasDeck, telao, tvGrupo, sentado: { x: dx, z: dz + 0.78 } };
 }
 
 
@@ -253,26 +260,35 @@ async function personagemGlb(url, altura) {
 //     o arquivo solto → fica SÓ no PC, .gitignore). Animação feita PARA esse esqueleto: nada de retarget.
 //  2. Miss Galaxy (CC-BY 4.0, no git), parada na pose de ligação.
 //  3. o personagem padrão do Paraíso, em vermelho.
+// Comportamento (pedido do Victor): AUDITANDO → no deck, de frente para os monitores; SEM TRABALHO → em frente à TV ao vivo.
+// A animação "Catwalk" do Mixamo não serve para isso: fica parada no primeiro quadro (postura de pé). As animações
+// "Typing" e "Sitting/Watching" virão do Mixamo para o mesmo personagem.
+let lugares = null;
+function posicionar(auditando) {
+  if (!etbaal || !lugares) return;
+  const l = auditando ? lugares.deck : lugares.tv;
+  etbaal.grupo.position.set(l.x, 0, l.z); etbaal.grupo.rotation.y = l.rot;
+  etbaal.estado = auditando ? 'auditando' : 'tv';
+}
 async function chamarEtbaal(sentado) {
-  const lugar = (g) => { g.position.set(sentado.x + 2.0, 0, sentado.z + 0.3); g.rotation.y = Math.PI + 0.9; cena.add(g); };
+  lugares = {
+    deck: { x: sentado.x, z: sentado.z + 0.55, rot: Math.PI },           // atrás da cadeira, olhando os 4 monitores
+    tv: { x: 0.6, z: -P / 2 + 2.6, rot: Math.PI },                       // a ~2,3 m da TV da parede do fundo, olhando para ela
+  };
+  const pronto = (g, extra = {}) => { cena.add(g); etbaal = { grupo: g, mixer: null, ...extra }; posicionar(false); };
   try {
     const v = await personagemGlb('/assets/modelos/etbaal-vampire.glb', 1.9);
-    lugar(v.raiz);
-    if (v.mixer && !semMovimento) v.mixer.clipAction(v.animacoes[0]).play();
-    etbaal = { grupo: v.raiz, mixer: v.mixer, modelo: v.modelo };
+    if (v.mixer) { const a = v.mixer.clipAction(v.animacoes[0]); a.play(); v.mixer.setTime(0); a.paused = true; } // postura do 1º quadro, sem desfile
+    pronto(v.raiz, { modelo: v.modelo, mixerParado: v.mixer });
     return;
   } catch (e) { console.info('Etbaal vampire indisponível:', e.message); }
   try {
     const g = await personagemGlb('/assets/modelos/etbaal-galaxy.glb', 1.75);
-    g.modelo.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); }); // sem animação própria útil: pose de ligação
-    lugar(g.raiz);
-    etbaal = { grupo: g.raiz, mixer: null, modelo: g.modelo };
+    g.modelo.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); });
+    pronto(g.raiz, { modelo: g.modelo });
     return;
   } catch (e) { console.info('Etbaal galaxy indisponível:', e.message); }
-  try {
-    etbaal = criarPersonagem(await carregarBase(), '#ff2a3d');
-    lugar(etbaal.grupo);
-  } catch { /* sem personagem a cena segue: as telas são o que importa */ }
+  try { const p = criarPersonagem(await carregarBase(), '#ff2a3d'); pronto(p.grupo); } catch { /* a cena segue */ }
 }
 
 // ------------------------------------------------------------ dados reais nas telas
@@ -281,6 +297,7 @@ const corNota = (n) => (n < 40 ? '#ff4d5e' : n < 70 ? '#ffc44d' : '#5dff9b');
 const corSev = { alta: '#ff4d5e', media: '#ffc44d', baixa: '#7fd1ff' };
 async function carregar() {
   dados = await fetch('/api/etbaal?sessao=todas').then((r) => r.json());
+  posicionar(Boolean(dados.auditando));
   $('#chips').textContent = `${dados.auditados} auditados · ${dados.com_falha_grave} com falha grave · ${dados.pendentes} na fila · auditoria passiva (sem ataque)`;
   if (!partes) return;
   const ev = await fetch('/api/eventos?agente=etbaal&limite=40').then((x) => x.json()).catch(() => ({ eventos: [] }));
@@ -327,6 +344,7 @@ $('#term').addEventListener('submit', async (e) => {
   if (!cmd) return;
   historico.push(cmd); posHist = historico.length;
   entrada.disabled = true;
+  if (/^auditar/i.test(cmd)) posicionar(true);
   try {
     const r = await fetch('/api/etbaal/terminal', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ comando: cmd }) }).then((x) => x.json());
     if (r.limpar) saida.innerHTML = '';
@@ -368,6 +386,8 @@ function quadro() {
   redimensionar();
   quadro();
   partes = await montar();
+  const tv = montarTV({ grupos: [partes.tvGrupo], aoMudar: (st) => { const b = $('#btn-tv'); b.textContent = st.carregando ? 'Sintonizando…' : st.erro ? 'TV: erro' : st.ligada ? 'Desligar TV' : 'Ligar TV'; b.title = st.erro || `TV ao vivo: ${st.canal.nome}`; } });
+  $('#btn-tv').addEventListener('click', () => (tv.estado().ligada ? tv.desligar() : tv.ligar()));
   await chamarEtbaal(partes.sentado);
   await carregar().catch((e) => { $('#chips').textContent = `Sem dados do Etbaal: ${e.message}`; });
   $('#carregando').hidden = true;

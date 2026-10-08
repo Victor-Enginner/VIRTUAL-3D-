@@ -56,6 +56,7 @@ export function resumo(db, todas = false) {
   const conta = {};
   for (const r of aud) for (const a of r.achados) conta[a.id] = (conta[a.id] || 0) + 1;
   return {
+    auditando: rodando, // o 2º andar usa: auditando → Etbaal no deck; parado → vendo a TV
     auditados: aud.length,
     nota_media: aud.length ? Math.round(aud.reduce((a, r) => a + r.nota, 0) / aud.length) : null,
     com_falha_grave: aud.filter((r) => r.achados.some((a) => a.severidade === 'alta')).length,
