@@ -17,7 +17,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { montarShell } from './ui/shell.js';
 import { movimentoReduzido } from './ui/conforto.js';
 import { carregarBase, criarPersonagem } from './sala/personagens.js';
-import { criarColocador } from './sala/modelos.js';
+import { criarColocador, metade } from './sala/modelos.js';
 
 const $ = (s) => document.querySelector(s);
 const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -129,6 +129,8 @@ const telas = [];
 function novaTela(w = 512, h = 320) {
   const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
   const tex = new THREE.CanvasTexture(canvas); tex.colorSpace = THREE.SRGBColorSpace;
+  // o UV da malha 'screen' do Iiyama é girado 90°: +90 deixa o texto em pé (testado renderizando 0, +90 e -90)
+  tex.center.set(0.5, 0.5); tex.rotation = Math.PI / 2;
   const t = { canvas, tex, ctx: canvas.getContext('2d'), material: new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }), plano: null, dado: null };
   telas.push(t);
   return t;
@@ -172,7 +174,7 @@ async function montar() {
     const t = novaTela(); monitor(g, 0, -0.12, 0, t); estacoes.push(t);
     porModelo('teclado-vortex', 0, 0.13, 0, { pai: g, y: TAMPO, obstaculo: false });
     porModelo('gabinete-pc', 0.6, -0.05, 0, { pai: g, obstaculo: false });
-    porModelo('cadeira-gamer', 0, 0.72, Math.PI, { pai: g, obstaculo: false });
+    porModelo('cadeira-gamer', 0, 0.72, 0, { pai: g, obstaculo: false }); // de frente para a mesa
   }
 
   // ---- deck do Etbaal: duas mesas modernas juntas, 4 Iiyamas em arco (todos APOIADOS na mesa), periféricos fortes
@@ -186,12 +188,12 @@ async function montar() {
     const t = novaTela(); monitor(deck, ox, oz, r, t); telasDeck.push(t);
   }
   porModelo('teclado-mecanico-azul', 0, 0.16, 0, { pai: deck, y: TAMPO, obstaculo: false });
-  porModelo('caixas-razer', 0, -0.05, 0, { pai: deck, y: TAMPO, obstaculo: false, aoCarregar: (n) => n.scale.multiplyScalar(1.0) });
+  for (const lado of [-1, 1]) porModelo('caixas-razer', lado * 1.72, -0.14, -lado * 0.25, { pai: deck, y: TAMPO, obstaculo: false, aoCarregar: (n) => metade(n, lado) });
   porModelo('lata-monster', -0.62, 0.18, 0.4, { pai: deck, y: TAMPO, obstaculo: false });
-  porModelo('xbox', 1.38, 0.18, -0.3, { pai: deck, y: TAMPO, obstaculo: false });
+  porModelo('xbox', 1.05, 0.2, -0.3, { pai: deck, y: TAMPO, obstaculo: false });
   for (const ox of [-1.45, 1.45]) porModelo('gabinete-pc', ox, -0.06, 0, { pai: deck, obstaculo: false });
-  for (const ox of [-2.05, 2.05]) porModelo('caixa-pedestal', ox, -0.1, ox < 0 ? 0.3 : -0.3, { pai: deck, obstaculo: false });
-  porModelo('cadeira-gamer', 0, 0.78, Math.PI, { pai: deck, obstaculo: false });
+  for (const ox of [-2.55, 2.55]) porModelo('caixa-pedestal', ox, -0.25, ox < 0 ? 0.35 : -0.35, { pai: deck, obstaculo: false });
+  porModelo('cadeira-gamer', 0, 0.78, 0, { pai: deck, obstaculo: false }); // de frente para os monitores
   porModelo('tapete', 0, 0.9, 0, { pai: deck, obstaculo: false });
   // fita vermelha PRESA na borda da frente do tampo (na v2 ela atravessava a sala no ar)
   const fitaDeck = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.012, 0.012), new THREE.MeshBasicMaterial({ color: VERMELHO }));
