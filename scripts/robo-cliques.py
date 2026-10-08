@@ -17,7 +17,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 RAIZ = Path(__file__).resolve().parent.parent
-PORTA = 4302
+PORTA = int(os.environ.get("ROBO_PORTA", "4302"))
 BASE = f'http://127.0.0.1:{PORTA}'
 PAGINAS = {
     'inicio': '/inicio.html', 'painel': '/', 'producao': '/producao.html', 'agentes': '/agentes.html',
@@ -109,12 +109,28 @@ def main():
     so = set(sys.argv[1:])
     pasta = copiar_banco()
     arquivo_db = pasta / 'prospector.db'
+    # isolamento por snapshot: depois de um clique que GRAVA, o banco volta ao original e o servidor reinicia.
+    # Sem isso, "Nova sessão" deixava a cópia zerada e todos os cliques seguintes testavam outro mundo.
+    original = pasta / 'original.db'
+    shutil.copy(arquivo_db, original)
     env = {**os.environ, 'DATA_DIR': str(pasta), 'PORT': str(PORTA), 'SEM_COLETA': '1'}  # nunca coleta no Maps/OSM de verdade
-    srv = subprocess.Popen(['node', 'src/server.mjs'], cwd=RAIZ, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    srv = None
+
+    def subir():
+        nonlocal srv
+        srv = subprocess.Popen(['node', 'src/server.mjs'], cwd=RAIZ, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        esperar_porta()
+
+    def restaurar():
+        srv.terminate(); srv.wait(10)
+        for extra in ('prospector.db-wal', 'prospector.db-shm'): (pasta / extra).unlink(missing_ok=True)
+        shutil.copy(original, arquivo_db)
+        subir()
+
     resultados = []
     links_ja = set()  # a barra lateral é igual em todas as páginas: cada link é testado uma vez só
     try:
-        esperar_porta()
+        subir()
         with sync_playwright() as p:
             nav = p.chromium.launch(headless=True)
             ctx = nav.new_context(viewport={'width': 1440, 'height': 900})
@@ -174,11 +190,12 @@ def main():
                     r = {'pagina': nome, 'elemento': rotulo(el), 'tag': el['tag'], 'href': el['href'], 'classe': classe,
                          'tabelas': mudou_db, 'rede': escritas, 'erros': erros, 'externo': externos, 'falha': falha_clique}
                     resultados.append(r)
-                    print(f'  {classe:12} {r["elemento"]}', flush=True)
+                    print(f'  {classe:12} {r["elemento"]}' + (f'  ← {falha_clique}' if falha_clique else ''), flush=True)
                     c2.close()
+                    if mudou_db: restaurar()  # o próximo clique começa do mesmo mundo
             nav.close()
     finally:
-        srv.terminate(); srv.wait(10)
+        if srv: srv.terminate(); srv.wait(10)
         shutil.rmtree(pasta, ignore_errors=True)
     escrever(resultados)
 

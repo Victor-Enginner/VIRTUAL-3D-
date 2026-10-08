@@ -52,3 +52,21 @@ test('território: Thompson acha bem mais oportunidade que escolher cidade ao ac
   const ts = jogar('thompson'), acaso = jogar('acaso');
   assert.ok(ts > acaso * 2, `thompson ${ts} vs acaso ${acaso}`);
 });
+
+// Volume pela população (escala linear, arXiv 1807.02292): com a MESMA taxa, a cidade que tem empresas para encher o lote ganha.
+test('território: densidade só dos dados e cidade minúscula perde para a grande', async () => {
+  const { densidadeDoRamo, populacaoDe } = await import('../src/territorio.mjs');
+  const db = abrirBanco(':memory:');
+  assert.equal(densidadeDoRamo(db, 'barbearia'), null); // sem nenhuma busca: não inventa densidade
+  const pop = populacaoDe('Franca', 'SP');
+  assert.ok(pop > 300000);
+  db.prepare("INSERT INTO varreduras (id, cidade, uf, nicho, fonte, limite, criado_em, pais) VALUES (1, 'Franca', 'SP', 'barbearia', 'maps', 50, ?, 'BR')").run(agora());
+  db.prepare("INSERT INTO lotes (varredura_id, numero, meta, pedido, coletados, novos, status, iniciado_em, fim) VALUES (1, 1, 50, 50, 50, 50, 'coletado', ?, 0)").run(agora());
+  const d = densidadeDoRamo(db, 'barbearia');
+  assert.ok(Math.abs(d.densidade - 50 / pop) < 1e-12);
+  assert.match(d.origem, /limite inferior/);
+  const r = escolherCidades(db, { uf: 'SP', nicho: 'barbearia', k: 2, cidades: ['Aspásia', 'Guarulhos'], rng: rngSemente(3) });
+  assert.equal(r.escolhidas[0].cidade, 'Guarulhos');
+  const asp = r.escolhidas.find((b) => b.cidade === 'Aspásia');
+  assert.ok(asp.peso < 0.05, String(asp.peso)); // ~1,9 mil habitantes não enchem um lote de 50
+});

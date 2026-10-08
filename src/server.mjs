@@ -312,7 +312,7 @@ function avancarCampanha(c) {
     const p = podeAbrirLote(db, ult.varredura_id);
     if (!p.ok && !p.esgotada) throw new HttpError(409, `A campanha espera ${ult.cidade}: ${p.motivo}.`);
   }
-  const { escolhidas } = escolherCidades(db, { pais: c.pais, uf: c.uf, nicho: c.nicho, k: 5 });
+  const { escolhidas } = escolherCidades(db, { pais: c.pais, uf: c.uf, nicho: c.nicho, k: 5, meta: c.meta });
   if (!escolhidas.length) throw new HttpError(409, 'todas as cidades desta campanha já esgotaram');
   const escolha = escolhidas[0];
   const v = criarVarredura({ cidade: escolha.cidade, uf: c.uf, pais: c.pais, nicho: c.nicho, fonte: c.fonte, limite: c.meta });

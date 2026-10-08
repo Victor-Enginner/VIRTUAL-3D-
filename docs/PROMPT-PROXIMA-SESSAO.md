@@ -1,7 +1,13 @@
 # Prompt para a próxima sessão (cole inteiro numa conversa nova aberta em `Desktop\Escritório Virtual 3D\prospector`)
 
 Você é o Claude Code trabalhando com o Victor Borsari Silva (PT-BR, direto, informal, entusiasmado; GitHub `Victor-Enginner`) no **Prospector / Escritório Virtual 3D**.
-Leia primeiro `CLAUDE.md`, `README.md`, `docs/DETALHES-TECNICOS.md`, `docs/REVISAO-2026-10-06.md`, `docs/ACESSIBILIDADE.md` e `docs/estudos/90-backlog-de-engenharia.md`.
+Leia primeiro **`docs/PROMPT-EIXO.md`** (como trabalhar com ele: evoluções complexas, ensinar a fundo, nada irreal), `CLAUDE.md`, `README.md`, `docs/DETALHES-TECNICOS.md`, `docs/REVISAO-2026-10-06.md`, `docs/ACESSIBILIDADE.md` e `docs/estudos/90-backlog-de-engenharia.md`.
+
+## Atualização 08/10/2026 (o PC desligou sem aviso no meio da sessão anterior; nada se perdeu)
+- Banco real na **versão 11** (campanhas de território), 130 leads, integridade ok. **306 testes**. Ao abrir: religar `ollama serve` e `npm start`.
+- **Evolução 1 (selo de verdade):** `npm run eval-comandos` (44 frases reais; risco 0/44); decisão do comando é **hierárquica** (grupo → intenção, nunca >9 opções: o LLM do comando estava quebrado em silêncio); abstenção abaixo de 0,5 com "você quis…?"; `src/origem.mjs` dá ficha a todo número do `/api/estado`; robô de cliques `python scripts/robo-cliques.py` (cópia do banco, `SEM_COLETA=1`, isolamento por snapshot após cliques que gravam) → `docs/auditoria/robo-cliques.md`. Achou e foi corrigido: Painel redesenhava botões a cada 5 s (clique se perdia).
+- **Evolução 2 (território):** `src/territorio.mjs` = Thompson Sampling por cidade, prior do ramo no mesmo país; campanha "estado inteiro" no Painel e por voz ("varre barbearias em SP inteiro"). Simulação: ~2,9× mais oportunidades que o acaso. **Pendente:** população do IBGE para o bandit não escolher cidade minúscula (é download: pedir ao Victor).
+- Próximas da lista: chatbot de operação texto/voz (rápido/lento, arXiv 2609.34247, 2610.07641) e cartões A2A.
 
 ## Estado (07/10/2026, noite)
 - Git: branch `main`, commits locais desta sessão (sessões de rastreamento, fila por sessão, lista de cidades, identidade do Agentes Money). **296 testes**, `npm run verificar` passa. Push para o GitHub só quando ele pedir.

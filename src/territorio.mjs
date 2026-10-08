@@ -10,6 +10,12 @@
 // sufocar a exploração (arXiv 2602.00943). Sem histórico nenhum do ramo: Beta(1, 1), a ignorância honesta.
 import { cidadesDe } from './localidades.mjs';
 import { SITUACOES } from './regras.mjs';
+import fs from 'node:fs';
+
+// População estimada (IBGE, scripts/baixar-populacao.mjs). Sem o arquivo, o volume não entra na conta (peso 1).
+let POPULACAO = {};
+try { POPULACAO = JSON.parse(fs.readFileSync(new URL('./dados/populacao-BR.json', import.meta.url), 'utf8')).por_uf; } catch {}
+export const populacaoDe = (cidade, uf, pais = 'BR') => (pais === 'BR' ? POPULACAO[uf]?.[cidade] ?? null : null);
 
 export const FORCA_PRIOR = 6;           // o prior vale "6 empresas" de evidência
 // fonte única: toda situação auditada que não é "site próprio" é site fraco/sem site
@@ -54,18 +60,49 @@ export function priorDoRamo(db, nicho, pais = 'BR') {
   return { a: media * FORCA_PRIOR, b: (1 - media) * FORCA_PRIOR, media, base: r.n };
 }
 
+// VOLUME: quantas empresas do ramo a cidade deve ter. Serviços básicos crescem LINEARMENTE com a população
+// nas cidades brasileiras (leis de escala urbana, arXiv 1807.02292) → esperadas = densidade × população.
+// A densidade vem só dos nossos dados (nada chutado):
+//  - limite inferior: o maior "coletado ÷ população" já visto (a busca parou no pedido, então há PELO MENOS isso);
+//  - valor real: nas cidades onde a fonte ESGOTOU, total coletado ÷ população total (máxima verossimilhança do Poisson).
+// Vale o maior dos dois. Sem dado nenhum no país: null e o volume fica de fora (não inventa).
+export function densidadeDoRamo(db, nicho, pais = 'BR') {
+  const linhas = db.prepare(`SELECT v.cidade, v.uf, v.nicho, SUM(l.coletados) coletados, MAX(l.fim) fim
+    FROM lotes l JOIN varreduras v ON v.id = l.varredura_id WHERE v.pais = ? GROUP BY v.id`).all(pais);
+  const calc = (rs) => {
+    let minimo = 0, somaC = 0, somaP = 0;
+    for (const x of rs) {
+      const pop = populacaoDe(x.cidade, x.uf, pais);
+      if (!pop || !x.coletados) continue;
+      minimo = Math.max(minimo, x.coletados / pop);
+      if (x.fim) { somaC += x.coletados; somaP += pop; }
+    }
+    const real = somaP ? somaC / somaP : 0;
+    const d = Math.max(minimo, real);
+    return d ? { densidade: d, origem: real >= minimo && real ? 'cidades esgotadas' : 'limite inferior (nenhuma busca esgotou ainda)' } : null;
+  };
+  // o próprio ramo; sem dado dele, o país todo (qualquer ramo) como aproximação declarada
+  return calc(linhas.filter((x) => x.nicho === nicho)) || (() => { const g = calc(linhas); return g && { ...g, origem: `${g.origem}, de outros ramos` }; })();
+}
+
 // Escolhe as próximas `k` cidades da campanha. Devolve também o "porquê" de cada uma (transparência para o Victor).
-export function escolherCidades(db, { pais = 'BR', uf, nicho, k = 1, rng = Math.random, cidades = null }) {
+export function escolherCidades(db, { pais = 'BR', uf, nicho, k = 1, rng = Math.random, cidades = null, meta = 50 }) {
   const todas = cidades || cidadesDe(uf, pais);
   const { porCidade, esgotadas } = evidencia(db, { pais, uf, nicho });
   const prior = priorDoRamo(db, nicho, pais);
+  const dens = densidadeDoRamo(db, nicho, pais);
   const bracos = todas.filter((c) => !esgotadas.has(c)).map((cidade) => {
     const e = porCidade[cidade] || { n: 0, s: 0 };
     const a = prior.a + e.s, b = prior.b + (e.n - e.s);
-    return { cidade, auditados: e.n, oportunidades: e.s, media: a / (a + b), amostra: beta(a, b, rng) };
+    const amostra = beta(a, b, rng);
+    // oportunidades esperadas no lote = taxa sorteada × empresas que o lote consegue trazer (no máximo a meta)
+    const populacao = populacaoDe(cidade, uf, pais);
+    const esperadas = dens && populacao ? dens.densidade * populacao : null;
+    const peso = esperadas === null ? 1 : Math.min(1, esperadas / meta);
+    return { cidade, auditados: e.n, oportunidades: e.s, media: a / (a + b), amostra, populacao, esperadas, peso, valor: amostra * peso };
   });
-  bracos.sort((x, y) => y.amostra - x.amostra);
-  return { prior, total: todas.length, esgotadas: esgotadas.size, escolhidas: bracos.slice(0, k) };
+  bracos.sort((x, y) => y.valor - x.valor);
+  return { prior, densidade: dens, total: todas.length, esgotadas: esgotadas.size, escolhidas: bracos.slice(0, k) };
 }
 
 // ---------------------------------------------------------------- campanhas
@@ -87,7 +124,7 @@ export function registrarPasso(db, campanhaId, varreduraId, escolha, alternativa
 
 export function resumoCampanha(db, c) {
   const passos = db.prepare('SELECT * FROM campanha_passos WHERE campanha_id = ? ORDER BY id DESC LIMIT 20').all(c.id).map((p) => ({ ...p, alternativas: JSON.parse(p.alternativas || '[]') }));
-  const { prior, total, esgotadas, escolhidas } = escolherCidades(db, { pais: c.pais, uf: c.uf, nicho: c.nicho, k: 5 });
+  const { prior, total, esgotadas, escolhidas } = escolherCidades(db, { pais: c.pais, uf: c.uf, nicho: c.nicho, k: 5, meta: c.meta });
   const visitadas = db.prepare('SELECT COUNT(DISTINCT cidade) n FROM campanha_passos WHERE campanha_id = ?').get(c.id).n;
   return { ...c, total_cidades: total, visitadas, esgotadas, prior, passos, provaveis: escolhidas };
 }
