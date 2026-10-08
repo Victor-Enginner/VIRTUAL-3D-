@@ -49,7 +49,8 @@ function telaDeEspera(nome) {
   return t;
 }
 
-export function montarTV({ grupoTv, grupos = null, aoMudar = () => {} }) {
+// `canal`/`chave` opcionais: o 2º andar tem TVs com outros canais sem mexer no canal salvo do Paraíso
+export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: canalInicial = null, chave = CHAVE }) {
   const todas = grupos || [grupoTv];
   const video = document.createElement('video');
   video.crossOrigin = 'anonymous'; // o servidor do sinal libera CORS: dá para virar textura WebGL
@@ -65,8 +66,8 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {} }) {
   const ligada = new THREE.MeshBasicMaterial({ map: textura, toneMapped: false });
   const telas = [];
   let hls = null, ligadaAgora = false, carregando = false, erro = '';
-  let canal = CANAL_PADRAO;
-  try { const s = JSON.parse(localStorage.getItem(CHAVE) || 'null'); if (s && streamValido(s.stream)) canal = s; } catch { /* sem preferência salva */ }
+  let canal = canalInicial || CANAL_PADRAO;
+  try { const s = JSON.parse(localStorage.getItem(chave) || 'null'); if (s && streamValido(s.stream)) canal = s; } catch { /* sem preferência salva */ }
 
   const trocarEspera = () => { desligada.map?.dispose(); desligada.map = telaDeEspera(canal.nome); desligada.needsUpdate = true; };
   trocarEspera();
@@ -153,7 +154,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {} }) {
       const novo = await resolverCanal(link);
       canal = novo;
       trocarEspera();
-      try { localStorage.setItem(CHAVE, JSON.stringify(canal)); } catch { /* só não lembra */ }
+      try { localStorage.setItem(chave, JSON.stringify(canal)); } catch { /* só não lembra */ }
       if (ligadaAgora) await tocar(); else aoMudar(estado());
       return canal;
     },

@@ -221,6 +221,10 @@ async function montar() {
   const tvGrupo = new THREE.Group(); tvGrupo.position.set(0.6, 1.05, -P / 2 + 0.25); cena.add(tvGrupo);
   tvGrupo.userData.pronto = modeloKenney('televisionModern', 0, 0, 0, { cor: 0x0c0c0e }).then((m) => { cena.remove(m); m.position.set(0, 0, 0); m.scale.multiplyScalar(1.6); tvGrupo.add(m); });
   await tvGrupo.userData.pronto;
+  // TV do deck: na parede do fundo, acima dos 4 monitores, de frente para quem está nos computadores
+  const tvDeck = new THREE.Group(); tvDeck.position.set(dx, 1.62, -P / 2 + 0.2); cena.add(tvDeck);
+  tvDeck.userData.pronto = modeloKenney('televisionModern', 0, 0, 0, { cor: 0x0c0c0e }).then((m) => { cena.remove(m); m.position.set(0, 0, 0); m.scale.multiplyScalar(1.35); tvDeck.add(m); });
+  await tvDeck.userData.pronto;
 
   // telão na parede do fundo (resumo)
   const tc = Object.assign(document.createElement('canvas'), { width: 1024, height: 420 });
@@ -229,7 +233,7 @@ async function montar() {
   const pl = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 1.9), new THREE.MeshBasicMaterial({ map: telao.tex, toneMapped: false }));
   pl.position.set(-3.4, 1.75, -P / 2 + 0.05); cena.add(pl);
   await Promise.all(pendentes);
-  return { deck: telasDeck, telao, tvGrupo, sentado: { x: dx, z: dz + 0.78 } };
+  return { deck: telasDeck, telao, tvGrupo, tvDeck, sentado: { x: dx, z: dz + 0.78 } };
 }
 
 
@@ -316,17 +320,31 @@ async function carregar() {
   escreverTela(piores, ['MAIS VULNERÁVEIS', ...[...aud].sort((a, b) => a.nota - b.nota).slice(0, 9).map((a) => ({ t: `${String(a.nota).padStart(3)}  ${a.nome.slice(0, 28)}`, cor: corNota(a.nota) }))], { fonte: 19 });
   escreverTela(comuns, ['FALHAS MAIS COMUNS', ...dados.mais_comuns.slice(0, 9).map((m) => `${String(m.n).padStart(3)}× ${m.id}`)], { fonte: 19 });
   escreverTela(placar, ['PLACAR', { t: `${dados.auditados} auditados`, cor: '#ffffff' }, { t: `nota média ${dados.nota_media ?? '—'}/100`, cor: corNota(dados.nota_media ?? 100) }, { t: `${dados.com_falha_grave} com falha grave`, cor: '#ff4d5e' }, '', { t: `fila: ${dados.pendentes} sites próprios`, cor: '#ffb3ba' }, { t: 'passivo: GET · TLS · DNS', cor: '#6b4146' }], { fonte: 24 });
+  desenharTelao();
+}
+
+// telão principal: manchetes REAIS de hacking e tecnologia (servidor lê RSS; aqui só texto). Troca quando o servidor
+// atualiza (15 min), sem rolar nem piscar (conforto).
+let manchetes = { noticias: [] };
+async function carregarNoticias() { try { manchetes = await fetch('/api/etbaal/noticias').then((r) => r.json()); desenharTelao(); } catch { /* fica a última */ } }
+function desenharTelao() {
+  if (!partes) return;
   const { ctx, canvas, tex } = partes.telao;
   ctx.fillStyle = '#050102'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#ff2a3d'; ctx.font = 'bold 54px Consolas, monospace'; ctx.fillText('ETBAAL // SEGURANÇA', 40, 80);
-  ctx.font = '34px Consolas, monospace'; ctx.fillStyle = '#ffffff';
-  ctx.fillText(`${dados.auditados} sites auditados · nota média ${dados.nota_media ?? '—'}/100`, 40, 150);
-  ctx.fillStyle = '#ff4d5e'; ctx.fillText(`${dados.com_falha_grave} com falha grave`, 40, 200);
-  ctx.fillStyle = '#ffb3ba'; ctx.font = '28px Consolas, monospace';
-  dados.mais_comuns.slice(0, 5).forEach((m, i) => ctx.fillText(`${String(m.n).padStart(3)}× ${m.id}`, 40, 255 + i * 34));
-  ctx.fillStyle = '#6b4146'; ctx.font = '22px Consolas, monospace'; ctx.fillText(`origem: tabela seguranca · ${new Date().toLocaleTimeString('pt-BR')}`, 40, 405);
+  ctx.fillStyle = '#ff2a3d'; ctx.font = 'bold 40px Consolas, monospace'; ctx.fillText('ETBAAL // HACKING & TECNOLOGIA', 32, 56);
+  const corta = (t, n) => (t.length > n ? t.slice(0, n - 1) + '…' : t);
+  (manchetes.noticias || []).slice(0, 6).forEach((n, i) => {
+    const y = 108 + i * 46;
+    ctx.fillStyle = '#ffffff'; ctx.font = '25px Consolas, monospace'; ctx.fillText(corta(n.titulo, 62), 32, y);
+    ctx.fillStyle = '#ff8a95'; ctx.font = '17px Consolas, monospace';
+    ctx.fillText(`${n.fonte}${n.em ? ' · ' + new Date(n.em).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}`, 32, y + 20);
+  });
+  if (!(manchetes.noticias || []).length) { ctx.fillStyle = '#6b4146'; ctx.font = '24px Consolas, monospace'; ctx.fillText('buscando manchetes…', 32, 120); }
+  ctx.fillStyle = '#6b4146'; ctx.font = '18px Consolas, monospace';
+  ctx.fillText(`Etbaal: ${dados?.auditados ?? '—'} auditados · nota média ${dados?.nota_media ?? '—'} · ${dados?.com_falha_grave ?? '—'} com falha grave · fontes: RSS públicos`, 32, 405);
   tex.needsUpdate = true;
 }
+
 
 // ------------------------------------------------------------ terminal (conversa com o Etbaal, só texto)
 const saida = $('#term-saida'), entrada = $('#term-entrada');
@@ -386,13 +404,26 @@ function quadro() {
   redimensionar();
   quadro();
   partes = await montar();
-  const tv = montarTV({ grupos: [partes.tvGrupo], aoMudar: (st) => { const b = $('#btn-tv'); b.textContent = st.carregando ? 'Sintonizando…' : st.erro ? 'TV: erro' : st.ligada ? 'Desligar TV' : 'Ligar TV'; b.title = st.erro || `TV ao vivo: ${st.canal.nome}`; } });
-  $('#btn-tv').addEventListener('click', () => (tv.estado().ligada ? tv.desligar() : tv.ligar()));
+  // TVs do 2º andar: cada uma com o próprio canal (sinais públicos com CORS liberado, conferidos em 08/10/2026)
+  const CANAIS = {
+    sala: { nome: 'Record News', pagina: 'https://famelack.com/tv/br/TPTBqvtnc5kyaM', stream: 'https://rnw-rn.otteravision.com/rnw/rn/rnw_rn.m3u8' },
+    deck: { nome: 'Band', pagina: 'https://famelack.com/tv/br/DWCfWX1a4zLh6X', stream: 'https://media.cdntvms.com.br/band_sat/index.m3u8' },
+  };
+  const rotuloTv = () => { const ss = tvs.map((t) => t.estado()); const b = $('#btn-tv'); const lig = ss.some((x) => x.ligada);
+    b.textContent = ss.some((x) => x.carregando) ? 'Sintonizando…' : lig ? 'Desligar TVs' : 'Ligar TVs';
+    b.title = ss.map((x) => `${x.canal.nome}${x.erro ? ` (erro: ${x.erro})` : ''}`).join(' · '); };
+  const tvs = [
+    montarTV({ grupos: [partes.tvGrupo], canal: CANAIS.sala, chave: 'prospector-tv-andar2-sala:v1', aoMudar: () => tvs && rotuloTv() }),
+    montarTV({ grupos: [partes.tvDeck], canal: CANAIS.deck, chave: 'prospector-tv-andar2-deck:v1', aoMudar: () => tvs && rotuloTv() }),
+  ];
+  rotuloTv();
+  $('#btn-tv').addEventListener('click', () => { const lig = tvs.some((t) => t.estado().ligada); for (const t of tvs) lig ? t.desligar() : t.ligar(); });
   await chamarEtbaal(partes.sentado);
   await carregar().catch((e) => { $('#chips').textContent = `Sem dados do Etbaal: ${e.message}`; });
   $('#carregando').hidden = true;
   alvo.classList.add('pronta'); // sala.css deixa a cena com opacidade 0 até estar montada
   setInterval(() => carregar().catch(() => {}), 15000);
+  carregarNoticias(); setInterval(carregarNoticias, 15 * 60_000);
 })();
 
 // diagnóstico: /andar2.html?debug expõe a cena no console (sem o parâmetro, nada muda)
