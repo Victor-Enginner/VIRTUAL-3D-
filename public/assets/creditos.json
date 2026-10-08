@@ -383,5 +383,17 @@
     "fonte": "https://sketchfab.com/artsydarcy",
     "nao_comercial": false,
     "arquivo_original": "plant.glb"
+  },
+  {
+    "slug": "etbaal-galaxy",
+    "titulo": "Miss Galaxy",
+    "autor": "Donte_Loves_Art",
+    "autor_url": "https://sketchfab.com/Donte_Loves_Art",
+    "licenca": "CC-BY-4.0",
+    "licenca_url": "http://creativecommons.org/licenses/by/4.0/",
+    "fonte": "https://sketchfab.com/3d-models/miss-galaxy-32ca79bf7c4043dcbc36d28b22436303",
+    "nao_comercial": false,
+    "arquivo_original": "miss_galaxy.glb",
+    "uso": "Etbaal (2º andar)"
   }
 ]
