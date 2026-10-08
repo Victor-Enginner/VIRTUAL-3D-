@@ -70,11 +70,8 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   Object.assign(video.style, { position: 'fixed', left: '0', bottom: '0', width: '64px', height: '36px', opacity: '0.01', pointerEvents: 'none', zIndex: '-1' });
   video.setAttribute('aria-hidden', 'true');
   document.body.append(video);
-  // Se mesmo assim o Chrome pausar (economia de energia), retoma na hora: TV ligada não fica parada sem você mandar.
-  video.addEventListener('pause', () => {
-    if (!ligadaAgora || pausadaPorAba || document.hidden || !video.src && !hls) return;
-    video.play().catch(() => {});
-  });
+  // Se o Chrome pausar (economia de energia) com a página visível, retoma na hora (retomar() fica mais abaixo).
+  video.addEventListener('pause', () => { if (!document.hidden) retomar(); });
   // voltou a tocar: some o aviso de erro antigo
   video.addEventListener('playing', () => { if (erro) { erro = ''; pintar(); aoMudar(estado()); } });
   const desligada = new THREE.MeshBasicMaterial({ toneMapped: false });
@@ -147,7 +144,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
         hls.loadSource(canal.stream);
         hls.attachMedia(video);
       }
-      await video.play();
+      await video.play().catch((e) => { if (!document.hidden) throw e; }); // oculta: o Chrome pausa; retomar() resolve ao reaparecer
     } catch (e) { erro = e.name === 'NotAllowedError' ? 'o navegador bloqueou o vídeo: toque em Ligar de novo' : e.message; }
     carregando = false; pintar(); aoMudar(estado());
   }
@@ -158,6 +155,26 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
     video.removeAttribute('src'); video.load(); // solta a conexão: TV desligada não baixa nada
     pintar();
   }
+
+  // retomar(): TV ligada e página visível → vídeo tocando NO AO VIVO. Corrige os dois travamentos medidos em 08/10:
+  //  1. ligada com o painel oculto, o Chrome pausava e nada dava play de novo ao reaparecer (ficava no 1º quadro);
+  //  2. pausado antes de começar, o relógio ficava em 0 s fora do trecho baixado (36–54 s): precisa pular para o ao vivo.
+  function retomar() {
+    if (!ligadaAgora || pausadaPorAba || carregando || document.hidden) return;
+    const b = video.buffered;
+    if (b.length) {
+      const ini = b.start(0), fim = b.end(b.length - 1);
+      if (video.currentTime < ini || video.currentTime > fim) video.currentTime = hls?.liveSyncPosition ?? Math.max(ini, fim - 3);
+    }
+    if (video.paused) video.play().catch(() => {});
+  }
+  // vigia: a cada 2 s, se a TV está ligada e visível mas o relógio do vídeo não andou, retoma
+  let relogioAnterior = -1;
+  setInterval(() => {
+    if (!ligadaAgora || document.hidden || carregando) { relogioAnterior = -1; return; }
+    if (video.paused || video.currentTime === relogioAnterior) retomar();
+    relogioAnterior = video.currentTime;
+  }, 2000);
 
   // Aba escondida: só pausa depois de 1 MINUTO oculta. No app do Claude o painel do navegador fica "oculto" enquanto
   // o Victor digita no chat; pausar na hora fazia a TV congelar e recomeçar a cada vai-e-volta ("liga e fica travada").
@@ -170,7 +187,7 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
       timerOculta = setTimeout(() => { pausadaPorAba = true; parar(); aoMudar(estado()); }, ESPERA_OCULTA_MS);
     } else {
       clearTimeout(timerOculta);
-      if (pausadaPorAba) { pausadaPorAba = false; tocar(); }
+      if (pausadaPorAba) { pausadaPorAba = false; tocar(); } else retomar(); // reapareceu: garante vídeo andando no ao vivo
     }
   });
 
