@@ -61,7 +61,9 @@ export function montarTV({ grupoTv, grupos = null, aoMudar = () => {}, canal: ca
   // 08/10/2026: as tentativas de hoje (hls.js 360p, vídeo na página, retomada automática) deixaram a TV PARADA para o
   // Victor; voltamos ao player nativo que funcionava (commit a22e652) e só tiramos o freio.
   let enviosTextura = 0;
-  Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; enviosTextura++; this.version++; } });
+  // ATENÇÃO: o three.js só reenvia a imagem à placa de vídeo se a FONTE for marcada (source.needsUpdate). A versão
+  // anterior deste setter fazia só version++ e a TV ficava para sempre no 1º quadro ("imagem estática", 08/10/2026).
+  Object.defineProperty(textura, 'needsUpdate', { set(v) { if (v !== true) return; enviosTextura++; this.version++; this.source.needsUpdate = true; } });
   video.disablePictureInPicture = true; video.disableRemotePlayback = true;
   // O Chrome trata vídeo FORA da página (ou coberto por outros elementos) como "não assistido": mudo, pausa; com som,
   // DESLIGA A IMAGEM e toca só o áudio ("som normal, imagem travada", relatado pelo Victor em 08/10/2026).
