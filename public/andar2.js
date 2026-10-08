@@ -233,28 +233,45 @@ let etbaal = null;
 // Animação: reaplicar as do Xbot NÃO deu certo (testado: cópia direta de rotações estica a malha; SkeletonUtils.retargetClip
 // corrige a pose de repouso mas o Sketchfab gira a raiz 90° e ela fica de cabeça para baixo). Ela JÁ tem esqueleto Mixamo,
 // então as animações virão do próprio Mixamo, feitas para o esqueleto dela. Até lá: de pé, parada, na pose de ligação.
+// carrega um personagem GLB, deixa com a altura pedida, de pé no chão; devolve raiz + mixer com as animações DELE
+async function personagemGlb(url, altura) {
+  const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
+  const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync(url);
+  const modelo = gltf.scene;
+  modelo.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });
+  const raiz = new THREE.Group(); raiz.add(modelo);
+  const t = new THREE.Box3().setFromObject(raiz).getSize(new THREE.Vector3());
+  modelo.scale.multiplyScalar(altura / t.y);
+  const c = new THREE.Box3().setFromObject(raiz), centro = c.getCenter(new THREE.Vector3());
+  modelo.position.x -= centro.x; modelo.position.z -= centro.z; modelo.position.y -= c.min.y;
+  const mixer = gltf.animations.length ? new THREE.AnimationMixer(modelo) : null;
+  return { raiz, modelo, mixer, animacoes: gltf.animations };
+}
+
+// Etbaal, por ordem de preferência:
+//  1. "Vampire" do Mixamo com a animação "Catwalk Idle To Twist R" (escolha do Victor; Mixamo não permite redistribuir
+//     o arquivo solto → fica SÓ no PC, .gitignore). Animação feita PARA esse esqueleto: nada de retarget.
+//  2. Miss Galaxy (CC-BY 4.0, no git), parada na pose de ligação.
+//  3. o personagem padrão do Paraíso, em vermelho.
 async function chamarEtbaal(sentado) {
+  const lugar = (g) => { g.position.set(sentado.x + 2.0, 0, sentado.z + 0.3); g.rotation.y = Math.PI + 0.9; cena.add(g); };
   try {
-    const { MeshoptDecoder } = await import('three/addons/libs/meshopt_decoder.module.js');
-    const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('/assets/modelos/etbaal-galaxy.glb');
-    const modelo = gltf.scene;
-    modelo.traverse((o) => { if (o.isSkinnedMesh) { o.skeleton.pose(); o.frustumCulled = false; } }); // pose de ligação, sem andar
-    const raiz = new THREE.Group(); raiz.add(modelo);
-    const t = new THREE.Box3().setFromObject(raiz).getSize(new THREE.Vector3());
-    modelo.scale.multiplyScalar(1.75 / t.y);
-    const c = new THREE.Box3().setFromObject(raiz), centro = c.getCenter(new THREE.Vector3());
-    modelo.position.x -= centro.x; modelo.position.z -= centro.z; modelo.position.y -= c.min.y;
-    raiz.position.set(sentado.x + 2.0, 0, sentado.z + 0.3);
-    raiz.rotation.y = Math.PI + 0.9;
-    cena.add(raiz);
-    etbaal = { grupo: raiz, mixer: null, modelo };
+    const v = await personagemGlb('/assets/modelos/etbaal-vampire.glb', 1.9);
+    lugar(v.raiz);
+    if (v.mixer && !semMovimento) v.mixer.clipAction(v.animacoes[0]).play();
+    etbaal = { grupo: v.raiz, mixer: v.mixer, modelo: v.modelo };
     return;
-  } catch (e) { console.info('Etbaal (Miss Galaxy) indisponível, usando o personagem padrão:', e.message); }
+  } catch (e) { console.info('Etbaal vampire indisponível:', e.message); }
+  try {
+    const g = await personagemGlb('/assets/modelos/etbaal-galaxy.glb', 1.75);
+    g.modelo.traverse((o) => { if (o.isSkinnedMesh) o.skeleton.pose(); }); // sem animação própria útil: pose de ligação
+    lugar(g.raiz);
+    etbaal = { grupo: g.raiz, mixer: null, modelo: g.modelo };
+    return;
+  } catch (e) { console.info('Etbaal galaxy indisponível:', e.message); }
   try {
     etbaal = criarPersonagem(await carregarBase(), '#ff2a3d');
-    etbaal.grupo.position.set(sentado.x + 2.0, 0, sentado.z + 0.3);
-    etbaal.grupo.rotation.y = Math.PI + 0.9;
-    cena.add(etbaal.grupo);
+    lugar(etbaal.grupo);
   } catch { /* sem personagem a cena segue: as telas são o que importa */ }
 }
 
